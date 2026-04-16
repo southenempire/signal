@@ -2,8 +2,19 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Signal | Physical Intelligence",
-  description: "The world's first DePIN for Real-World Physical Intelligence on Solana.",
+  title: "Signal | The Human-Powered Oracle",
+  description: "Signal is a DePIN network on Solana. Earn USDC by reporting real-world prices via Telegram. Vision AI verified.",
+  openGraph: {
+    title: "Signal | Physical Intelligence on Solana",
+    description: "Earn USDC reporting real-world data directly from Telegram. No wallet setup required.",
+    type: "website",
+    siteName: "Signal Protocol",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Signal | The Human-Powered Oracle",
+    description: "Earn USDC by reporting real-world prices via Telegram.",
+  },
 };
 
 export default function RootLayout({
