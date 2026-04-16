@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BookOpen, Zap, Shield, Database, Code, ArrowRight, Send, Copy } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 const sections = [
   {
@@ -258,7 +259,7 @@ export default function Docs() {
       <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0f]/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center font-bold">S</div>
+            <Image src="/logo.png" alt="Signal Logo" width={32} height={32} className="rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.4)] border border-white/10" />
             <span className="font-bold">SIGNAL</span>
             <span className="text-zinc-500 text-sm hidden sm:inline">/ Docs</span>
           </Link>

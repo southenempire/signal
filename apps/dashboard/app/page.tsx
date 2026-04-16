@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Activity, Globe, Database, Network, ArrowRight, Send, CheckCircle, Users, Zap } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 const BOT_API = "http://localhost:3001";
 
@@ -84,7 +85,7 @@ export default function Home() {
       <header className="sticky top-0 z-50 backdrop-blur-xl border-b border-white/5 bg-[#0a0a0f]/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center font-bold text-lg shadow-[0_0_20px_rgba(79,70,229,0.5)]">S</div>
+            <Image src="/logo.png" alt="Signal Logo" width={36} height={36} className="rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.4)] border border-white/10" />
             <div>
               <span className="text-lg font-bold tracking-tight">SIGNAL</span>
               <span className="text-xs text-indigo-400 font-medium tracking-widest uppercase ml-2 hidden sm:inline">Protocol</span>
@@ -343,7 +344,7 @@ export default function Home() {
       <footer className="border-t border-white/5 mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-zinc-500">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-indigo-600 rounded flex items-center justify-center text-xs font-bold">S</div>
+            <Image src="/logo.png" alt="Signal Logo" width={24} height={24} className="rounded border border-white/5" />
             <span>Signal Protocol · Built on Solana</span>
           </div>
           <div className="flex gap-6">
