@@ -1,0 +1,9 @@
+node_modules/
+.next/
+target/
+dist/
+.env
+*.json.failed
+signal-ledger*
+/tmp/
+.DS_Store

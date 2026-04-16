@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+@theme {
+  --animate-fade-in: fade-in 0.8s ease-out forwards;
+  --animate-pulse: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  
+  @keyframes fade-in {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+:root {
+  --background: #0a0a0f;
+  --foreground: #e2e2e7;
+  --primary: #6366f1;
+  --secondary: #a855f7;
+  --accent: #22d3ee;
+  --card-bg: rgba(23, 23, 33, 0.7);
+  --border: rgba(255, 255, 255, 0.08);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', system-ui, sans-serif;
+  background-image: 
+    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.1) 0%, transparent 40%);
+  background-attachment: fixed;
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-[var(--card-bg)] border border-[var(--border)] rounded-2xl backdrop-blur-xl;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  .nav-btn {
+    @apply px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-white/5;
+  }
+
+  .primary-btn {
+    @apply bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-3 rounded-xl font-bold text-white transition-all hover:scale-105 active:scale-95 shadow-lg shadow-indigo-500/20;
+  }
+
+  .badge-live {
+    @apply flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold border border-emerald-500/20;
+  }
+
+  .data-stat {
+    @apply flex flex-col gap-1 p-4 rounded-xl bg-white/5 border border-white/5;
+  }
+}
+
+.glow-text {
+  text-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+}
+
+.map-gradient {
+  mask-image: linear-gradient(to bottom, black, transparent);
+}
