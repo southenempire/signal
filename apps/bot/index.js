@@ -10,6 +10,14 @@ import {
 } from '@solana/spl-token';
 import { readFileSync } from 'fs';
 
+// ─── Database & Image modules ─────────────────────────────────────────────────
+import {
+  getOrCreateUser, saveReport, savePayout,
+  getLeaderboard, getRecentReports, getNetworkStats,
+  getUserTotalEarned
+} from './db.js';
+import { saveReportImage } from './images.js';
+
 // ─── Config ───────────────────────────────────────────────────────────────────
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const RPC_URL   = process.env.RPC_URL   || 'http://localhost:8899';
@@ -28,21 +36,8 @@ console.log('🔗 RPC:', RPC_URL);
 console.log('💳 Protocol wallet:', protocolWallet.publicKey.toBase58());
 console.log('💵 USDC Mint:', USDC_MINT);
 
-// ─── In-memory data store ────────────────────────────────────────────────────
-const users         = new Map();
+// ─── Pending actions (these are ephemeral — OK to be in-memory) ──────────────
 const pendingReport = new Map();
-const reports       = [];   // live feed for dashboard
-let   totalVolume   = 0;    // cumulative USDC paid out
-
-function getUser(id) {
-  if (!users.has(id)) {
-    const kp = Keypair.generate();
-    users.set(id, { keypair: kp, points: 0, reports: 0 });
-    // Fund with gas SOL (fire and forget)
-    connection.requestAirdrop(kp.publicKey, 0.1 * LAMPORTS_PER_SOL).catch(() => {});
-  }
-  return users.get(id);
-}
 
 async function getUSDC(pubkey) {
   try {
@@ -62,12 +57,12 @@ async function payUser(userKp, amount) {
     const toATA = await getOrCreateAssociatedTokenAccount(
       connection, protocolWallet, mintPubkey, userKp.publicKey
     );
-    await transfer(connection, protocolWallet, fromATA.address, toATA.address,
+    const sig = await transfer(connection, protocolWallet, fromATA.address, toATA.address,
       protocolWallet, BigInt(Math.round(amount * 1_000_000)));
-    return true;
+    return sig || 'confirmed';
   } catch (e) {
     console.error('Pay error:', e.message);
-    return false;
+    return null;
   }
 }
 
@@ -81,14 +76,21 @@ const MAIN_MENU = Markup.keyboard([
 
 // /start
 bot.start(async (ctx) => {
-  const user = getUser(ctx.from.id);
+  const user = getOrCreateUser(ctx.from.id);
   const sol  = await connection.getBalance(user.keypair.publicKey);
+
+  // Fund new users with gas SOL
+  if (user.isNew) {
+    connection.requestAirdrop(user.keypair.publicKey, 0.1 * LAMPORTS_PER_SOL).catch(() => {});
+  }
+
   await ctx.replyWithHTML(
-    `👋 <b>Welcome to Signal Oracle!</b>\n\n` +
-    `The DePIN network on Solana — report real-world prices and earn USDC instantly. No wallet needed.\n\n` +
-    `🔑 <b>Your Wallet</b>\n<code>${user.keypair.publicKey.toBase58()}</code>\n\n` +
+    `👋 <b>Welcome to Signal Bot!</b>\n\n` +
+    `The DePIN oracle on Solana — report real-world prices and earn USDC instantly. No wallet needed.\n\n` +
+    `🔑 <b>Your Wallet</b>\n<code>${user.publicKey}</code>\n\n` +
     `💰 SOL Balance: <b>${(sol / LAMPORTS_PER_SOL).toFixed(4)} SOL</b>\n` +
-    `📊 Signal Points: <b>${user.points} PTS</b>`,
+    `📊 Signal Points: <b>${user.points} PTS</b>\n` +
+    `📸 Reports: <b>${user.reportCount}</b>`,
     MAIN_MENU
   );
 });
@@ -96,7 +98,7 @@ bot.start(async (ctx) => {
 // How It Works
 bot.hears('📖 How It Works', async (ctx) => {
   await ctx.replyWithHTML(
-    `<b>📖 How Signal Works</b>\n\n` +
+    `<b>📖 How Signal Bot Works</b>\n\n` +
     `<b>1. Report</b> → Send a photo of a price (fuel pump, shelf tag, receipt)\n` +
     `<b>2. Verify</b> → Vision AI extracts and verifies the price from your photo\n` +
     `<b>3. Earn</b>   → USDC lands in your wallet once consensus is reached\n\n` +
@@ -138,14 +140,18 @@ bot.action(['FUEL','GROCERY','ELECTRICITY','RENT'], async (ctx) => {
 
 // Photo handler — the core earning flow
 bot.on('photo', async (ctx) => {
-  const user     = getUser(ctx.from.id);
+  const user     = getOrCreateUser(ctx.from.id);
   const category = pendingReport.get(ctx.from.id) || 'FUEL';
   pendingReport.delete(ctx.from.id);
 
   await ctx.reply('🔍 Image received! Vision AI is verifying...');
+
+  // Save the image to disk
+  const imagePath = await saveReportImage(ctx, category, ctx.from.id);
+
   await new Promise(r => setTimeout(r, 2000));
 
-  // Vision AI mock (replace setTimeout block with real GPT-4o call when OPENAI_API_KEY is set)
+  // Vision AI mock (replace with real GPT-4o call when OPENAI_API_KEY is set)
   const prices = { FUEL: 3.45, GROCERY: 4.99, ELECTRICITY: 0.14, RENT: 2400 };
   const variation = (Math.random() * 0.2 - 0.1);
   const extracted = (prices[category] * (1 + variation)).toFixed(2);
@@ -160,28 +166,25 @@ bot.on('photo', async (ctx) => {
 
   await new Promise(r => setTimeout(r, 1500));
 
-  const paid    = await payUser(user.keypair, reward);
+  // Pay the user on-chain
+  const txSig = await payUser(user.keypair, reward);
   const usdcBal = await getUSDC(user.keypair.publicKey);
-  user.points  += 150;
-  user.reports += 1;
-  totalVolume  += reward;
 
-  // Push to live feed for dashboard
-  reports.unshift({
-    category,
-    price: extracted,
-    reward,
-    wallet: user.keypair.publicKey.toBase58().slice(0, 8) + '...',
-    ts: Date.now(),
-  });
-  if (reports.length > 50) reports.pop();
+  // Persist to database
+  saveReport(ctx.from.id, category, parseFloat(extracted), reward, imagePath);
+  if (txSig) {
+    savePayout(ctx.from.id, reward, typeof txSig === 'string' ? txSig : null);
+  }
+
+  // Re-read updated user
+  const updated = getOrCreateUser(ctx.from.id);
 
   await ctx.replyWithHTML(
     `🎊 <b>Payout Complete!</b>\n\n` +
     `💰 Earned: <b>+$${reward} USDC</b>\n` +
-    `📈 Points:  <b>+150 PTS</b> → Total: ${user.points} PTS\n` +
+    `📈 Points:  <b>+150 PTS</b> → Total: ${updated.points} PTS\n` +
     `🏦 USDC Balance: <b>$${usdcBal.toFixed(2)}</b>\n\n` +
-    `${paid ? '✅ USDC confirmed on Solana Localnet!' : '⚠️ Payout queued'}\n\n` +
+    `${txSig ? '✅ USDC confirmed on Solana!' : '⚠️ Payout queued'}\n\n` +
     `Submit more to climb the leaderboard 🚀`,
     MAIN_MENU
   );
@@ -189,20 +192,22 @@ bot.on('photo', async (ctx) => {
 
 // My Rewards
 bot.hears('💰 My Rewards', async (ctx) => {
-  const user    = getUser(ctx.from.id);
+  const user    = getOrCreateUser(ctx.from.id);
   const sol     = await connection.getBalance(user.keypair.publicKey);
   const usdc    = await getUSDC(user.keypair.publicKey);
+  const earned  = getUserTotalEarned(ctx.from.id);
   const prize   = (user.points * 0.036).toFixed(2);
 
   await ctx.replyWithHTML(
     `<b>💼 Your Signal Portfolio</b>\n\n` +
-    `🔑 <code>${user.keypair.publicKey.toBase58()}</code>\n\n` +
+    `🔑 <code>${user.publicKey}</code>\n\n` +
     `<b>Balances</b>\n` +
     `├ SOL:  ${(sol / LAMPORTS_PER_SOL).toFixed(4)} SOL\n` +
     `└ USDC: $${usdc.toFixed(2)}\n\n` +
     `<b>Stats</b>\n` +
     `├ Signal Points: ${user.points} PTS\n` +
-    `├ Reports:       ${user.reports}\n` +
+    `├ Reports:       ${user.reportCount}\n` +
+    `├ Total Earned:  $${earned.toFixed(2)}\n` +
     `└ Prize Share:   ~$${prize}\n\n` +
     `<i>Prize pool = 15% of Colosseum hackathon winnings</i>`,
     MAIN_MENU
@@ -211,12 +216,12 @@ bot.hears('💰 My Rewards', async (ctx) => {
 
 // Leaderboard
 bot.hears('🏆 Leaderboard', async (ctx) => {
-  const sorted = [...users.entries()].sort((a, b) => b[1].points - a[1].points).slice(0, 5);
+  const sorted = getLeaderboard(5);
   const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
 
   const rows = sorted.length
-    ? sorted.map(([id, u], i) =>
-        `${medals[i]} ${id === ctx.from.id ? '<b>You</b>' : 'Signaler'} — ${u.points} PTS  (${u.reports} reports)`
+    ? sorted.map((u, i) =>
+        `${medals[i]} ${u.telegramId === ctx.from.id ? '<b>You</b>' : 'Signaler'} — ${u.points} PTS  (${u.reports} reports)`
       ).join('\n')
     : 'No reports yet — be the first! 📸';
 
@@ -233,7 +238,7 @@ bot.on('text', async (ctx) => {
 
   // Withdraw flow: user pastes a Solana address after /withdraw
   if (text.startsWith('/withdraw') || (text.length === 44 && pendingReport.get(ctx.from.id) === 'AWAITING_ADDRESS')) {
-    const user   = getUser(ctx.from.id);
+    const user   = getOrCreateUser(ctx.from.id);
     let address  = text.replace('/withdraw', '').trim();
 
     // No address yet — ask for it
@@ -276,7 +281,7 @@ bot.on('text', async (ctx) => {
         `✅ <b>Withdrawal Complete!</b>\n\n` +
         `💸 Sent: <b>$${usdc.toFixed(2)} USDC</b>\n` +
         `📍 To: <code>${address}</code>\n\n` +
-        `<i>Transaction confirmed on Solana Localnet</i>`,
+        `<i>Transaction confirmed on Solana</i>`,
         MAIN_MENU
       );
     } catch (e) {
@@ -294,33 +299,23 @@ api.use(cors());
 api.use(express.json());
 
 api.get('/api/stats', (req, res) => {
-  const sorted     = [...users.values()].sort((a, b) => b.points - a.points);
-  const totalPoints = sorted.reduce((s, u) => s + u.points, 0);
+  const stats = getNetworkStats();
   res.json({
-    activeNodes:   users.size,
-    totalReports:  reports.length,
-    totalVolume:   totalVolume.toFixed(2),
-    signalers:     users.size,
+    activeNodes:   stats.signalers,
+    totalReports:  stats.totalReports,
+    totalVolume:   stats.totalVolume.toFixed(2),
+    signalers:     stats.signalers,
     rpcUrl:        RPC_URL,
     usdcMint:      USDC_MINT,
   });
 });
 
 api.get('/api/leaderboard', (req, res) => {
-  const sorted = [...users.entries()]
-    .sort((a, b) => b[1].points - a[1].points)
-    .slice(0, 10)
-    .map(([id, u], i) => ({
-      rank:    i + 1,
-      wallet:  u.keypair.publicKey.toBase58().slice(0, 8) + '...',
-      points:  u.points,
-      reports: u.reports,
-    }));
-  res.json(sorted);
+  res.json(getLeaderboard(10));
 });
 
 api.get('/api/reports', (req, res) => {
-  res.json(reports.slice(0, 20));
+  res.json(getRecentReports(20));
 });
 
 api.listen(3001, () => {
@@ -347,4 +342,3 @@ main();
 
 process.once('SIGINT',  () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
-
