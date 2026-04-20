@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Clock, Globe, Shield, Zap, ChevronRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import NavBar from "../../components/NavBar";
+import { LAUNCH_DATE } from "../../lib/constants";
 
 /* ═══════════════════════════════════════════════════════
    CINEMATIC PARTICLE BACKGROUND
@@ -82,13 +84,9 @@ export default function WaitlistPage() {
 
   // Countdown Logic: Targets 11 days from genesis repo initialization
   useEffect(() => {
-    const launchDate = new Date();
-    launchDate.setDate(launchDate.getDate() + 11);
-    launchDate.setHours(0, 0, 0, 0);
-
     const timer = setInterval(() => {
       const now = new Date().getTime();
-      const distance = launchDate.getTime() - now;
+      const distance = LAUNCH_DATE.getTime() - now;
 
       if (distance < 0) {
         clearInterval(timer);
@@ -129,19 +127,7 @@ export default function WaitlistPage() {
     <div className="min-h-screen bg-[#050505] text-white selection:bg-[#10B981]/30 flex flex-col relative overflow-hidden">
       <ParticleBackground />
       
-      {/* ─── NAVIGATION ─── */}
-      <nav className="relative z-50 p-8 flex justify-between items-center max-w-7xl mx-auto w-full">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#10B981] to-[#059669] flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.35)]">
-            <Globe className="text-white" size={20} />
-          </div>
-          <span className="text-xl font-display font-black tracking-tighter uppercase italic">Signal</span>
-        </div>
-        <div className="text-[10px] items-center gap-2 hidden md:flex font-mono text-zinc-500 uppercase tracking-widest border border-white/5 py-1.5 px-4 rounded-full bg-white/5 backdrop-blur-md">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-          Protocol Genesis: Phase 1
-        </div>
-      </nav>
+      <NavBar />
 
       {/* ─── HERO CONTENT ─── */}
       <main className="flex-1 flex flex-col items-center justify-center relative z-10 px-6 max-w-4xl mx-auto text-center">

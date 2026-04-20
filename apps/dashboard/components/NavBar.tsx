@@ -7,8 +7,10 @@ import { motion } from 'framer-motion';
 import { Zap, Network, BookOpen, ExternalLink, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
+import { isLive } from '../lib/constants';
+
 const navItems = [
-  { name: 'Live Network', path: '/network', icon: Network },
+  { name: 'Live Network', path: '/network', icon: Network, hideDuringPrelaunch: true },
   { name: 'Developers', path: '/docs', icon: BookOpen },
 ];
 
@@ -38,7 +40,9 @@ export default function NavBar() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-6">
-            {navItems.map((item) => {
+            {navItems
+              .filter(item => !item.hideDuringPrelaunch || isLive())
+              .map((item) => {
               const isActive = pathname === item.path;
               const Icon = item.icon;
               return (
@@ -92,7 +96,9 @@ export default function NavBar() {
         className="md:hidden overflow-hidden bg-black/95 border-b border-white/5"
       >
         <div className="px-4 py-4 space-y-1">
-          {navItems.map((item) => {
+          {navItems
+            .filter(item => !item.hideDuringPrelaunch || isLive())
+            .map((item) => {
             const isActive = pathname === item.path;
             const Icon = item.icon;
             return (

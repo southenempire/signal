@@ -9,8 +9,7 @@ import ImpactFeed from "../components/ImpactFeed";
 import { motion, AnimatePresence } from "framer-motion";
 
 const BOT_API = "http://localhost:3001";
-const LAUNCH_DATE = new Date("2026-05-01T00:00:00Z"); // Target 11-day Genesis Window
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+import { LAUNCH_DATE, IS_PRODUCTION, isLive } from '../lib/constants';
 
 /* ═══════════════════════════════════════════════════════
    CANVAS — Particle Network (DePIN nodes)
@@ -325,20 +324,12 @@ export default function Home() {
   const [isLaunched, setIsLaunched] = useState(false);
 
   useEffect(() => {
-    const checkLaunch = () => {
-        const now = new Date().getTime();
-        const dist = LAUNCH_DATE.getTime() - now;
-        
-        // In local development, we skip the waitlist for testing
-        // In production/hackathon review, we build hype
-        if (dist > 0 && IS_PRODUCTION) {
-            window.location.href = "/waitlist";
-        } else {
-            setIsLaunched(true);
-            setLoading(false);
-        }
-    };
-    checkLaunch();
+    if (!isLive()) {
+        window.location.href = "/waitlist";
+    } else {
+        setIsLaunched(true);
+        setLoading(false);
+    }
   }, []);
 
   const [selected, setSelected] = useState("Energy Grid");
