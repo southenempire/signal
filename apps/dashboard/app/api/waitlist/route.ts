@@ -3,13 +3,15 @@ import fs from 'fs';
 import path from 'path';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const DATA_DIR = path.join(process.cwd(), 'data');
 const WAITLIST_FILE = path.join(DATA_DIR, 'waitlist.json');
 
 export async function POST(request: Request) {
   try {
     const { email } = await request.json();
+    
+    // Lazy initialize to prevent build-time crashes when env keys are missing
+    const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
     if (!email || !email.includes('@')) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
     fs.writeFileSync(WAITLIST_FILE, JSON.stringify(waitlist, null, 2));
 
     // --- DIRECT CODE NOTIFICATION via Resend ---
-    if (process.env.RESEND_API_KEY) {
+    if (resend) {
       await resend.emails.send({
         from: 'Signal <genesis@signal-depin.io>',
         to: email,
