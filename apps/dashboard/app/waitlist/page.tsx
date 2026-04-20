@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Send, Clock, Globe, Shield, Zap, ChevronRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import NavBar from "../../components/NavBar";
 import { LAUNCH_DATE } from "../../lib/constants";
 
@@ -129,81 +130,113 @@ export default function WaitlistPage() {
       
       <NavBar />
 
-      {/* ─── HERO CONTENT ─── */}
-      <main className="flex-1 flex flex-col items-center justify-center relative z-10 px-6 max-w-4xl mx-auto text-center">
-        <motion.div
-           initial={{ opacity: 0, y: 20 }}
-           animate={{ opacity: 1, y: 0 }}
-           transition={{ duration: 1 }}
-           className="space-y-6"
-        >
-          <h1 className="text-5xl md:text-8xl font-display font-black tracking-tighter leading-none italic mb-4">
-            THE WORLD'S <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#10B981] to-zinc-500">
-              FIRST HUMAN ORACLE
-            </span>
-          </h1>
+      {/* ─── HERO CONTENT: Split Layout ─── */}
+      <main className="flex-1 flex items-center justify-center relative z-10 px-6 max-w-7xl mx-auto w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center w-full">
           
-          <p className="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            Bridging the physical-to-digital gap with decentralized human consensus. 
-            Powered by Solana, authenticated by Claude-3.5-Sonnet Vision AI.
-          </p>
+          {/* Left: Cinematic Asset & Orbitals */}
+          <motion.div 
+            initial={{ opacity: 0, x: -30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1.2, ease: "easeOut" }}
+            className="hidden lg:flex relative items-center justify-center p-12"
+          >
+            {/* Background Glows and Orbitals */}
+            <div className="absolute inset-0 bg-[#10B981]/5 rounded-full blur-[120px] animate-pulse" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] border border-[#10B981]/10 rounded-full animate-[spin_20s_linear_infinite]" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] h-[90%] border-dashed border-[#10B981]/20 rounded-full animate-[spin_15s_linear_infinite_reverse]" />
+            
+            {/* The Asset */}
+            <div className="relative z-10 w-full max-w-lg aspect-square">
+              <Image 
+                src="/genesis-hand.png" 
+                alt="Signal Genesis Verification" 
+                width={600}
+                height={600}
+                className="object-contain drop-shadow-[0_0_50px_rgba(16,185,129,0.3)] select-none pointer-events-none"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent" />
+            </div>
+          </motion.div>
 
-          {/* ─── COUNTDOWN ─── */}
-          <div className="grid grid-cols-4 gap-4 py-12 max-w-md mx-auto">
-            {Object.entries(timeLeft).map(([label, val]) => (
-              <div key={label} className="group flex flex-col items-center">
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl md:text-3xl font-black italic backdrop-blur-xl group-hover:border-[#10B981]/50 transition-colors shadow-2xl">
-                  {val.toString().padStart(2, '0')}
-                </div>
-                <div className="text-[10px] font-black uppercase text-zinc-500 mt-2 tracking-widest">
-                  {label}
-                </div>
-              </div>
-            ))}
-          </div>
+          {/* Right: Hype Content & Countdown */}
+          <motion.div
+             initial={{ opacity: 0, y: 20 }}
+             animate={{ opacity: 1, y: 0 }}
+             transition={{ duration: 1 }}
+             className="space-y-10 text-center lg:text-left"
+          >
+            <div className="space-y-6">
+              <h1 className="text-4xl md:text-7xl font-display font-black tracking-tighter leading-none italic">
+                THE WORLD'S <br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-[#10B981] to-white/70">
+                  FIRST HUMAN ORACLE
+                </span>
+              </h1>
+              
+              <p className="text-zinc-400 text-lg md:text-xl max-w-xl mx-auto lg:mx-0 leading-relaxed">
+                Bridging the physical-to-digital gap with decentralized human consensus. 
+                Powered by Solana, authenticated by Claude-3.5-Sonnet Vision AI.
+              </p>
+            </div>
 
-          {/* ─── EMAIL CAPTURE ─── */}
-          <div className="max-w-md mx-auto w-full relative">
-            <AnimatePresence mode="wait">
-              {status === "success" ? (
-                <motion.div 
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="p-6 rounded-2xl bg-[#10B981]/10 border border-[#10B981]/30 flex flex-col items-center gap-3 backdrop-blur-xl"
-                >
-                  <CheckCircle2 className="text-[#10B981]" size={32} />
-                  <div className="text-sm font-bold text-white uppercase tracking-wider">Welcome to Genesis. We'll alert you soon.</div>
-                </motion.div>
-              ) : (
-                <motion.form 
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  onSubmit={handleJoin} 
-                  className="relative group"
-                >
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Enter email for early access..."
-                    className="w-full bg-[#0a0a0c] border border-white/10 rounded-2xl py-5 px-8 outline-none focus:border-[#10B981]/50 transition-all font-mono text-sm placeholder:text-zinc-600 focus:ring-4 focus:ring-[#10B981]/5"
-                    disabled={status === "loading"}
-                  />
-                  <button
-                    type="submit"
-                    className="absolute right-3 top-3 bottom-3 px-6 bg-white text-black rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#10B981] hover:text-white transition-all active:scale-95 disabled:opacity-50"
-                    disabled={status === "loading"}
+            {/* ─── COUNTDOWN ─── */}
+            <div className="grid grid-cols-4 gap-4 max-w-md mx-auto lg:mx-0">
+              {Object.entries(timeLeft).map(([label, val]) => (
+                <div key={label} className="group flex flex-col items-center">
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl md:text-3xl font-black italic backdrop-blur-xl group-hover:border-[#10B981]/50 transition-colors shadow-2xl overflow-hidden relative">
+                    <span className="relative z-10">{val.toString().padStart(2, '0')}</span>
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#10B981]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="text-[10px] font-black uppercase text-zinc-500 mt-2 tracking-widest">
+                    {label}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ─── EMAIL CAPTURE ─── */}
+            <div className="max-w-md mx-auto lg:mx-0 w-full relative">
+              <AnimatePresence mode="wait">
+                {status === "success" ? (
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="p-6 rounded-2xl bg-[#10B981]/10 border border-[#10B981]/30 flex flex-col items-center gap-3 backdrop-blur-xl"
                   >
-                    {status === "loading" ? "Joining..." : "Join Genesis"}
-                  </button>
-                </motion.form>
+                    <CheckCircle2 className="text-[#10B981]" size={32} />
+                    <div className="text-sm font-bold text-white uppercase tracking-wider">Welcome to Genesis. We'll alert you soon.</div>
+                  </motion.div>
+                ) : (
+                  <motion.form 
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    onSubmit={handleJoin} 
+                    className="relative group"
+                  >
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="Enter email for early access..."
+                      className="w-full bg-[#0a0a0c] border border-white/10 rounded-2xl py-5 px-8 outline-none focus:border-[#10B981]/50 transition-all font-mono text-sm placeholder:text-zinc-600 focus:ring-4 focus:ring-[#10B981]/5"
+                      disabled={status === "loading"}
+                    />
+                    <button
+                      type="submit"
+                      className="absolute right-3 top-3 bottom-3 px-6 bg-white text-black rounded-xl text-xs font-black uppercase tracking-widest hover:bg-[#10B981] hover:text-white transition-all active:scale-95 disabled:opacity-50 shadow-[0_4px_20px_rgba(255,255,255,0.1)]"
+                      disabled={status === "loading"}
+                    >
+                      {status === "loading" ? "Joining..." : "Join Genesis"}
+                    </button>
+                  </motion.form>
+                )}
+              </AnimatePresence>
+              {status === "error" && (
+                <p className="text-[10px] text-red-500 font-bold uppercase mt-2">Error joining waitlist. Try again.</p>
               )}
-            </AnimatePresence>
-            {status === "error" && (
-              <p className="text-[10px] text-red-500 font-bold uppercase mt-2">Error joining waitlist. Try again.</p>
-            )}
-          </div>
-        </motion.div>
+            </div>
+          </motion.div>
+        </div>
       </main>
 
       {/* ─── FOOTER ─── */}

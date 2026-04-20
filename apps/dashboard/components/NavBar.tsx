@@ -71,12 +71,12 @@ export default function NavBar() {
           {/* CTA & Mobile Toggle */}
           <div className="flex items-center gap-4">
             <a
-              href="https://t.me/OfficialSignalOracleBot"
+              href="https://t.me/+gcVgzcIIu2M3ODFk"
               target="_blank"
               rel="noreferrer"
               className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-sm text-white font-medium transition-all group"
             >
-              Open Telegram
+              Join Community
               <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </a>
             <button 
