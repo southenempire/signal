@@ -1,11 +1,88 @@
 'use client';
 
-import { useState } from 'react';
-
+import { useState, useRef, useEffect } from 'react';
 import { Book, Code, Terminal, Cpu, Eye, ShieldCheck, Coins, Layers, ArrowRight, Smartphone, Zap, CheckCircle2 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
+
+/* ═══════════════════════════════════════════════════════
+   CINEMATIC DATA NETWORK BACKGROUND
+   ═══════════════════════════════════════════════════════ */
+function DataNetworkBackground() {
+  const ref = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = ref.current!;
+    const ctx = canvas.getContext('2d')!;
+    let raf: number;
+    let W = 0, H = 0;
+
+    const particles: any[] = [];
+    const COUNT = 60;
+
+    function resize() {
+      W = canvas.width = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    for (let i = 0; i < COUNT; i++) {
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: (Math.random() - 0.5) * 0.15,
+        r: Math.random() * 1.5 + 0.5,
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      
+      // Draw Connections
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.08)';
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 200) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Draw Nodes
+      for (const p of particles) {
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0) p.x = W;
+        if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H;
+        if (p.y > H) p.y = 0;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
+        ctx.fill();
+      }
+      raf = requestAnimationFrame(draw);
+    }
+    draw();
+    return () => {
+      window.removeEventListener('resize', resize);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
+  return <canvas ref={ref} className="fixed inset-0 pointer-events-none z-0" />;
+}
 
 function AgentSandbox() {
   const [requesting, setRequesting] = useState(false);
@@ -80,8 +157,16 @@ export default function DocsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-zinc-400">
-      <div className="max-w-8xl mx-auto flex">
+    <div className="min-h-screen bg-[#050508] text-zinc-400 relative overflow-hidden">
+      <DataNetworkBackground />
+      
+      {/* Cinematic Overlays */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[10%] left-[20%] w-[600px] h-[600px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.03) 0%, transparent 70%)', filter: 'blur(80px)' }} />
+        <div className="absolute bottom-[10%] right-[10%] w-[500px] h-[500px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.02) 0%, transparent 70%)', filter: 'blur(100px)' }} />
+      </div>
+
+      <div className="max-w-8xl mx-auto flex relative z-10">
         
         {/* ── UNIFIED SIDEBAR NAVIGATION ────────────────────────── */}
         <aside className="hidden lg:block w-80 h-screen sticky top-0 border-r border-white/5 bg-[#0a0a0c] p-10 overflow-y-auto z-50">
