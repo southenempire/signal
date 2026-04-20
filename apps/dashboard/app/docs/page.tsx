@@ -83,27 +83,41 @@ export default function DocsPage() {
     <div className="min-h-screen bg-[#0a0a0c] text-zinc-400">
       <div className="max-w-8xl mx-auto flex">
         
-        {/* ── SIDEBAR NAVIGATION ────────────────────────── */}
-        <aside className="hidden lg:block w-72 h-screen sticky top-0 border-r border-white/5 bg-[#0a0a0c] p-8 overflow-y-auto">
-          <div className="mb-10 flex items-center gap-3">
-             <div className="relative w-7 h-7 rounded-lg overflow-hidden border border-white/10">
-                <Image src="/logo.png" alt="Signal" fill className="object-cover" />
+        {/* ── UNIFIED SIDEBAR NAVIGATION ────────────────────────── */}
+        <aside className="hidden lg:block w-80 h-screen sticky top-0 border-r border-white/5 bg-[#0a0a0c] p-10 overflow-y-auto z-50">
+          <Link href="/" className="mb-12 flex items-center gap-3 group">
+             <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-white/10 group-hover:border-[#10B981]/50 transition-all shadow-2xl">
+                <Image src="/logo.png" alt="Signal" fill className="object-cover transition-transform group-hover:scale-110" />
              </div>
-             <span className="text-white font-display font-bold tracking-tight">Signal Docs</span>
-          </div>
+             <span className="text-white font-display font-bold tracking-tight text-lg">Signal Docs</span>
+          </Link>
           
-          <nav className="space-y-1">
-            {sections.map((s) => (
-              <a 
-                key={s.id} 
-                href={`#${s.id}`} 
-                className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-white/5 transition-all text-sm font-medium hover:text-white"
-              >
-                <s.icon size={16} className="text-zinc-500 group-hover:text-[#10B981] transition-colors" />
-                {s.label}
-              </a>
-            ))}
-          </nav>
+          <div className="space-y-10">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.25em] text-zinc-600 mb-6">Protocol Index</div>
+              <nav className="space-y-2">
+                {sections.map((s) => (
+                  <a 
+                    key={s.id} 
+                    href={`#${s.id}`} 
+                    className="group flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition-all text-sm font-medium text-zinc-500 hover:text-white border border-transparent hover:border-white/5"
+                  >
+                    <s.icon size={16} className="group-hover:text-[#10B981] transition-colors" />
+                    {s.label}
+                  </a>
+                ))}
+              </nav>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-[#10B981]/5 border border-[#10B981]/10">
+               <div className="text-[9px] font-black uppercase tracking-widest text-[#10B981] mb-2 flex items-center gap-2">
+                  <Zap size={10} /> Live Status
+               </div>
+               <div className="text-[11px] text-zinc-400 leading-relaxed">
+                  Genesis Phase 1 is currently active. Building physical oracle nodes on Solana.
+               </div>
+            </div>
+          </div>
         </aside>
 
         {/* ── MAIN CONTENT ──────────────────────────────── */}
@@ -313,15 +327,7 @@ export default function DocsPage() {
           </div>
         </main>
 
-        {/* ── TABLE OF CONTENTS ────────────────────────── */}
-        <aside className="hidden xl:block w-64 h-screen sticky top-0 p-8 border-l border-white/5 text-[10px]">
-          <div className="font-black uppercase tracking-widest text-zinc-600 mb-6">On this page</div>
-          <nav className="space-y-4">
-            {sections.map((s) => (
-              <a key={s.id} href={`#${s.id}`} className="block hover:text-[#10B981] transition-colors">{s.label}</a>
-            ))}
-          </nav>
-        </aside>
+        {/* RIGHT SIDEBAR REMOVED FOR CLEANER DUAL-COLUMN LAYOUT */}
 
       </div>
     </div>
