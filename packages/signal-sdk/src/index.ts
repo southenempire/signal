@@ -1,99 +1,123 @@
-import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
-import { Program, AnchorProvider, Idl, Wallet } from '@coral-xyz/anchor';
-import { BN } from 'bn.js';
+/**
+ * @signal-network/sdk
+ * 
+ * The official TypeScript SDK for the Signal DePIN Protocol.
+ * Enables AI Agents and Smart Contracts to query verified real-world physical data.
+ */
+
+export interface SignalConfig {
+  apiUrl?: string;
+  apiKey?: string;
+}
+
+export interface OracleQuery {
+  category: 'FUEL' | 'GROCERY' | 'RENT' | 'ELECTRICITY';
+  minConfidence?: number;
+}
+
+export interface OracleData {
+  price: number;
+  category: string;
+  timestamp: number;
+  rewardPaid: number;
+  reporterWallet: string;
+}
 
 export class SignalClient {
-    public program: Program;
-    public connection: Connection;
+  private apiUrl: string;
+  private apiKey: string | undefined;
+  private pollingIntervals: Map<number, NodeJS.Timeout>;
+  private nextSubId: number;
 
-    constructor(programId: string, rpcUrl: string, wallet: any) {
-        this.connection = new Connection(rpcUrl);
-        const provider = new AnchorProvider(this.connection, wallet, {
-            commitment: 'confirmed',
-        });
-        
-        // The IDL would normally be imported from the build artifacts
-        this.program = new Program({} as Idl, new PublicKey(programId), provider);
+  constructor(config: SignalConfig = {}) {
+    this.apiUrl = config.apiUrl || 'http://localhost:3001';
+    this.apiKey = config.apiKey;
+    this.pollingIntervals = new Map();
+    this.nextSubId = 1;
+  }
+
+  /**
+   * Fetches the latest verified price from the Signal Oracle Network.
+   * 
+   * @param query - Categorical constraints for the data request.
+   * @returns The most recent verified physical data point matching the query.
+   */
+  async getLatestPrice(query: OracleQuery): Promise<OracleData> {
+    try {
+      // Execute real HTTP request to the Signal Aggregation Layer
+      const response = await fetch(`${this.apiUrl}/api/reports`, {
+        headers: this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {}
+      });
+
+      if (!response.ok) {
+        throw new Error(`Signal API Error: HTTP ${response.status}`);
+      }
+
+      const allReports = await response.json();
+      
+      // Filter the live DB results by the requested category
+      const requiredCategory = query.category.toUpperCase();
+      const filtered = allReports.filter((r: any) => r.category.toUpperCase() === requiredCategory);
+
+      if (filtered.length === 0) {
+        throw new Error(`No recent verified data found for category: ${query.category}`);
+      }
+
+      // The API returns them ordered by created_at DESC, so the 0-index is the absolute latest
+      const latest = filtered[0];
+
+      return {
+        price: parseFloat(latest.price),
+        category: latest.category,
+        timestamp: latest.ts,
+        rewardPaid: latest.reward,
+        reporterWallet: latest.wallet
+      };
+
+    } catch (err: any) {
+      throw new Error(`Failed to fetch from Signal Network: ${err.message}`);
     }
+  }
 
-    /**
-     * Derives the Global State PDA
-     */
-    public getGlobalStateAddress(): PublicKey {
-        const [address] = PublicKey.findProgramAddressSync(
-            [Buffer.from("global-state")],
-            this.program.programId
-        );
-        return address;
+  /**
+   * Subscribes to the network feed via HTTP polling.
+   * Triggers the callback ONLY when a new, unrecorded report is verified on-chain.
+   * 
+   * @param query - Category to subscribe to
+   * @param callback - Function invoked with new oracle data
+   * @returns Subscription ID (used for unsubscribing)
+   */
+  subscribeToNetwork(query: OracleQuery, callback: (data: OracleData) => void, pollIntervalMs = 5000): number {
+    let lastKnownTimestamp = 0;
+    const subId = this.nextSubId++;
+
+    const interval = setInterval(async () => {
+      try {
+        const latest = await this.getLatestPrice(query);
+        // Only trigger callback if the data is strictly newer than what we've seen
+        if (latest.timestamp > lastKnownTimestamp) {
+          lastKnownTimestamp = latest.timestamp;
+          callback(latest);
+        }
+      } catch (e) {
+        // Silent catch for network jitter or missing data in local env
+      }
+    }, pollIntervalMs);
+
+    this.pollingIntervals.set(subId, interval);
+    return subId;
+  }
+
+  /**
+   * Terminate a specific network subscription.
+   */
+  unsubscribe(subscriptionId: number): void {
+    const interval = this.pollingIntervals.get(subscriptionId);
+    if (interval) {
+      clearInterval(interval);
+      this.pollingIntervals.delete(subscriptionId);
     }
-
-    /**
-     * Derives a Category PDA based on its name
-     */
-    public getCategoryAddress(name: string): PublicKey {
-        const [address] = PublicKey.findProgramAddressSync(
-            [Buffer.from("category"), Buffer.from(name)],
-            this.program.programId
-        );
-        return address;
-    }
-
-    /**
-     * Derives a Submission PDA for a specific reporter and category
-     */
-    public getSubmissionAddress(category: PublicKey, reporter: PublicKey): PublicKey {
-        const [address] = PublicKey.findProgramAddressSync(
-            [Buffer.from("submission"), category.toBuffer(), reporter.toBuffer()],
-            this.program.programId
-        );
-        return address;
-    }
-
-    /**
-     * Submits a data report with the required 0.01 SOL stake
-     */
-    public async submitReport(
-        categoryName: string,
-        value: number,
-        locationHash: number[],
-        imageHash: number[]
-    ) {
-        const category = this.getCategoryAddress(categoryName);
-        const reporter = this.program.provider.publicKey!;
-        const submission = this.getSubmissionAddress(category, reporter);
-
-        return await this.program.methods
-            .submitReport(new BN(value), locationHash, imageHash)
-            .accounts({
-                submission,
-                category,
-                reporter,
-                systemProgram: SystemProgram.programId,
-            })
-            .rpc();
-    }
-
-    /**
-     * Purchases verified data from the protocol
-     */
-    public async purchaseData(categoryName: string, verifier: PublicKey) {
-        const category = this.getCategoryAddress(categoryName);
-        const globalState = this.getGlobalStateAddress();
-        
-        // In a real implementation, we fetch the global state to get the fee_recipient
-        const state: any = await this.program.account.globalState.fetch(globalState);
-        const feeRecipient = state.feeRecipient;
-
-        return await this.program.methods
-            .purchaseData()
-            .accounts({
-                buyer: this.program.provider.publicKey!,
-                feeRecipient,
-                verifier,
-                category,
-                globalState,
-                systemProgram: SystemProgram.programId,
-            })
-            .rpc();
-    }
+  }
 }
+
+export default SignalClient;

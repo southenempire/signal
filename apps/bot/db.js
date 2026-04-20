@@ -44,6 +44,7 @@ db.exec(`
     latitude      REAL,
     longitude     REAL,
     verified      BOOLEAN DEFAULT 1,
+    image_hash    TEXT,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
   );
@@ -96,7 +97,8 @@ const stmts = {
   getUser:        db.prepare('SELECT * FROM users WHERE telegram_id = ?'),
   insertUser:     db.prepare('INSERT INTO users (telegram_id, public_key, encrypted_sk, iv) VALUES (?, ?, ?, ?)'),
   updatePoints:   db.prepare('UPDATE users SET points = points + ?, report_count = report_count + 1 WHERE telegram_id = ?'),
-  insertReport:   db.prepare('INSERT INTO reports (telegram_id, category, price, reward, image_path) VALUES (?, ?, ?, ?, ?)'),
+  insertReport:   db.prepare('INSERT INTO reports (telegram_id, category, price, reward, image_path, image_hash) VALUES (?, ?, ?, ?, ?, ?)'),
+  checkHash:      db.prepare('SELECT 1 FROM reports WHERE image_hash = ? LIMIT 1'),
   insertPayout:   db.prepare('INSERT INTO payouts (telegram_id, amount, tx_signature) VALUES (?, ?, ?)'),
   getLeaderboard: db.prepare('SELECT telegram_id, public_key, points, report_count FROM users ORDER BY points DESC LIMIT ?'),
   getReports:     db.prepare('SELECT r.*, u.public_key FROM reports r JOIN users u ON r.telegram_id = u.telegram_id ORDER BY r.created_at DESC LIMIT ?'),
@@ -106,6 +108,7 @@ const stmts = {
       (SELECT COUNT(*) FROM reports) as totalReports,
       (SELECT COALESCE(SUM(amount), 0) FROM payouts) as totalVolume
   `),
+  getDailyReportCount: db.prepare("SELECT COUNT(*) as count FROM reports WHERE telegram_id = ? AND date(created_at) = date('now')"),
 };
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -147,12 +150,21 @@ export function getOrCreateUser(telegramId) {
 /**
  * Save a verified report and update user stats
  */
-export function saveReport(telegramId, category, price, reward, imagePath = null) {
+export function saveReport(telegramId, category, price, reward, imagePath = null, imageHash = null) {
   const save = db.transaction(() => {
-    stmts.insertReport.run(telegramId, category, price, reward, imagePath);
+    stmts.insertReport.run(telegramId, category, price, reward, imagePath, imageHash);
     stmts.updatePoints.run(150, telegramId);  // +150 PTS per report
   });
   save();
+}
+
+/**
+ * Check if an image hash has already been submitted globally
+ */
+export function isImageDuplicate(imageHash) {
+  if (!imageHash) return false;
+  const row = stmts.checkHash.get(imageHash);
+  return !!row;
 }
 
 /**
@@ -202,6 +214,14 @@ export function getNetworkStats() {
 export function getUserTotalEarned(telegramId) {
   const row = db.prepare('SELECT COALESCE(SUM(amount), 0) as total FROM payouts WHERE telegram_id = ?').get(telegramId);
   return row.total;
+}
+
+/**
+ * Check how many reports a user submitted today
+ */
+export function getDailyReportCount(telegramId) {
+  const row = stmts.getDailyReportCount.get(telegramId);
+  return row ? row.count : 0;
 }
 
 export default db;

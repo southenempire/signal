@@ -13,6 +13,7 @@
     "@privy-io/react-auth": "^3.21.3",
     "@solana/web3.js": "^1.98.4",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.38.0",
     "lucide-react": "^1.8.0",
     "next": "16.2.4",
     "react": "19.2.4",

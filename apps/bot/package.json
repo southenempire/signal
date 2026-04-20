@@ -12,6 +12,7 @@
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.98.4",
     "better-sqlite3": "^12.9.0",
+    "bs58": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^16.5.0",
     "express": "^5.2.1",

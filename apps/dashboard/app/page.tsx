@@ -1,9 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ArrowRight, Send, ChevronRight, ExternalLink } from "lucide-react";
+import { ArrowRight, Send, ChevronRight, ExternalLink, Smartphone, Camera, CircleDollarSign, Zap, Trophy, Medal, ShieldCheck, CheckCircle2, MapPin, Network, Cpu } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import VisionSimulator from "../components/VisionSimulator";
+import ImpactFeed from "../components/ImpactFeed";
+import { motion, AnimatePresence } from "framer-motion";
 
 const BOT_API = "http://localhost:3001";
 
@@ -85,12 +88,12 @@ function ParticleNetwork() {
         const pulseAlpha = p.alpha + Math.sin(p.pulse) * 0.15;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(124,92,252,${pulseAlpha})`;
+        ctx.fillStyle = `rgba(16,185,129,${pulseAlpha})`;
         ctx.fill();
 
         // Glow
         const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 6);
-        grd.addColorStop(0, `rgba(124,92,252,${pulseAlpha * 0.4})`);
+        grd.addColorStop(0, `rgba(16,185,129,${pulseAlpha * 0.4})`);
         grd.addColorStop(1, "transparent");
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r * 6, 0, Math.PI * 2);
@@ -352,52 +355,6 @@ export default function Home() {
     return () => clearInterval(id);
   }, []);
 
-  const feeds = [
-    { name: "Energy Grid",    region: "SF, CA",      tag: "91 Updates", price: "0.50 USDC", trend: "+2.3%", up: true,  color: "#7c5cfc", spark: "#7c5cfc" },
-    { name: "Fuel Index",     region: "London, UK",  tag: "LIVE",       price: "0.25 USDC", trend: "+0.8%", up: true,  color: "#e040fb", spark: "#e040fb" },
-    { name: "NYC Temperature",region: "Manhattan",   tag: "23 Nodes",   price: "0.10 USDC", trend: "−0.4%", up: false, color: "#00e5a0", spark: "#00e5a0" },
-    { name: "SOL/USD",        region: "On-Chain",    tag: "76 Feeds",   price: "FREE",      trend: "+5.1%", up: true,  color: "#60a5fa", spark: "#60a5fa" },
-  ];
-
-  const steps = [
-    {
-      num: "01",
-      accent: "#7c5cfc",
-      bg: "from-violet-600/20 to-violet-900/10",
-      title: "Open the Bot",
-      desc: "Message @OfficialSignalOracleBot on Telegram. No wallet, no seed phrase. Your embedded account is created in seconds.",
-      visual: (
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: "rgba(124,92,252,0.15)", border: "1px solid rgba(124,92,252,0.3)" }}>
-          ✈️
-        </div>
-      ),
-    },
-    {
-      num: "02",
-      accent: "#00e5a0",
-      bg: "from-emerald-600/20 to-emerald-900/10",
-      title: "Report Real Data",
-      desc: "Snap a photo of a fuel price, grocery receipt, or electricity bill. Vision AI validates it in seconds.",
-      visual: (
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: "rgba(0,229,160,0.1)", border: "1px solid rgba(0,229,160,0.25)" }}>
-          📸
-        </div>
-      ),
-    },
-    {
-      num: "03",
-      accent: "#f59e0b",
-      bg: "from-amber-600/20 to-amber-900/10",
-      title: "Earn USDC",
-      desc: "Once on-chain consensus is reached, USDC lands straight in your wallet. No gas. No bridge. Instant.",
-      visual: (
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-lg" style={{ background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.25)" }}>
-          ⚡
-        </div>
-      ),
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-animated overflow-x-hidden">
       {/* ── FULL-VIEWPORT BACKGROUND LAYER (canvas + orbs) ── */}
@@ -412,295 +369,225 @@ export default function Home() {
         <div className="absolute top-1/2 left-[30%] w-[300px] h-[300px] rounded-full float-c" style={{ background: "radial-gradient(circle, rgba(96,165,250,0.15) 0%, transparent 65%)", filter: "blur(80px)" }} />
       </div>
 
-      {/* ── HEADER ─────────────────────────────────────── */}
-      <header className="sticky top-0 z-50 backdrop-blur-2xl" style={{ background: "rgba(4,4,13,0.75)", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="relative group">
-              <div className="absolute -inset-1 rounded-2xl opacity-70 group-hover:opacity-100 transition-opacity" style={{ background: "conic-gradient(from 0deg, #7c5cfc, #e040fb, #00e5a0, #7c5cfc)", filter: "blur(6px)" }} />
-              <Image src="/logo.png" alt="Signal Bot" width={40} height={40} className="relative rounded-xl border border-white/10" />
-            </div>
-            <div className="leading-none">
-              <span className="font-display text-[18px] font-bold text-white tracking-tight">
-                Signal<span style={{ color: "#7c5cfc" }}>Bot</span>
-              </span>
-              <div className="font-mono text-[10px] text-zinc-600 tracking-[0.14em] uppercase mt-0.5 hidden sm:block">
-                DePIN · Solana
-              </div>
-            </div>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-1">
-            <a href="#how-it-works" className="nav-link">How It Works</a>
-            <a href="#marketplace"  className="nav-link">Marketplace</a>
-            <Link href="/docs" className="nav-link inline-flex items-center gap-1">Docs <ArrowRight size={12}/></Link>
-          </nav>
-
-          <CTAButton href="https://t.me/OfficialSignalOracleBot" className="text-sm">
-            <Send size={15} />
-            <span className="hidden sm:inline">Open in</span> Telegram
-          </CTAButton>
-        </div>
-      </header>
+      {/* ── HEADER REMOVED: Using Global NavBar from layout.tsx ── */}
 
       <Ticker />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-8" style={{ position: "relative", zIndex: 1 }}>
 
         {/* ══ HERO ══════════════════════════════════════ */}
-        <section className="pt-24 pb-32" style={{ minHeight: "90vh", display: "flex", alignItems: "center" }}>
-          <div ref={heroRef} className="w-full text-center">
-            {/* Status line */}
-            <div className="flex items-center justify-center gap-2 mb-8">
-              <div className="live-dot" style={{ width: 7, height: 7 }} />
-              <span className="font-mono text-[11px] font-bold tracking-widest uppercase" style={{ color: apiConnected ? "#00e5a0" : "#7c5cfc" }}>
-                {apiConnected ? `${nodeCount} Signalers Online` : "Genesis Network Live"}
-              </span>
-              <span className="font-mono text-[11px] tracking-widest" style={{ color: "rgba(255,255,255,0.15)" }}>·</span>
-              <span className="font-mono text-[11px] tracking-widest" style={{ color: "rgba(255,255,255,0.3)" }}>Solana Mainnet</span>
-            </div>
-
-            {/* H1 with glitch hover */}
-            <h1 className="font-display font-black tracking-tight leading-[1.02] mb-6" style={{ fontSize: "clamp(48px, 8vw, 88px)" }}>
-              <span className="glitch-container text-white" data-text="Human-Powered">
-                Human-Powered
-              </span>
-              <br />
-              <span
-                className="glitch-container"
-                data-text="Oracle Network"
-                style={{ background: "linear-gradient(135deg, #a78bfa, #e040fb, #00e5a0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}
-              >
-                Oracle Network
-              </span>
-            </h1>
-
-            {/* Typewriter subheadline */}
-            <p className="text-zinc-400 text-lg sm:text-xl mb-3" style={{ maxWidth: "620px", margin: "0 auto 12px", lineHeight: 1.65 }}>
-              Report real-world prices via Telegram. Earn USDC on Solana.
-            </p>
-            <p className="font-mono text-base mb-10" style={{ color: "#7c5cfc", maxWidth: "500px", margin: "0 auto 40px" }}>
-              <Typewriter phrases={[
-                "No wallet setup needed.",
-                "Vision AI verified.",
-                "Payouts on-chain. Instant.",
-                "14 global oracle zones.",
-              ]} />
-            </p>
-
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-              <CTAButton href="https://t.me/OfficialSignalOracleBot" className="text-base px-8 py-4">
-                <Send size={18} /> Start Earning on Telegram
-              </CTAButton>
-              <a href="#marketplace" className="ghost-btn inline-flex items-center gap-2">
-                Explore Data Feeds <ChevronRight size={16} />
-              </a>
-            </div>
-
-            {/* Stats */}
-            <div ref={statsRef} className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
-              {[
-                { label: "Active Signalers", value: nodeCount || 247,  prefix: "", suffix: "" },
-                { label: "Reports Verified", value: totalReports || 12843, prefix: "", suffix: "" },
-                { label: "USDC Paid Out",    value: Math.floor(volume) || 3610, prefix: "$", suffix: "" },
-              ].map((s) => (
-                <div key={s.label} className="stat-box text-center">
-                  <div className="font-mono text-[10px] font-bold tracking-widest uppercase mb-2" style={{ color: "#7c5cfc" }}>
-                    {s.label}
-                  </div>
-                  <Counter target={s.value} prefix={s.prefix} suffix={s.suffix} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ══ HOW IT WORKS ══════════════════════════════ */}
-        <section id="how-it-works" className="py-28" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-          <div ref={howRef} className="text-center mb-16">
-            <div className="section-label justify-center">How It Works</div>
-            <h2 className="font-display font-bold tracking-tight text-white mb-4" style={{ fontSize: "clamp(32px, 5vw, 52px)" }}>
-              Three steps. Real income.
-            </h2>
-            <p style={{ color: "#606080", maxWidth: "480px", margin: "0 auto" }}>
-              No wallets, no gas, no complexity. Just open Telegram and go.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-            {/* Connector */}
-            <div className="hidden md:block absolute top-11 left-[18%] right-[18%] h-px" style={{ background: "linear-gradient(to right, transparent, rgba(124,92,252,0.4), rgba(224,64,251,0.3), rgba(0,229,160,0.2), transparent)" }} />
-
-            {steps.map((s, i) => (
-              <StepCardReveal key={i} step={s} delay={i * 130} />
-            ))}
-          </div>
-        </section>
-
-        {/* ══ MARKETPLACE ═══════════════════════════════ */}
-        <section id="marketplace" className="py-28" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-          <div ref={mktRef} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-            {/* Feed cards */}
-            <div className="lg:col-span-2">
-              <div className="mb-10">
-                <div className="section-label">Intelligence Feeds</div>
-                <h2 className="font-display font-bold text-white tracking-tight mb-2" style={{ fontSize: "clamp(28px, 4vw, 42px)" }}>
-                  Buy real-world data
-                </h2>
-                <p style={{ color: "#606080", fontSize: "14px" }}>For AI agents & enterprises. Subscribe via Jupiter DCA.</p>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                {feeds.map((f) => (
-                  <TiltCard key={f.name} active={selected === f.name} onClick={() => setSelected(f.name)}>
-                    <div className="flex justify-between items-start mb-5">
-                      <span className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-full" style={{ color: f.color, background: `${f.color}18`, border: `1px solid ${f.color}30` }}>
-                        {f.region}
-                      </span>
-                      <span className={`font-mono text-[10px] font-bold px-2.5 py-1 rounded-full ${f.tag === "LIVE" ? "animate-pulse" : ""}`} style={f.tag === "LIVE" ? { color: "#f87171", background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)" } : { color: "#606080", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                        {f.tag}
-                      </span>
-                    </div>
-
-                    <h3 className="font-display font-bold text-white text-lg mb-3">{f.name}</h3>
-                    <Sparkline color={f.spark} />
-
-                    <div className="flex justify-between items-center pt-4 mt-1" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-mono font-bold text-sm text-white">{f.price}</span>
-                        <span className="font-mono text-xs font-bold" style={{ color: f.up ? "#00e5a0" : "#f87171" }}>{f.trend}</span>
-                      </div>
-                      <button className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-bold bg-white text-black hover:bg-zinc-100 transition-colors">
-                        Buy <ExternalLink size={11} />
-                      </button>
-                    </div>
-                  </TiltCard>
-                ))}
-              </div>
-            </div>
-
-            {/* Right panel */}
-            <div className="flex flex-col gap-5">
-
-              {/* Network health */}
-              <div className="spin-border rounded-3xl p-6 relative overflow-hidden" style={{ background: "rgba(10,10,24,0.8)" }}>
-                <div className="absolute top-0 left-0 w-full h-0.5" style={{ background: "linear-gradient(90deg, #7c5cfc, #e040fb, #00e5a0)" }} />
-                <div className="font-mono text-[10px] font-bold tracking-widest uppercase mb-6 flex items-center gap-2" style={{ color: "#7c5cfc" }}>
-                  <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ background: "#7c5cfc" }} />
-                  Network Health
-                </div>
-                <div className="space-y-5">
-                  {[
-                    { label: "RPC Latency",      val: `${latency}ms`, pct: `${100 - latency}%`, color: "#00e5a0" },
-                    { label: "Oracle Consensus",  val: "99.98%",       pct: "99%",               color: "#7c5cfc" },
-                    { label: "Data Integrity",    val: "100%",         pct: "100%",              color: "#60a5fa" },
-                  ].map((m) => (
-                    <div key={m.label}>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-sm font-medium" style={{ color: "#b0b0d0" }}>{m.label}</span>
-                        <span className="font-mono text-sm font-bold" style={{ color: m.color }}>{m.val}</span>
-                      </div>
-                      <div className="prog">
-                        <div className="prog-fill" style={{ width: m.pct, background: m.color, boxShadow: `0 0 8px ${m.color}80` }} />
-                      </div>
-                    </div>
-                  ))}
-                  <div className="p-3 rounded-xl text-xs font-mono leading-relaxed" style={{ background: "rgba(124,92,252,0.07)", border: "1px solid rgba(124,92,252,0.15)", color: "#a0a0d0" }}>
-                    Helius Webhooks active. All 14 global zones synced.
-                  </div>
-                </div>
-              </div>
-
-              {/* Signaler portal */}
-              <div className="glass rounded-3xl p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-48 h-48 rounded-full pointer-events-none" style={{ background: "radial-gradient(circle, rgba(124,92,252,0.15) 0%, transparent 70%)", filter: "blur(30px)" }} />
-
-                <div className="flex items-center gap-2 mb-1 relative z-10">
-                  <span className="font-display text-base font-bold text-white">Signaler Portal</span>
-                  <span className="ml-auto font-mono text-[9px] font-black px-2 py-0.5 rounded-full tracking-wider" style={{ background: "rgba(124,92,252,0.15)", color: "#7c5cfc", border: "1px solid rgba(124,92,252,0.25)" }}>
-                    GENESIS
-                  </span>
-                </div>
-                <p className="font-mono text-[10px] tracking-widest uppercase mb-6" style={{ color: "#606080" }}>
-                  Tester Program · Week 2
-                </p>
-
-                <div className="space-y-3 relative z-10">
-                  {leaderboard.length > 0 ? (
-                    <div className="space-y-2 mb-4">
-                      {leaderboard.slice(0, 3).map((e: any) => (
-                        <div key={e.rank} className="flex justify-between items-center px-3 py-2 rounded-xl" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
-                          <span className="font-mono text-xs" style={{ color: "#909090" }}>
-                            {e.rank === 1 ? "🥇" : e.rank === 2 ? "🥈" : "🥉"} {e.wallet}
-                          </span>
-                          <span className="font-mono text-xs font-bold" style={{ color: "#7c5cfc" }}>{e.points} PTS</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-5 rounded-xl mb-3" style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.04)" }}>
-                      <div className="text-2xl mb-1">🏆</div>
-                      <p className="font-mono text-xs" style={{ color: "#505070" }}>No reports yet — be first!</p>
-                    </div>
-                  )}
-
-                  <div className="p-4 rounded-2xl" style={{ background: "linear-gradient(135deg, rgba(124,92,252,0.15), rgba(224,64,251,0.08))", border: "1px solid rgba(124,92,252,0.2)" }}>
-                    <p className="font-mono text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: "#7c7caa" }}>Prize Pool · 15% Share</p>
-                    <p className="font-display text-3xl font-black text-white" style={{ textShadow: "0 0 30px rgba(124,92,252,0.5)" }}>$45.00</p>
-                    <p className="font-mono text-[10px] mt-1" style={{ color: "rgba(124,92,252,0.7)" }}>Updates with each verified report</p>
-                  </div>
-
-                  <CTAButton href="https://t.me/OfficialSignalOracleBot" className="w-full justify-center text-sm py-3">
-                    <Send size={14} /> Join & Earn USDC
-                  </CTAButton>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ══ LIVE FEED ═════════════════════════════════ */}
-        {liveReports.length > 0 && (
-          <section className="py-16" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-            <div className="flex justify-between items-end mb-6">
-              <div>
-                <div className="section-label">Live Oracle Feed</div>
-                <h2 className="font-display text-2xl font-bold text-white">Real-time submissions</h2>
-              </div>
-              <div className="live-pill"><div className="live-dot" />LIVE</div>
-            </div>
-            <div className="space-y-2">
-              {liveReports.slice(0, 5).map((r: any, i: number) => (
-                <div key={i} className="flex items-center justify-between px-5 py-3 rounded-2xl" style={{ background: "rgba(10,10,24,0.6)", border: "1px solid rgba(255,255,255,0.05)", transition: "border-color 0.2s" }}>
+        <section className="pt-32 pb-32 min-h-screen flex items-center">
+          <div ref={heroRef} className="w-full">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+              {/* Left Side: Content */}
+              <div className="lg:col-span-6 space-y-12">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-6"
+                >
                   <div className="flex items-center gap-3">
-                    <span className="font-mono text-[10px] font-bold px-2 py-1 rounded-md" style={{ color: "#7c5cfc", background: "rgba(124,92,252,0.1)", border: "1px solid rgba(124,92,252,0.2)" }}>{r.category}</span>
-                    <span className="font-mono text-sm font-bold text-white">${r.price}</span>
-                    <span className="font-mono text-xs" style={{ color: "#505070" }}>{r.wallet}</span>
+                    <div className="live-dot" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#10B981]">
+                      {apiConnected ? `${nodeCount} Nodes Online` : "Community Network Live"}
+                    </span>
                   </div>
-                  <span className="font-mono text-xs font-bold" style={{ color: "#00e5a0" }}>+${r.reward} USDC</span>
+
+                  <h1 className="font-display font-black tracking-tight leading-[1.1] text-white" style={{ fontSize: "clamp(48px, 6vw, 84px)" }}>
+                    The Reality <br /> <span className="text-[#10B981]">Oracle.</span>
+                  </h1>
+
+                  <p className="text-zinc-400 text-lg md:text-xl max-w-lg leading-relaxed font-medium">
+                    A community-powered network capturing real-world data verified by AI. 
+                    <span className="text-white"> Earn rewards for providing the ground truth.</span>
+                  </p>
+                </motion.div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-6">
+                  <CTAButton href="https://t.me/OfficialSignalOracleBot" className="px-10 h-16">
+                    Join the Movement
+                  </CTAButton>
+                  <a href="#how-it-works" className="text-white hover:text-[#10B981] font-bold text-sm transition-colors flex items-center gap-2 group">
+                    How it works <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                  </a>
                 </div>
-              ))}
+
+                {/* Relatable Social Proof */}
+                <div className="pt-8 border-t border-white/5 grid grid-cols-2 gap-8">
+                   <div>
+                      <div className="text-2xl font-black text-white tabular-nums">${(volume / 1000).toFixed(1)}k+</div>
+                      <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Community Payouts</div>
+                   </div>
+                   <div>
+                      <div className="text-2xl font-black text-white tabular-nums">{nodeCount}+</div>
+                      <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Verified Eyes</div>
+                   </div>
+                </div>
+              </div>
+
+              {/* Right Side: Immersive Visual */}
+              <div className="lg:col-span-6 relative">
+                <div className="absolute -inset-10 bg-[#10B981]/10 rounded-full blur-[100px] animate-pulse" />
+                <motion.div 
+                   initial={{ opacity: 0, scale: 0.9 }}
+                   animate={{ opacity: 1, scale: 1 }}
+                   transition={{ delay: 0.2 }}
+                   className="relative glass p-4 overflow-hidden"
+                >
+                   <div className="relative aspect-square rounded-[24px] overflow-hidden border border-white/10 shadow-2xl">
+                      <Image 
+                        src="/hero-lifestyle.png" 
+                        alt="Join the Signal movement" 
+                        fill 
+                        className="object-cover" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                      
+                      {/* Interactive Scanners Overlay */}
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-[#10B981]/50 rounded-2xl animate-pulse flex items-center justify-center">
+                         <div className="w-full h-0.5 bg-[#10B981]/30 absolute top-1/2 animate-[bounce_2s_infinite]" />
+                         <span className="font-mono text-[10px] text-[#10B981] font-black uppercase tracking-tighter bg-black/40 px-2 rounded">Scanning Reality</span>
+                      </div>
+                   </div>
+
+                   {/* Floating "Relatable" Item */}
+                   <motion.div 
+                     animate={{ y: [0, -10, 0] }}
+                     transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                     className="absolute -bottom-6 -right-6 p-6 glass border border-white/10 z-20 max-w-[200px]"
+                   >
+                      <div className="flex items-center gap-3 mb-2">
+                         <div className="w-8 h-8 rounded-lg bg-[#10B981]/20 flex items-center justify-center">
+                            <CheckCircle2 size={16} className="text-[#10B981]" />
+                         </div>
+                         <span className="text-[11px] font-bold text-white leading-tight">Price Verified</span>
+                      </div>
+                      <p className="text-[10px] text-zinc-500 leading-relaxed">System confirmed $5.00 accuracy via collective consensus.</p>
+                   </motion.div>
+                </motion.div>
+              </div>
             </div>
-          </section>
-        )}
+          </div>
+        </section>
+
+        {/* ══ REALITY PORTAL HUB ══════════════════════════ */}
+        <section className="py-24 relative z-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            {/* GATEWAY 1: THE NETWORK (Mirror) */}
+            <PortalCard 
+              title="The Global Mirror"
+              desc="Explore live physical coverage from 14+ regions captured by the community."
+              btnText="Live Network"
+              href="/network"
+              icon={Network}
+              accent="#10B981"
+            >
+              <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
+                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                    <span>Truth Finality</span>
+                    <span className="text-[#10B981]">Managed by Dune</span>
+                 </div>
+                 <div className="h-1 rounded-full bg-white/5 overflow-hidden">
+                    <motion.div 
+                      className="h-full bg-[#10B981]" 
+                      animate={{ width: ["20%", "60%", "45%", "85%"] }} 
+                      transition={{ duration: 4, repeat: Infinity }}
+                    />
+                 </div>
+              </div>
+            </PortalCard>
+
+            {/* GATEWAY 2: THE NODE (Rewards) */}
+            <PortalCard 
+              title="Profit from Truth"
+              desc="Become a human sensor. Take photos of reality and earn USDC in seconds."
+              btnText="Start Earning"
+              href="https://t.me/OfficialSignalOracleBot"
+              icon={Smartphone}
+              accent="#3B82F6"
+            >
+              <div className="mt-8 pt-8 border-t border-white/5 flex gap-4">
+                 {['Snap', 'Verify', 'Yield'].map(s => (
+                    <div key={s} className="px-2 py-1 rounded-md bg-white/5 border border-white/5 text-[8px] font-black uppercase text-zinc-400">
+                       {s}
+                    </div>
+                 ))}
+              </div>
+            </PortalCard>
+
+            {/* GATEWAY 3: THE SDK (AI Agents) */}
+            <PortalCard 
+              title="World-Aware AI"
+              desc="The developer terminal for building agents that sense the physical world."
+              btnText="Docs & SDK"
+              href="/docs"
+              icon={Cpu}
+              accent="#F59E0B"
+            >
+              <div className="mt-8 pt-8 border-t border-white/5 font-mono text-[9px] text-[#F59E0B]/60">
+                 $ signal.query('FUEL_PRICE_NYC')
+              </div>
+            </PortalCard>
+
+          </div>
+        </section>
+
+        {/* ══ LIVE ACTIVITY PULSE ═══════════════════════ */}
+        <section className="pb-32 relative z-10" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+          <div className="pt-24 mb-12 text-center">
+            <div className="section-label justify-center">Live Network Activity</div>
+            <h2 className="font-display text-2xl font-black text-white">Proof of Physical Work</h2>
+          </div>
+          <ImpactFeed />
+        </section>
+
       </main>
 
       {/* ── FOOTER ─────────────────────────────────────── */}
-      <footer style={{ borderTop: "1px solid rgba(255,255,255,0.04)", marginTop: "64px" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-8 py-10 flex flex-col sm:flex-row justify-between items-center gap-6">
-          <div className="flex items-center gap-3">
-            <Image src="/logo.png" alt="Signal Bot" width={28} height={28} className="rounded-xl" style={{ border: "1px solid rgba(255,255,255,0.08)" }} />
+      <footer className="pt-20 pb-12 border-t border-white/5 relative z-10 bg-black">
+        <div className="max-w-7xl mx-auto px-4 sm:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-16">
+            <div className="md:col-span-2">
+              <div className="flex items-center gap-3 mb-6">
+                 <div className="relative w-8 h-8 rounded-lg overflow-hidden border border-white/10">
+                    <Image src="/logo.png" alt="Signal" fill className="object-cover" />
+                 </div>
+                 <span className="text-white font-[Space_Grotesk] font-bold text-xl tracking-tight">Signal</span>
+              </div>
+              <p className="text-zinc-500 text-sm max-w-xs leading-relaxed">
+                A community-powered protocol capturing the world's ground truth, verified by AI.
+              </p>
+            </div>
+            
             <div>
-              <span className="font-display text-sm font-bold text-white">Signal<span style={{ color: "#7c5cfc" }}>Bot</span></span>
-              <p className="font-mono text-[9px] tracking-widest uppercase mt-0.5" style={{ color: "#404060" }}>Built on Solana · DePIN Protocol</p>
+              <h4 className="font-display font-bold text-white text-[10px] mb-6 uppercase tracking-[0.2em]">Network</h4>
+              <ul className="space-y-4">
+                <li><a href="#how-it-works" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors">How It Works</a></li>
+                <li><a href="#marketplace" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors">Insights</a></li>
+                <li><Link href="/docs" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors">Docs</Link></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-display font-bold text-white text-[10px] mb-6 uppercase tracking-[0.2em]">Social</h4>
+              <ul className="space-y-4">
+                <li><a href="https://t.me/OfficialSignalOracleBot" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors flex items-center gap-2">Telegram <ExternalLink size={12}/></a></li>
+                <li><a href="https://github.com/southenempire/signal" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors flex items-center gap-2">GitHub <ExternalLink size={12}/></a></li>
+              </ul>
             </div>
           </div>
-          <div className="flex gap-6 text-sm" style={{ color: "#505070" }}>
-            <Link href="/docs"                                                      className="hover:text-white transition-colors font-medium">Documentation</Link>
-            <a href="https://t.me/OfficialSignalOracleBot" target="_blank" rel="noopener" className="hover:text-white transition-colors font-medium">Telegram Bot</a>
-            <a href="https://github.com/southenempire/signal" target="_blank" rel="noopener" className="hover:text-white transition-colors font-medium">GitHub</a>
+
+          <div className="flex flex-col sm:flex-row justify-between items-center pt-8 border-t border-white/5 gap-4">
+            <div className="text-zinc-600 text-[11px] font-mono tracking-widest uppercase">
+              © 2026 SIGNAL NETWORK · DEPIN CORE
+            </div>
+            <div className="flex items-center gap-6">
+              <span className="text-zinc-600 text-[11px] font-mono tracking-widest uppercase flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                Connectivity: Operational
+              </span>
+            </div>
           </div>
         </div>
       </footer>
@@ -712,9 +599,11 @@ export default function Home() {
 function StepCardReveal({ step, delay }: { step: any; delay: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const Icon = step.icon;
 
   useEffect(() => {
     const el = ref.current!;
+    if (!el) return;
     el.classList.add("reveal");
     const obs = new IntersectionObserver(([e]) => {
       if (e.isIntersecting) {
@@ -729,6 +618,7 @@ function StepCardReveal({ step, delay }: { step: any; delay: number }) {
 
   const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = cardRef.current!;
+    if (!el) return;
     const { left, top, width, height } = el.getBoundingClientRect();
     const x = e.clientX - left, y = e.clientY - top;
     const rx = ((y / height) - 0.5) * -14;
@@ -739,25 +629,25 @@ function StepCardReveal({ step, delay }: { step: any; delay: number }) {
   };
 
   const onLeave = () => {
-    cardRef.current!.style.transform = "";
+    if (cardRef.current) cardRef.current.style.transform = "";
   };
 
   return (
     <div ref={ref}>
       <div
         ref={cardRef}
-        className="step-card"
+        className="step-card group"
         onMouseMove={onMove}
         onMouseLeave={onLeave}
         style={{ transition: "transform 0.15s ease, border-color 0.3s ease" }}
       >
         {/* Step number bg */}
-        <div className="absolute top-5 right-6 font-display font-black select-none pointer-events-none" style={{ fontSize: "80px", lineHeight: 1, color: `${step.accent}08` }}>
+        <div className="absolute top-5 right-6 font-display font-black select-none pointer-events-none transition-colors group-hover:text-white/10" style={{ fontSize: "80px", lineHeight: 1, color: `${step.accent}08` }}>
           {step.num}
         </div>
 
-        <div className={`inline-flex p-3 rounded-2xl bg-gradient-to-br ${step.bg} mb-5 relative z-10`} style={{ border: `1px solid ${step.accent}22` }}>
-          <span className="text-xl">{step.visual.props.children}</span>
+        <div className={`inline-flex p-3 rounded-2xl bg-gradient-to-br ${step.bg} mb-5 relative z-10 transition-transform group-hover:scale-110`} style={{ border: `1px solid ${step.accent}22` }}>
+          <Icon size={20} style={{ color: step.accent }} />
         </div>
 
         <h3 className="font-display font-bold text-xl text-white mb-3 relative z-10">{step.title}</h3>
@@ -766,7 +656,7 @@ function StepCardReveal({ step, delay }: { step: any; delay: number }) {
         <a
           href="https://t.me/OfficialSignalOracleBot"
           target="_blank" rel="noopener"
-          className="inline-flex items-center gap-1.5 text-xs font-bold mt-5 relative z-10 transition-colors hover:opacity-80"
+          className="inline-flex items-center gap-1.5 text-xs font-bold mt-5 relative z-10 transition-all hover:gap-2.5"
           style={{ color: step.accent }}
         >
           Get Started <ArrowRight size={12} />
@@ -806,5 +696,59 @@ function TiltCard({ children, className, active = false, onClick }: {
     >
       {children}
     </div>
+  );
+}
+function PortalCard({ title, desc, btnText, href, icon: Icon, accent, children }: any) {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = cardRef.current!;
+    if (!el) return;
+    const { left, top, width, height } = el.getBoundingClientRect();
+    const x = e.clientX - left, y = e.clientY - top;
+    const rx = ((y / height) - 0.5) * -12;
+    const ry = ((x / width) - 0.5) * 12;
+    el.style.transform = `perspective(1000px) rotateX(${rx}deg) rotateY(${ry}deg) translateY(-8px)`;
+    el.style.boxShadow = `0 25px 60px -15px ${accent}20`;
+  };
+
+  const onLeave = () => {
+    if (cardRef.current) {
+      cardRef.current.style.transform = "";
+      cardRef.current.style.boxShadow = "";
+    }
+  };
+
+  return (
+    <motion.div 
+      ref={cardRef}
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+      className="p-10 rounded-[40px] glass border border-white/5 transition-all duration-300 relative group overflow-hidden h-full flex flex-col"
+    >
+      <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+        <Icon size={120} style={{ color: accent }} />
+      </div>
+      
+      <div className="relative z-10 flex-grow">
+        <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-8 border border-white/10" style={{ backgroundColor: `${accent}10` }}>
+          <Icon size={24} style={{ color: accent }} />
+        </div>
+        <h3 className="text-2xl font-display font-black text-white mb-4">{title}</h3>
+        <p className="text-zinc-500 text-sm leading-relaxed mb-8 max-w-[240px]">{desc}</p>
+        
+        {children}
+      </div>
+
+      <div className="mt-8 pt-8 border-t border-white/5 relative z-10">
+        <Link 
+          href={href} 
+          className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest hover:gap-4 transition-all" 
+          style={{ color: accent }}
+        >
+          {btnText} <ArrowRight size={14} />
+        </Link>
+      </div>
+    </motion.div>
   );
 }

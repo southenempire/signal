@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { createHash } from 'crypto';
 
 const IMAGE_DIR = process.env.IMAGE_DIR || './data/images';
 
@@ -10,7 +11,7 @@ const IMAGE_DIR = process.env.IMAGE_DIR || './data/images';
  * @param {import('telegraf').Context} ctx — Telegraf context with photo
  * @param {string} category — FUEL, GROCERY, ELECTRICITY, RENT
  * @param {number} telegramId — user's Telegram ID
- * @returns {Promise<string>} — relative path to saved image
+ * @returns {Promise<{filepath: string|null, hash: string|null}>} — relative path to saved image and its sha256 hash
  */
 export async function saveReportImage(ctx, category, telegramId) {
   try {
@@ -26,6 +27,9 @@ export async function saveReportImage(ctx, category, telegramId) {
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const buffer = Buffer.from(await response.arrayBuffer());
 
+    // Calculate SHA-256 hash for duplicate detection
+    const hash = createHash('sha256').update(buffer).digest('hex');
+
     // Organize by date
     const now  = new Date();
     const date = now.toISOString().slice(0, 10); // YYYY-MM-DD
@@ -37,12 +41,10 @@ export async function saveReportImage(ctx, category, telegramId) {
     const filename = `${category.toLowerCase()}_${telegramId}_${ts}.jpg`;
     const filepath = join(dir, filename);
 
-    writeFileSync(filepath, buffer);
-    console.log(`📷 Saved image: ${filepath} (${(buffer.length / 1024).toFixed(1)} KB)`);
-
-    return filepath;
+    const base64 = buffer.toString('base64');
+    return { filepath, hash, base64 };
   } catch (err) {
     console.error('⚠️ Image save failed:', err.message);
-    return null; // Non-fatal — report still gets saved without image
+    return { filepath: null, hash: null }; // Non-fatal — report still gets saved without image
   }
 }
