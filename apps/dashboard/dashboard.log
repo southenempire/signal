@@ -1,0 +1,311 @@
+▲ Next.js 16.2.4 (Turbopack)
+- Local:         http://localhost:3100
+- Network:       http://192.168.117.3:3100
+- Environments: .env.local
+✓ Ready in 369ms
+⚠ Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of /Users/southen_/.gemini/antigravity/scratch/package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * /Users/southen_/.gemini/antigravity/scratch/colosseum-frontier/pnpm-workspace.yaml
+
+
+ GET /network 200 in 794ms (next.js: 444ms, application-code: 350ms)
+ GET /api/network-stats 200 in 1400ms (next.js: 331ms, application-code: 1070ms)
+Helius Fetch Fallback: TypeError: fetch failed
+    at async GET (app/api/truth-ledger/route.ts:10:22)
+   8 |     // Fulfilling Helius/Institutional Analytics requirement
+   9 |     // Fetching parsed transactions for the protocol wallet to display real-time physical ...
+> 10 |     const response = await fetch(`https://api-devnet.helius-rpc.com/v0/addresses/${protoco...
+     |                      ^
+  11 |
+  12 |     const data = await response.json();
+  13 |      {
+  [cause]: Error [ConnectTimeoutError]: Connect Timeout Error (attempted address: api-devnet.helius-rpc.com:443, timeout: 10000ms)
+      at ignore-listed frames {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}
+ GET /api/truth-ledger 200 in 11.4s (next.js: 438ms, application-code: 11.0s)
+Helius Fetch Fallback: TypeError: fetch failed
+    at async GET (app/api/truth-ledger/route.ts:10:22)
+   8 |     // Fulfilling Helius/Institutional Analytics requirement
+   9 |     // Fetching parsed transactions for the protocol wallet to display real-time physical ...
+> 10 |     const response = await fetch(`https://api-devnet.helius-rpc.com/v0/addresses/${protoco...
+     |                      ^
+  11 |
+  12 |     const data = await response.json();
+  13 |      {
+  [cause]: Error [ConnectTimeoutError]: Connect Timeout Error (attempted address: api-devnet.helius-rpc.com:443, timeout: 10000ms)
+      at ignore-listed frames {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}
+ GET /api/truth-ledger 200 in 11.0s (next.js: 36ms, application-code: 10.9s)
+ GET /api/truth-ledger 200 in 4.3s (next.js: 83ms, application-code: 4.2s)
+ GET /api/truth-ledger 200 in 624ms (next.js: 30ms, application-code: 594ms)
+ GET /api/truth-ledger 200 in 1439ms (next.js: 25ms, application-code: 1414ms)
+ GET /api/truth-ledger 200 in 3.4s (next.js: 6ms, application-code: 3.4s)
+ GET /api/truth-ledger 200 in 532ms (next.js: 18ms, application-code: 515ms)
+ GET /api/truth-ledger 200 in 1779ms (next.js: 82ms, application-code: 1697ms)
+ GET /api/truth-ledger 200 in 1451ms (next.js: 50ms, application-code: 1401ms)
+ GET /api/truth-ledger 200 in 534ms (next.js: 18ms, application-code: 516ms)
+ GET /api/truth-ledger 200 in 3.7s (next.js: 9ms, application-code: 3.7s)
+ GET /api/truth-ledger 200 in 16.1s (next.js: 5ms, application-code: 16.1s)
+ GET /api/truth-ledger 200 in 1010ms (next.js: 59ms, application-code: 951ms)
+ GET /api/truth-ledger 200 in 698ms (next.js: 17ms, application-code: 680ms)
+ GET /api/truth-ledger 200 in 660ms (next.js: 35ms, application-code: 625ms)
+ GET /api/truth-ledger 200 in 541ms (next.js: 4ms, application-code: 538ms)
+ GET /api/truth-ledger 200 in 3.2s (next.js: 20ms, application-code: 3.2s)
+ GET /api/truth-ledger 200 in 510ms (next.js: 15ms, application-code: 495ms)
+ GET /docs 200 in 913ms (next.js: 593ms, application-code: 320ms)
+ GET /api/truth-ledger 200 in 3.4s (next.js: 27ms, application-code: 3.4s)
+ GET /network 200 in 459ms (next.js: 68ms, application-code: 391ms)
+[browser] Image with src "/logo.png" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+ GET /api/network-stats 200 in 565ms (next.js: 18ms, application-code: 547ms)
+ GET /api/truth-ledger 200 in 2.6s (next.js: 12ms, application-code: 2.6s)
+ GET /api/truth-ledger 200 in 538ms (next.js: 23ms, application-code: 514ms)
+ GET /api/truth-ledger 200 in 7.0s (next.js: 12ms, application-code: 6.9s)
+ GET /api/truth-ledger 200 in 1469ms (next.js: 12ms, application-code: 1458ms)
+ GET /api/truth-ledger 200 in 567ms (next.js: 22ms, application-code: 544ms)
+Helius Fetch Fallback: TypeError: fetch failed
+    at async GET (app/api/truth-ledger/route.ts:10:22)
+   8 |     // Fulfilling Helius/Institutional Analytics requirement
+   9 |     // Fetching parsed transactions for the protocol wallet to display real-time physical ...
+> 10 |     const response = await fetch(`https://api-devnet.helius-rpc.com/v0/addresses/${protoco...
+     |                      ^
+  11 |
+  12 |     const data = await response.json();
+  13 |      {
+  [cause]: Error [ConnectTimeoutError]: Connect Timeout Error (attempted address: api-devnet.helius-rpc.com:443, timeout: 10000ms)
+      at ignore-listed frames {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}
+ GET /api/truth-ledger 200 in 10.9s (next.js: 16ms, application-code: 10.9s)
+ GET /api/truth-ledger 200 in 18.9s (next.js: 10ms, application-code: 18.9s)
+ GET /api/truth-ledger 200 in 568ms (next.js: 13ms, application-code: 555ms)
+ GET /api/truth-ledger 200 in 543ms (next.js: 2ms, application-code: 541ms)
+ GET /api/truth-ledger 200 in 1506ms (next.js: 3ms, application-code: 1503ms)
+ GET /api/truth-ledger 200 in 567ms (next.js: 18ms, application-code: 548ms)
+ GET /api/truth-ledger 200 in 523ms (next.js: 2ms, application-code: 520ms)
+ GET /api/truth-ledger 200 in 636ms (next.js: 4ms, application-code: 632ms)
+ GET /api/truth-ledger 200 in 4.9s (next.js: 24ms, application-code: 4.9s)
+ GET /api/truth-ledger 200 in 520ms (next.js: 5ms, application-code: 515ms)
+ GET /api/truth-ledger 200 in 5.2s (next.js: 6ms, application-code: 5.2s)
+ GET /api/truth-ledger 200 in 552ms (next.js: 8ms, application-code: 543ms)
+ GET /api/truth-ledger 200 in 2.7s (next.js: 9ms, application-code: 2.7s)
+ GET /api/truth-ledger 200 in 2.5s (next.js: 9ms, application-code: 2.5s)
+ GET /api/truth-ledger 200 in 1563ms (next.js: 13ms, application-code: 1550ms)
+ GET /api/truth-ledger 200 in 6.5s (next.js: 11ms, application-code: 6.5s)
+ GET /api/truth-ledger 200 in 1665ms (next.js: 15ms, application-code: 1650ms)
+ GET /api/truth-ledger 200 in 1420ms (next.js: 17ms, application-code: 1403ms)
+ GET /api/truth-ledger 200 in 8.8s (next.js: 11ms, application-code: 8.8s)
+ GET /api/truth-ledger 200 in 17.4s (next.js: 6ms, application-code: 17.4s)
+ GET /api/truth-ledger 200 in 518ms (next.js: 7ms, application-code: 511ms)
+ GET /api/truth-ledger 200 in 2.4s (next.js: 14ms, application-code: 2.4s)
+ GET /api/truth-ledger 200 in 1379ms (next.js: 7ms, application-code: 1372ms)
+ GET /api/truth-ledger 200 in 495ms (next.js: 7ms, application-code: 488ms)
+ GET /api/truth-ledger 200 in 7.1s (next.js: 2ms, application-code: 7.1s)
+ GET /api/truth-ledger 200 in 735ms (next.js: 10ms, application-code: 725ms)
+ GET /api/truth-ledger 200 in 520ms (next.js: 7ms, application-code: 513ms)
+ GET /api/truth-ledger 200 in 8.8s (next.js: 5ms, application-code: 8.8s)
+ GET /api/truth-ledger 200 in 7.0s (next.js: 6ms, application-code: 7.0s)
+ GET /api/truth-ledger 200 in 2.5s (next.js: 15ms, application-code: 2.5s)
+ GET /api/truth-ledger 200 in 637ms (next.js: 8ms, application-code: 628ms)
+ GET /api/truth-ledger 200 in 32.7s (next.js: 5ms, application-code: 32.7s)
+ GET /api/truth-ledger 200 in 545ms (next.js: 3ms, application-code: 542ms)
+ GET /api/truth-ledger 200 in 4.3s (next.js: 15ms, application-code: 4.3s)
+ GET /api/truth-ledger 200 in 587ms (next.js: 16ms, application-code: 571ms)
+ GET /api/truth-ledger 200 in 2.8s (next.js: 7ms, application-code: 2.8s)
+ GET /api/truth-ledger 200 in 568ms (next.js: 15ms, application-code: 553ms)
+ GET /api/truth-ledger 200 in 514ms (next.js: 18ms, application-code: 497ms)
+ GET /api/truth-ledger 200 in 565ms (next.js: 12ms, application-code: 553ms)
+ GET /api/truth-ledger 200 in 7.2s (next.js: 13ms, application-code: 7.2s)
+ GET /api/truth-ledger 200 in 7.0s (next.js: 21ms, application-code: 7.0s)
+ GET /api/truth-ledger 200 in 570ms (next.js: 8ms, application-code: 562ms)
+ GET /api/truth-ledger 200 in 1520ms (next.js: 3ms, application-code: 1517ms)
+ GET /api/truth-ledger 200 in 1755ms (next.js: 7ms, application-code: 1748ms)
+ GET /api/truth-ledger 200 in 552ms (next.js: 19ms, application-code: 533ms)
+ GET /api/truth-ledger 200 in 2.6s (next.js: 4ms, application-code: 2.5s)
+ GET /api/truth-ledger 200 in 2.5s (next.js: 8ms, application-code: 2.5s)
+ GET /api/truth-ledger 200 in 539ms (next.js: 5ms, application-code: 534ms)
+ GET /api/truth-ledger 200 in 4.5s (next.js: 9ms, application-code: 4.5s)
+ GET /api/truth-ledger 200 in 507ms (next.js: 4ms, application-code: 503ms)
+ GET /api/truth-ledger 200 in 2.5s (next.js: 11ms, application-code: 2.5s)
+ GET /api/truth-ledger 200 in 1709ms (next.js: 6ms, application-code: 1703ms)
+ GET /api/truth-ledger 200 in 3.3s (next.js: 4ms, application-code: 3.3s)
+ GET /api/truth-ledger 200 in 570ms (next.js: 7ms, application-code: 563ms)
+ GET /api/truth-ledger 200 in 1506ms (next.js: 11ms, application-code: 1495ms)
+ GET /api/truth-ledger 200 in 562ms (next.js: 9ms, application-code: 553ms)
+ GET /api/truth-ledger 200 in 2.8s (next.js: 10ms, application-code: 2.8s)
+ GET /api/truth-ledger 200 in 1451ms (next.js: 13ms, application-code: 1437ms)
+ GET /api/truth-ledger 200 in 523ms (next.js: 7ms, application-code: 516ms)
+ GET /api/truth-ledger 200 in 3.7s (next.js: 17ms, application-code: 3.7s)
+ GET /api/truth-ledger 200 in 560ms (next.js: 7ms, application-code: 553ms)
+ GET /api/truth-ledger 200 in 6.6s (next.js: 44ms, application-code: 6.5s)
+ GET /api/truth-ledger 200 in 1372ms (next.js: 6ms, application-code: 1366ms)
+Helius Fetch Fallback: TypeError: fetch failed
+    at async GET (app/api/truth-ledger/route.ts:10:22)
+   8 |     // Fulfilling Helius/Institutional Analytics requirement
+   9 |     // Fetching parsed transactions for the protocol wallet to display real-time physical ...
+> 10 |     const response = await fetch(`https://api-devnet.helius-rpc.com/v0/addresses/${protoco...
+     |                      ^
+  11 |
+  12 |     const data = await response.json();
+  13 |      {
+  [cause]: Error [ConnectTimeoutError]: Connect Timeout Error (attempted address: api-devnet.helius-rpc.com:443, timeout: 10000ms)
+      at ignore-listed frames {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}
+ GET /api/truth-ledger 200 in 10.2s (next.js: 8ms, application-code: 10.2s)
+ GET /api/truth-ledger 200 in 5.0s (next.js: 16ms, application-code: 5.0s)
+ GET /api/truth-ledger 200 in 3.5s (next.js: 11ms, application-code: 3.5s)
+ GET /api/truth-ledger 200 in 3.0s (next.js: 7ms, application-code: 3.0s)
+ GET /api/truth-ledger 200 in 517ms (next.js: 7ms, application-code: 510ms)
+ GET /api/truth-ledger 200 in 64s (next.js: 6ms, application-code: 64s)
+ GET /api/truth-ledger 200 in 1641ms (next.js: 14ms, application-code: 1627ms)
+ GET /api/truth-ledger 200 in 511ms (next.js: 1832µs, application-code: 510ms)
+ GET /api/truth-ledger 200 in 516ms (next.js: 3ms, application-code: 512ms)
+ GET /api/truth-ledger 200 in 514ms (next.js: 3ms, application-code: 511ms)
+ GET /api/truth-ledger 200 in 1313ms (next.js: 6ms, application-code: 1307ms)
+ GET /api/truth-ledger 200 in 517ms (next.js: 4ms, application-code: 513ms)
+ GET /api/truth-ledger 200 in 3.4s (next.js: 2ms, application-code: 3.4s)
+ GET /api/truth-ledger 200 in 1405ms (next.js: 7ms, application-code: 1398ms)
+ GET /api/truth-ledger 200 in 538ms (next.js: 7ms, application-code: 530ms)
+ GET /api/truth-ledger 200 in 4.6s (next.js: 15ms, application-code: 4.6s)
+ GET /api/truth-ledger 200 in 1431ms (next.js: 7ms, application-code: 1425ms)
+ GET /api/truth-ledger 200 in 1525ms (next.js: 12ms, application-code: 1514ms)
+ GET /api/truth-ledger 200 in 63s (next.js: 5ms, application-code: 63s)
+ GET /api/truth-ledger 200 in 1401ms (next.js: 1485µs, application-code: 1400ms)
+ GET /api/truth-ledger 200 in 565ms (next.js: 12ms, application-code: 552ms)
+ GET /api/truth-ledger 200 in 1516ms (next.js: 21ms, application-code: 1495ms)
+ GET /api/truth-ledger 200 in 1422ms (next.js: 14ms, application-code: 1408ms)
+ GET /api/truth-ledger 200 in 1447ms (next.js: 9ms, application-code: 1438ms)
+ GET /api/truth-ledger 200 in 525ms (next.js: 7ms, application-code: 518ms)
+ GET /api/truth-ledger 200 in 1315ms (next.js: 4ms, application-code: 1311ms)
+ GET /api/truth-ledger 200 in 593ms (next.js: 37ms, application-code: 556ms)
+ GET /api/truth-ledger 200 in 1934ms (next.js: 7ms, application-code: 1927ms)
+ GET /api/truth-ledger 200 in 539ms (next.js: 8ms, application-code: 530ms)
+ GET /api/truth-ledger 200 in 3.7s (next.js: 6ms, application-code: 3.7s)
+ GET /api/truth-ledger 200 in 1425ms (next.js: 7ms, application-code: 1418ms)
+ GET /api/truth-ledger 200 in 539ms (next.js: 14ms, application-code: 525ms)
+ GET /api/truth-ledger 200 in 7.1s (next.js: 17ms, application-code: 7.1s)
+ GET /api/truth-ledger 200 in 1366ms (next.js: 17ms, application-code: 1349ms)
+ GET /api/truth-ledger 200 in 561ms (next.js: 14ms, application-code: 548ms)
+ GET /api/truth-ledger 200 in 2.7s (next.js: 6ms, application-code: 2.7s)
+ GET /api/truth-ledger 200 in 544ms (next.js: 6ms, application-code: 538ms)
+ GET /api/truth-ledger 200 in 2.7s (next.js: 4ms, application-code: 2.7s)
+ GET /api/truth-ledger 200 in 4.3s (next.js: 10ms, application-code: 4.3s)
+ GET /api/truth-ledger 200 in 1428ms (next.js: 6ms, application-code: 1421ms)
+ GET /api/truth-ledger 200 in 598ms (next.js: 11ms, application-code: 587ms)
+ GET /api/truth-ledger 200 in 3.3s (next.js: 12ms, application-code: 3.3s)
+✓ Compiled in 2.8s
+ GET /network 200 in 2.7s (next.js: 2.6s, application-code: 125ms)
+ GET /network 200 in 250ms (next.js: 4ms, application-code: 245ms)
+ GET /network 200 in 246ms (next.js: 5ms, application-code: 242ms)
+ GET /network 200 in 205ms (next.js: 4ms, application-code: 201ms)
+ GET /network 200 in 248ms (next.js: 100ms, application-code: 149ms)
+ GET /network 200 in 128ms (next.js: 4ms, application-code: 123ms)
+ GET /network 200 in 135ms (next.js: 3ms, application-code: 132ms)
+ GET /network 200 in 151ms (next.js: 8ms, application-code: 143ms)
+ GET /network 200 in 148ms (next.js: 3ms, application-code: 145ms)
+ GET /network 200 in 144ms (next.js: 3ms, application-code: 141ms)
+ GET /network 200 in 138ms (next.js: 4ms, application-code: 133ms)
+ GET /network 200 in 111ms (next.js: 7ms, application-code: 104ms)
+ GET /network 200 in 112ms (next.js: 4ms, application-code: 108ms)
+ GET /network 200 in 112ms (next.js: 4ms, application-code: 109ms)
+ GET /network 200 in 108ms (next.js: 1814µs, application-code: 106ms)
+ GET /network 200 in 121ms (next.js: 5ms, application-code: 116ms)
+ GET /network 200 in 96ms (next.js: 6ms, application-code: 90ms)
+ GET /network 200 in 70ms (next.js: 2ms, application-code: 68ms)
+ GET /network 200 in 49ms (next.js: 6ms, application-code: 43ms)
+ GET /network 200 in 29ms (next.js: 2ms, application-code: 27ms)
+ GET /api/truth-ledger 200 in 611ms (next.js: 85ms, application-code: 526ms)
+ GET /api/truth-ledger 200 in 2.5s (next.js: 11ms, application-code: 2.5s)
+ GET /api/truth-ledger 200 in 517ms (next.js: 8ms, application-code: 509ms)
+ GET /api/truth-ledger 200 in 2.8s (next.js: 11ms, application-code: 2.8s)
+✓ Compiled in 0ms
+ GET /network 200 in 842ms (next.js: 595ms, application-code: 247ms)
+ GET /network 200 in 156ms (next.js: 1424µs, application-code: 154ms)
+ GET /network 200 in 168ms (next.js: 3ms, application-code: 165ms)
+ GET /network 200 in 163ms (next.js: 5ms, application-code: 158ms)
+ GET /network 200 in 132ms (next.js: 3ms, application-code: 129ms)
+ GET /network 200 in 111ms (next.js: 1679µs, application-code: 110ms)
+ GET /network 200 in 108ms (next.js: 6ms, application-code: 102ms)
+ GET /network 200 in 107ms (next.js: 1523µs, application-code: 105ms)
+ GET /network 200 in 276ms (next.js: 3ms, application-code: 274ms)
+ GET /network 200 in 259ms (next.js: 4ms, application-code: 255ms)
+ GET /network 200 in 289ms (next.js: 4ms, application-code: 286ms)
+ GET /network 200 in 298ms (next.js: 5ms, application-code: 293ms)
+ GET /network 200 in 389ms (next.js: 9ms, application-code: 380ms)
+ GET /network 200 in 316ms (next.js: 6ms, application-code: 310ms)
+ GET /network 200 in 286ms (next.js: 5ms, application-code: 281ms)
+ GET /network 200 in 276ms (next.js: 8ms, application-code: 267ms)
+ GET /network 200 in 174ms (next.js: 7ms, application-code: 167ms)
+ GET /network 200 in 141ms (next.js: 5ms, application-code: 136ms)
+ GET /network 200 in 120ms (next.js: 8ms, application-code: 112ms)
+ GET /network 200 in 96ms (next.js: 4ms, application-code: 92ms)
+ GET /network 200 in 60ms (next.js: 7ms, application-code: 53ms)
+ GET /network 200 in 35ms (next.js: 2ms, application-code: 33ms)
+ GET /api/truth-ledger 200 in 2.1s (next.js: 402ms, application-code: 1648ms)
+ GET /api/truth-ledger 200 in 629ms (next.js: 9ms, application-code: 620ms)
+ GET /network 200 in 441ms (next.js: 143ms, application-code: 297ms)
+ GET /network 200 in 197ms (next.js: 46ms, application-code: 150ms)
+ GET /network 200 in 108ms (next.js: 5ms, application-code: 102ms)
+ GET /network 200 in 60ms (next.js: 2ms, application-code: 58ms)
+ GET /network 200 in 37ms (next.js: 1852µs, application-code: 35ms)
+ GET /api/truth-ledger 200 in 9.9s (next.js: 6ms, application-code: 9.9s)
+ GET /api/truth-ledger 200 in 636ms (next.js: 56ms, application-code: 579ms)
+ GET /api/truth-ledger 200 in 2.4s (next.js: 6ms, application-code: 2.4s)
+ GET /api/truth-ledger 200 in 568ms (next.js: 17ms, application-code: 551ms)
+ GET /api/truth-ledger 200 in 1273ms (next.js: 8ms, application-code: 1266ms)
+ GET /api/truth-ledger 200 in 1383ms (next.js: 16ms, application-code: 1367ms)
+ GET /api/truth-ledger 200 in 1629ms (next.js: 10ms, application-code: 1619ms)
+ GET /api/truth-ledger 200 in 7.0s (next.js: 5ms, application-code: 7.0s)
+ GET /api/truth-ledger 200 in 509ms (next.js: 12ms, application-code: 496ms)
+ GET /api/truth-ledger 200 in 2.2s (next.js: 4ms, application-code: 2.2s)
+ GET /api/truth-ledger 200 in 495ms (next.js: 8ms, application-code: 487ms)
+ GET /api/truth-ledger 200 in 3.0s (next.js: 17ms, application-code: 3.0s)
+ GET /api/truth-ledger 200 in 2.5s (next.js: 10ms, application-code: 2.5s)
+ GET /api/truth-ledger 200 in 526ms (next.js: 17ms, application-code: 509ms)
+ GET /api/truth-ledger 200 in 6.0s (next.js: 10ms, application-code: 6.0s)
+ GET /api/truth-ledger 200 in 1432ms (next.js: 6ms, application-code: 1427ms)
+ GET /api/truth-ledger 200 in 606ms (next.js: 7ms, application-code: 599ms)
+ GET /api/truth-ledger 200 in 6.5s (next.js: 7ms, application-code: 6.5s)
+ GET /api/truth-ledger 200 in 724ms (next.js: 8ms, application-code: 716ms)
+ GET /api/truth-ledger 200 in 584ms (next.js: 15ms, application-code: 569ms)
+ GET /network 200 in 628ms (next.js: 293ms, application-code: 336ms)
+ GET /network 200 in 198ms (next.js: 83ms, application-code: 115ms)
+ GET /network 200 in 61ms (next.js: 2ms, application-code: 59ms)
+ GET /network 200 in 33ms (next.js: 4ms, application-code: 29ms)
+ GET /api/truth-ledger 200 in 6.1s (next.js: 56ms, application-code: 6.1s)
+ GET /api/truth-ledger 200 in 6.4s (next.js: 4ms, application-code: 6.4s)
+ GET /api/truth-ledger 200 in 539ms (next.js: 29ms, application-code: 510ms)
+ GET /api/truth-ledger 200 in 536ms (next.js: 18ms, application-code: 518ms)
+ GET /api/truth-ledger 200 in 4.2s (next.js: 7ms, application-code: 4.2s)
+ GET /waitlist 200 in 3.2s (next.js: 2.8s, application-code: 394ms)
+ GET /api/truth-ledger 200 in 525ms (next.js: 13ms, application-code: 511ms)
+[browser] Image with src "/logo.png" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+ GET /waitlist 200 in 220ms (next.js: 69ms, application-code: 151ms)
+[browser] Image with src "/logo.png" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+ GET /network 200 in 193ms (next.js: 53ms, application-code: 140ms)
+[browser] Detected `scroll-behavior: smooth` on the `<html>` element. To disable smooth scrolling during route transitions, add `data-scroll-behavior="smooth"` to your <html> element. Learn more: https://nextjs.org/docs/messages/missing-data-scroll-behavior
+ GET /api/network-stats 200 in 1115ms (next.js: 416ms, application-code: 699ms)
+ GET /api/network-stats 200 in 1110ms (next.js: 497ms, application-code: 613ms)
+ GET /docs 200 in 279ms (next.js: 99ms, application-code: 180ms)
+ GET /api/truth-ledger 200 in 4.1s (next.js: 534ms, application-code: 3.6s)
+ GET /api/truth-ledger 200 in 5.0s (next.js: 514ms, application-code: 4.5s)
+ GET /network 200 in 164ms (next.js: 18ms, application-code: 147ms)
+ GET /api/truth-ledger 200 in 541ms (next.js: 15ms, application-code: 526ms)
+ GET /api/truth-ledger 200 in 555ms (next.js: 47ms, application-code: 508ms)
+ GET /api/network-stats 200 in 583ms (next.js: 19ms, application-code: 564ms)
+ GET /api/network-stats 200 in 623ms (next.js: 98ms, application-code: 525ms)
+ GET / 200 in 203ms (next.js: 118ms, application-code: 85ms)
+[browser] Image with src "/hero-lifestyle.png" has "fill" but is missing "sizes" prop. Please add it to improve page performance. Read more: https://nextjs.org/docs/api-reference/next/image#sizes
+ GET /api/network-stats 200 in 759ms (next.js: 29ms, application-code: 730ms)
+ GET /api/network-stats 200 in 767ms (next.js: 228ms, application-code: 538ms)
+ GET /api/truth-ledger 200 in 2.8s (next.js: 203ms, application-code: 2.6s)
+ GET /api/truth-ledger 200 in 5.5s (next.js: 287ms, application-code: 5.2s)

@@ -4,6 +4,7 @@ module.exports = {
       name: 'signal-agent',
       script: 'index.js',
       cwd: './apps/bot',
+      interpreter: '/opt/homebrew/bin/node',
       watch: true,
       env: {
         NODE_ENV: 'production',
@@ -15,13 +16,14 @@ module.exports = {
     },
     {
       name: 'signal-console',
-      script: 'npm',
-      args: 'run dev', // Using dev for hackathon flexibility, or 'start' for production
+      script: './node_modules/.bin/next',
+      args: 'dev -p 3100',
       cwd: './apps/dashboard',
+      interpreter: '/opt/homebrew/bin/node',
       watch: false,
       env: {
         NODE_ENV: 'production',
-        PORT: 3002
+        PORT: 3100
       },
       restart_delay: 5000,
     }
