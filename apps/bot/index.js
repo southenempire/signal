@@ -36,11 +36,28 @@ const AGENT_POLICIES = {
     EXPIRY_WINDOW_MIN: 60
 };
 
-// ─── Solana ───────────────────────────────────────────────────────────────────
+// ─── Solana Identity ──────────────────────────────────────────────────────────
 const connection = new Connection(RPC_URL, 'confirmed');
-const protocolWallet = Keypair.fromSecretKey(
-  new Uint8Array(JSON.parse(readFileSync(`${process.env.HOME}/.config/solana/id.json`, 'utf8')))
-);
+
+let protocolWallet;
+try {
+  if (process.env.SOLANA_KEYPAIR_JSON) {
+    console.log('[Identity] Initializing Sovereign Wallet from Environment Variable...');
+    protocolWallet = Keypair.fromSecretKey(
+      new Uint8Array(JSON.parse(process.env.SOLANA_KEYPAIR_JSON))
+    );
+  } else {
+    console.log('[Identity] Fallback: Initializing Sovereign Wallet from Local Config...');
+    const idPath = `${process.env.HOME || '/tmp'}/.config/solana/id.json`;
+    protocolWallet = Keypair.fromSecretKey(
+      new Uint8Array(JSON.parse(readFileSync(idPath, 'utf8')))
+    );
+  }
+} catch (err) {
+  console.error(`[Identity] CRITICAL: Failed to initialize Sovereign Wallet: ${err.message}`);
+  // In production, we must have a wallet. Locally, we might allow mock mode.
+  if (process.env.NODE_ENV === 'production') throw err;
+}
 const mintPubkey = new PublicKey(USDC_MINT);
 
 console.log('🔗 RPC:', RPC_URL);
