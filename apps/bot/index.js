@@ -206,6 +206,11 @@ bot.on('photo', async (ctx) => {
     return ctx.replyWithHTML(`🚫 <b>Integrity Error:</b> Duplicate data detected.`);
   }
 
+  // ─── Sovereign AI Logic ───────────────────────────────────────────────────
+  let auditResult = null;
+  let reward = 0;
+
+  try {
     const prompt = `You are the Signal Sovereign Judge. 
     Analyze this image for a ${category} price.
     
