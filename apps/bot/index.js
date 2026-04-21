@@ -149,7 +149,16 @@ async function payUserStandard(userPubkey, amount) {
 }
 
 // ─── Bot ──────────────────────────────────────────────────────────────────────
-const bot = new Telegraf(BOT_TOKEN);
+let bot;
+if (BOT_TOKEN) {
+  try {
+    bot = new Telegraf(BOT_TOKEN);
+  } catch (e) {
+    console.error('⚠️ [Bot] Failed to initialize Telegraf instance:', e.message);
+  }
+} else {
+  console.warn('⚠️ [Bot] TELEGRAM_BOT_TOKEN missing. Telegram interface will be OFFLINE.');
+}
 
 const MAIN_MENU = Markup.keyboard([
   ['📸 Report a Price', '💰 My Rewards'],
@@ -157,7 +166,8 @@ const MAIN_MENU = Markup.keyboard([
 ]).resize();
 
 // /start
-bot.start(async (ctx) => {
+if (bot) {
+  bot.start(async (ctx) => {
   const user = getOrCreateUser(ctx.from.id);
   const sol  = await connection.getBalance(user.keypair.publicKey);
 
@@ -178,7 +188,8 @@ bot.start(async (ctx) => {
 });
 
 // How It Works
-bot.hears('📖 How It Works', async (ctx) => {
+if (bot) {
+  bot.hears('📖 How It Works', async (ctx) => {
   await ctx.replyWithHTML(
     `<b>📖 How Signal Bot Works</b>\n\n` +
     `<b>1. Report</b> → Send a photo of a price (fuel pump, shelf tag, receipt)\n` +
@@ -191,7 +202,8 @@ bot.hears('📖 How It Works', async (ctx) => {
 });
 
 // Report menu
-bot.hears('📸 Report a Price', async (ctx) => {
+if (bot) {
+  bot.hears('📸 Report a Price', async (ctx) => {
   await ctx.reply(
     '📍 What are you reporting?',
     Markup.inlineKeyboard([
@@ -204,7 +216,8 @@ bot.hears('📸 Report a Price', async (ctx) => {
 });
 
 // Category selection
-bot.action(['FUEL','GROCERY','ELECTRICITY','RENT'], async (ctx) => {
+if (bot) {
+  bot.action(['FUEL','GROCERY','ELECTRICITY','RENT'], async (ctx) => {
   pendingReport.set(ctx.from.id, ctx.match[0]);
   const labels = {
     FUEL: '⛽ Fuel / Gas',
@@ -222,7 +235,8 @@ bot.action(['FUEL','GROCERY','ELECTRICITY','RENT'], async (ctx) => {
 });
 
 // Photo handler — Claude-Powered Sovereign Verification
-bot.on('photo', async (ctx) => {
+if (bot) {
+  bot.on('photo', async (ctx) => {
   const user     = getOrCreateUser(ctx.from.id);
   const category = pendingReport.get(ctx.from.id) || 'FUEL';
   pendingReport.delete(ctx.from.id);
@@ -363,7 +377,8 @@ bot.on('photo', async (ctx) => {
 });
 
 // My Rewards
-bot.hears('💰 My Rewards', async (ctx) => {
+if (bot) {
+  bot.hears('💰 My Rewards', async (ctx) => {
   const user    = getOrCreateUser(ctx.from.id);
   const sol     = await connection.getBalance(user.keypair.publicKey);
   const usdc    = await getUSDC(user.keypair.publicKey);
@@ -395,7 +410,8 @@ bot.hears('💰 My Rewards', async (ctx) => {
 
 
 // Jupiter Swap Action — Real V6 Integration
-bot.action('swap_jupusd', async (ctx) => {
+if (bot) {
+  bot.action('swap_jupusd', async (ctx) => {
   const user = getOrCreateUser(ctx.from.id);
   const usdc = await getUSDC(user.keypair.publicKey);
 
@@ -434,7 +450,8 @@ bot.action('swap_jupusd', async (ctx) => {
 });
 
 // Withdrawal Prompt Action
-bot.action('withdraw_init', async (ctx) => {
+if (bot) {
+  bot.action('withdraw_init', async (ctx) => {
   pendingReport.set(ctx.from.id, 'AWAITING_ADDRESS');
   await ctx.answerCbQuery();
   await ctx.replyWithHTML(
@@ -454,7 +471,8 @@ bot.action('withdraw_jup_init', async (ctx) => {
 
 
 // Cash Out to Bank Action
-bot.action('cashout_bank', async (ctx) => {
+if (bot) {
+  bot.action('cashout_bank', async (ctx) => {
   await ctx.answerCbQuery();
   await ctx.replyWithHTML(
     `🏦 <b>Cash Out to Bank Account</b>\n\n` +
@@ -470,7 +488,8 @@ bot.action('cashout_bank', async (ctx) => {
 });
 
 // Export Private Key Action
-bot.action('export_key', async (ctx) => {
+if (bot) {
+  bot.action('export_key', async (ctx) => {
   const user = getOrCreateUser(ctx.from.id);
   const privateKeyBase58 = bs58.encode(user.keypair.secretKey);
 
@@ -487,7 +506,8 @@ bot.action('export_key', async (ctx) => {
 });
 
 // Leaderboard
-bot.hears('🏆 Leaderboard', async (ctx) => {
+if (bot) {
+  bot.hears('🏆 Leaderboard', async (ctx) => {
   const sorted = getLeaderboard(5);
   const medals = ['🥇','🥈','🥉','4️⃣','5️⃣'];
 
@@ -505,7 +525,8 @@ bot.hears('🏆 Leaderboard', async (ctx) => {
 });
 
 // Fallback
-bot.on('text', async (ctx) => {
+if (bot) {
+  bot.on('text', async (ctx) => {
   const text = ctx.message.text.trim();
 
   // Withdraw flow: user pastes a Solana address after /withdraw
@@ -596,6 +617,10 @@ api.listen(3001, () => {
 
 // ─── Launch ───────────────────────────────────────────────────────────────────
 async function main() {
+  if (!bot) {
+    console.warn('📡 [API] Starting Express API ONLY (Bot Token Missing)...');
+    return;
+  }
   try {
     await bot.telegram.deleteWebhook({ drop_pending_updates: true });
     console.log('✅ Webhook cleared');
@@ -605,8 +630,8 @@ async function main() {
     });
     bot.launch();
   } catch (e) {
-    console.error('❌ Launch failed:', e.message);
-    process.exit(1);
+    console.error('❌ Bot Launch failed:', e.message);
+    console.warn('📡 [API] Falling back to Express API stability mode...');
   }
 }
 
