@@ -25,6 +25,8 @@ const RPC_URL   = process.env.RPC_URL || 'https://api.devnet.solana.com';
 const USDC_MINT = process.env.USDC_MINT || '4zMMC9srvvSbhvWxREz676cgVT7n8uyT8D5KWW2EGQuD';
 const JUP_USD_MINT = 'JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const MAGICBLOCK_API_URL = 'https://payments.magicblock.app/v1';
 
 // ─── Zerion Agent Policies ────────────────────────────────────────────────────
@@ -204,11 +206,6 @@ bot.on('photo', async (ctx) => {
     return ctx.replyWithHTML(`🚫 <b>Integrity Error:</b> Duplicate data detected.`);
   }
 
-  // ─── REAL VISION AI VERIFICATION (Anthropic Claude-3.5-Sonnet) ───────────────
-  let auditResult = null;
-  let reward = 0;
-
-  try {
     const prompt = `You are the Signal Sovereign Judge. 
     Analyze this image for a ${category} price.
     
@@ -225,31 +222,63 @@ bot.on('photo', async (ctx) => {
        }
     5. If it's NOT a valid real-world price photo, respond: {"verified": false, "reason": "gibberish or invalid"}`;
 
-    const clResponse = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-            'x-api-key': ANTHROPIC_API_KEY,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json'
-        },
-        body: JSON.stringify({
-            model: 'claude-3-5-sonnet-20241022',
-            max_tokens: 1024,
-            messages: [{
-                role: 'user',
-                content: [
-                    { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
-                    { type: 'text', text: prompt }
-                ]
-            }]
-        })
-    });
+    try {
+        console.log(`[Vision] Attempting Primary (Claude-3.5-Sonnet) for category: ${category}`);
+        const clResponse = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+                'x-api-key': ANTHROPIC_API_KEY,
+                'anthropic-version': '2023-06-01',
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'claude-3-5-sonnet-20241022',
+                max_tokens: 1024,
+                messages: [{
+                    role: 'user',
+                    content: [
+                        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
+                        { type: 'text', text: prompt }
+                    ]
+                }]
+            })
+        });
 
-    const clData = await clResponse.json();
-    auditResult = JSON.parse(clData.content[0].text);
+        const clData = await clResponse.json();
+        if (!clData.content || !clData.content[0]) throw new Error("Anthropic response malformed");
+        auditResult = JSON.parse(clData.content[0].text);
+    } catch (primaryErr) {
+        console.error(`[Vision] Primary AI failed: ${primaryErr.message}. Attempting Fallback (Gemini 1.5 Flash)...`);
+        
+        try {
+            const gemResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
+                        ]
+                    }]
+                })
+            });
 
-    if (!auditResult.verified) {
-        return ctx.replyWithHTML(`❌ <b>Claude Rejection:</b> ${auditResult.reason}\nPlease submit a real physical data point.`);
+            const gemData = await gemResponse.json();
+            const textResponse = gemData.candidates[0].content.parts[0].text;
+            
+            // Handle markdown code blocks if gemini returns them
+            const cleanJson = textResponse.replace(/```json|```/g, '').trim();
+            auditResult = JSON.parse(cleanJson);
+            console.log(`[Vision] Fallback SUCCESS: Gemini verified the report.`);
+        } catch (secondaryErr) {
+            console.error(`[Vision] Total AI Blackout: ${secondaryErr.message}`);
+            return ctx.replyWithHTML(`🚫 <b>Signal System Outage:</b> All Vision AI endpoints are currently unreachable. Please try again in a few minutes.`);
+        }
+    }
+
+    if (!auditResult || !auditResult.verified) {
+        return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${auditResult?.reason || "Invalid data format"}\nPlease submit a real physical data point.`);
     }
     
     reward = parseFloat((0.15 + (Math.random() * 0.2)).toFixed(2));
