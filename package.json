@@ -9,10 +9,13 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@9.15.4",
   "engines": {
     "node": ">=20.0.0"
   },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "devDependencies": {
     "pm2": "^6.0.14"
   }
