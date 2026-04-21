@@ -40,6 +40,8 @@ const AGENT_POLICIES = {
 const connection = new Connection(RPC_URL, 'confirmed');
 
 let protocolWallet;
+let IS_SAFE_MODE = false;
+
 try {
   if (process.env.SOLANA_KEYPAIR_JSON) {
     console.log('[Identity] Initializing Sovereign Wallet from Environment Variable...');
@@ -47,18 +49,31 @@ try {
       new Uint8Array(JSON.parse(process.env.SOLANA_KEYPAIR_JSON))
     );
   } else {
-    console.log('[Identity] Fallback: Initializing Sovereign Wallet from Local Config...');
-    const idPath = `${process.env.HOME || '/tmp'}/.config/solana/id.json`;
-    protocolWallet = Keypair.fromSecretKey(
-      new Uint8Array(JSON.parse(readFileSync(idPath, 'utf8')))
-    );
+    // Attempt local fallback for development
+    try {
+      const idPath = `${process.env.HOME || '/tmp'}/.config/solana/id.json`;
+      console.log(`[Identity] Attempting Fallback: ${idPath}`);
+      protocolWallet = Keypair.fromSecretKey(
+        new Uint8Array(JSON.parse(readFileSync(idPath, 'utf8')))
+      );
+    } catch (fallbackErr) {
+       console.warn('[Identity] WARNING: No local or env identity found. Entering SAFE MODE.');
+       IS_SAFE_MODE = true;
+       // Create an ephemeral burner key so the API still starts
+       protocolWallet = Keypair.generate(); 
+    }
   }
 } catch (err) {
-  console.error(`[Identity] CRITICAL: Failed to initialize Sovereign Wallet: ${err.message}`);
-  // In production, we must have a wallet. Locally, we might allow mock mode.
-  if (process.env.NODE_ENV === 'production') throw err;
+  console.error(`[Identity] CRITICAL: Initialization Error: ${err.message}`);
+  IS_SAFE_MODE = true;
+  protocolWallet = Keypair.generate();
 }
+
 const mintPubkey = new PublicKey(USDC_MINT);
+
+if (IS_SAFE_MODE) {
+    console.log('🛡️ [SAFE MODE ACTIVE]: Payouts and Swaps are disabled until SOLANA_KEYPAIR_JSON is configured.');
+}
 
 console.log('🔗 RPC:', RPC_URL);
 console.log('💳 Protocol wallet:', protocolWallet.publicKey.toBase58());
@@ -113,6 +128,10 @@ async function payUserMagicBlock(userPubkey, amount) {
 }
 
 async function payUserStandard(userPubkey, amount) {
+  if (IS_SAFE_MODE) {
+      console.warn('[Safe Mode] Standard Payout Blocked: No production identity.');
+      return null;
+  }
   try {
     const fromATA = await getOrCreateAssociatedTokenAccount(
       connection, protocolWallet, mintPubkey, protocolWallet.publicKey
@@ -382,6 +401,10 @@ bot.action('swap_jupusd', async (ctx) => {
 
   if (usdc < 0.1) {
     return ctx.answerCbQuery('⚠️ Minimum $0.10 USDC required for Jupiter swap.', { show_alert: true });
+  }
+
+  if (IS_SAFE_MODE) {
+    return ctx.answerCbQuery('🛡️ [SAFE MODE]: Swaps are disabled until production identity is configured.', { show_alert: true });
   }
 
   await ctx.answerCbQuery('🪐 Initiating Jupiter V6 Swap...');
