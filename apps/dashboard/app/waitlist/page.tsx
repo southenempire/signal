@@ -6,7 +6,7 @@ import { Send, Clock, Globe, Shield, Zap, ChevronRight, CheckCircle2 } from "luc
 import Link from "next/link";
 import Image from "next/image";
 import NavBar from "../../components/NavBar";
-import { LAUNCH_DATE } from "../../lib/constants";
+const LAUNCH_DATE = new Date("2026-05-01T00:00:00Z");
 
 /* ═══════════════════════════════════════════════════════
    CINEMATIC PARTICLE BACKGROUND

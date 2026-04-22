@@ -9,7 +9,11 @@ import ImpactFeed from "../components/ImpactFeed";
 import { motion, AnimatePresence } from "framer-motion";
 
 const BOT_API = process.env.NEXT_PUBLIC_API_URL || "";
-import { LAUNCH_DATE, IS_PRODUCTION, isLive } from '../lib/constants';
+const LAUNCH_DATE = new Date("2026-05-01T00:00:00Z");
+const isLive = () => {
+    const now = new Date().getTime();
+    return now >= LAUNCH_DATE.getTime();
+};
 
 /* ═══════════════════════════════════════════════════════
    CANVAS — Particle Network (DePIN nodes)

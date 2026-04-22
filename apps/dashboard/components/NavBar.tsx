@@ -7,7 +7,11 @@ import { motion } from 'framer-motion';
 import { Zap, Network, BookOpen, ExternalLink, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
-import { isLive } from '../lib/constants';
+const LAUNCH_DATE = new Date("2026-05-01T00:00:00Z");
+const isLive = () => {
+    const now = new Date().getTime();
+    return now >= LAUNCH_DATE.getTime();
+};
 
 const navItems = [
   { name: 'Live Network', path: '/network', icon: Network, hideDuringPrelaunch: true },
