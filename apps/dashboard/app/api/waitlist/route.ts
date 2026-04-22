@@ -1,10 +1,5 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
 import { Resend } from 'resend';
-
-const DATA_DIR = path.join(process.cwd(), 'data');
-const WAITLIST_FILE = path.join(DATA_DIR, 'waitlist.json');
 
 export async function POST(request: Request) {
   try {
@@ -17,32 +12,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
     }
 
-    // Ensure data directory exists
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR);
-    }
-
-    // Load or initialize waitlist
-    let waitlist = [];
-    if (fs.existsSync(WAITLIST_FILE)) {
-      const content = fs.readFileSync(WAITLIST_FILE, 'utf8');
-      waitlist = JSON.parse(content);
-    }
-
-    // Check for duplicates
-    if (waitlist.some((entry: any) => entry.email === email)) {
-      return NextResponse.json({ message: 'Already on the waitlist!' });
-    }
-
-    // Add new entry
-    waitlist.push({
-      email,
-      timestamp: new Date().toISOString(),
-      notified: true // Flagged as true since we are sending it now
-    });
-
-    // Save back to disk
-    fs.writeFileSync(WAITLIST_FILE, JSON.stringify(waitlist, null, 2));
+    console.log(`[Waitlist] New entry: ${email}`);
 
     // --- DIRECT CODE NOTIFICATION via Resend ---
     if (resend) {
@@ -70,7 +40,8 @@ export async function POST(request: Request) {
           </div>
         `
       });
-    } else {
+    }
+ else {
       console.warn('RESEND_API_KEY not found. Falling back to local logging only.');
     }
 

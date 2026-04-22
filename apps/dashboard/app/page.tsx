@@ -8,7 +8,7 @@ import VisionSimulator from "../components/VisionSimulator";
 import ImpactFeed from "../components/ImpactFeed";
 import { motion, AnimatePresence } from "framer-motion";
 
-const BOT_API = "http://localhost:3001";
+const BOT_API = process.env.NEXT_PUBLIC_API_URL || "";
 import { LAUNCH_DATE, IS_PRODUCTION, isLive } from '../lib/constants';
 
 /* ═══════════════════════════════════════════════════════
@@ -324,6 +324,7 @@ export default function Home() {
   const [isLaunched, setIsLaunched] = useState(false);
 
   useEffect(() => {
+    // Redirect logic enabled for production waitlist phase
     if (!isLive()) {
         window.location.href = "/waitlist";
     } else {
@@ -350,17 +351,19 @@ export default function Home() {
   useEffect(() => {
     const fetch_ = async () => {
       try {
-        const [s, l, r] = await Promise.all([
-          fetch(`${BOT_API}/api/stats`),
-          fetch(`${BOT_API}/api/leaderboard`),
-          fetch(`${BOT_API}/api/reports`),
+        const [s, r] = await Promise.all([
+          fetch('/api/network-stats'),
+          fetch('/api/truth-ledger'),
         ]);
-        const stats = await s.json(), lb = await l.json(), rpts = await r.json();
-        setNodeCount(stats.signalers || 0);
-        setVolume(parseFloat(stats.totalVolume) || 0);
+        const stats = await s.json(), rpts = await r.json();
+        setNodeCount(stats.activeNodes || 0);
+        setVolume(parseFloat(stats.totalVolume.replace(/,/g, '')) || 0);
         setTotalReports(stats.totalReports || 0);
-        setLeaderboard(lb); setLiveReports(rpts); setApiConnected(true);
-      } catch { setApiConnected(false); }
+        setLiveReports(rpts); setApiConnected(true);
+      } catch (err) { 
+        console.error("Dashboard Fetch Error:", err);
+        setApiConnected(false); 
+      }
       setLatency(40 + Math.floor(Math.random() * 14));
     };
     fetch_();
