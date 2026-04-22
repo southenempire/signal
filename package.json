@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "npm run dev --prefix apps/dashboard & npm run dev --prefix apps/bot",
+    "build": "npm run build --prefix apps/dashboard",
+    "start": "npm run start --prefix apps/dashboard"
   },
   "keywords": [],
   "author": "",
