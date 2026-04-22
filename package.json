@@ -18,6 +18,7 @@
     "packages/*"
   ],
   "devDependencies": {
-    "pm2": "^6.0.14"
+    "pm2": "^6.0.14",
+    "lucide-react": "^0.454.0"
   }
 }

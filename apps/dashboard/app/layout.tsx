@@ -3,6 +3,7 @@ import NavBar from "@/components/NavBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://signal-bot-chi.vercel.app'),
   title: "Signal Bot | Human-Powered Oracle on Solana",
   description: "Signal Bot is a DePIN oracle network on Solana. Report real-world prices via Telegram and earn USDC. Vision AI verified, no crypto experience needed.",
   openGraph: {
