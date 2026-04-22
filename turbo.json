@@ -1,21 +1,12 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "tasks": {
+  "pipeline": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "dist/**"]
-    },
-    "test": {
-      "dependsOn": ["build"],
-      "outputs": []
+      "outputs": [".next/**", "!.next/cache/**"]
     },
     "dev": {
       "cache": false,
       "persistent": true
-    },
-    "anchor:build": {
-      "cache": true,
-      "outputs": ["target/**"]
     }
   }
 }
