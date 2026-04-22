@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import dynamic from 'next/dynamic';
+import ClientNavBar from "../components/ClientNavBar";
 import "./globals.css";
-
-const NavBar = dynamic(() => import("../components/NavBar"), { ssr: false });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://signal-bot-chi.vercel.app'),
@@ -29,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased dark bg-black">
       <body className="min-h-full flex flex-col pt-16">
-        <NavBar />
+        <ClientNavBar />
         <main className="flex-grow flex flex-col relativ z-0">
           {children}
         </main>
