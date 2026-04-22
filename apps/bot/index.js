@@ -186,6 +186,7 @@ if (bot) {
     MAIN_MENU
   );
 });
+}
 
 // How It Works
 if (bot) {
@@ -200,6 +201,7 @@ if (bot) {
     MAIN_MENU
   );
 });
+}
 
 // Report menu
 if (bot) {
@@ -214,6 +216,7 @@ if (bot) {
     ])
   );
 });
+}
 
 // Category selection
 if (bot) {
@@ -233,6 +236,7 @@ if (bot) {
     `<i>Tip: Price tags, fuel pump screens, and receipts all work great.</i>`
   );
 });
+}
 
 // Photo handler — Claude-Powered Sovereign Verification
 if (bot) {
@@ -375,6 +379,7 @@ if (bot) {
     MAIN_MENU
   );
 });
+}
 
 // My Rewards
 if (bot) {
@@ -407,6 +412,7 @@ if (bot) {
     ])
   );
 });
+}
 
 
 // Jupiter Swap Action — Real V6 Integration
@@ -448,6 +454,7 @@ if (bot) {
     await ctx.reply('❌ Jupiter aggregator unreachable. Reverting swap...');
   }
 });
+}
 
 // Withdrawal Prompt Action
 if (bot) {
@@ -459,7 +466,9 @@ if (bot) {
     `Reply to this message by pasting your Solana wallet address (e.g., Phantom or Solflare) to receive your USDC.`
   );
 });
+}
 
+if (bot) {
 bot.action('withdraw_jup_init', async (ctx) => {
   pendingReport.set(ctx.from.id, 'AWAITING_ADDRESS_JUP');
   await ctx.answerCbQuery();
@@ -468,6 +477,7 @@ bot.action('withdraw_jup_init', async (ctx) => {
     `Paste your Solana wallet address to receive your yield-bearing jupUSD.`
   );
 });
+}
 
 
 // Cash Out to Bank Action
@@ -486,6 +496,7 @@ if (bot) {
     `<i>Once the USDC hits your exchange, you can instantly sell it for USD/fiat and withdraw to your bank!</i>`
   );
 });
+}
 
 // Export Private Key Action
 if (bot) {
@@ -504,6 +515,7 @@ if (bot) {
     `3. Use Solana Pay at checkout or swap your USDC for fiat!`
   );
 });
+}
 
 // Leaderboard
 if (bot) {
@@ -523,6 +535,7 @@ if (bot) {
     MAIN_MENU
   );
 });
+}
 
 // Fallback
 if (bot) {
@@ -585,6 +598,7 @@ if (bot) {
 
   await ctx.reply('Use the menu below 👇', MAIN_MENU);
 });
+}
 
 // ─── Express API (consumed by the dashboard) ─────────────────────────────────
 const api = express();

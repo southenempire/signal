@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import NavBar from "../components/NavBar";
+import dynamic from 'next/dynamic';
 import "./globals.css";
+
+const NavBar = dynamic(() => import("../components/NavBar"), { ssr: false });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://signal-bot-chi.vercel.app'),
