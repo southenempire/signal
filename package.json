@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "dev": "npm run dev --prefix apps/dashboard & npm run dev --prefix apps/bot",
-    "build": "npm run build --prefix apps/dashboard",
+    "build": "npm run build --prefix apps/dashboard && ln -s apps/dashboard/.next .next && ln -s apps/dashboard/public public",
     "start": "npm run start --prefix apps/dashboard"
   },
   "keywords": [],
@@ -20,6 +20,10 @@
   ],
   "devDependencies": {
     "pm2": "^6.0.14",
-    "lucide-react": "^0.454.0"
+    "lucide-react": "^0.454.0",
+    "turbo": "^2.1.3",
+    "next": "16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   }
 }
