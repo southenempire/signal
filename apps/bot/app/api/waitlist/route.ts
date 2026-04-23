@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         // Notify YOU about the new signup
         await resend.emails.send({
           from: 'Signal <onboarding@resend.dev>',
-          to: process.env.ADMIN_EMAIL || 'southen03@gmail.com',
+          to: process.env.ADMIN_EMAIL || 'alabanaomi63@yahoo.com',
           subject: `🛰️ New Waitlist Signup: ${email}`,
           html: `
             <div style="font-family: monospace; background: #050505; color: #fff; padding: 30px; border-radius: 16px;">
