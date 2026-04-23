@@ -625,8 +625,9 @@ api.get('/api/reports', (req, res) => {
   res.json(getRecentReports(20));
 });
 
-api.listen(3001, () => {
-  console.log('📡 Signal API running on http://localhost:3001');
+const port = process.env.PORT || 3001;
+api.listen(port, '0.0.0.0', () => {
+  console.log(`📡 Signal API running on port ${port}`);
 });
 
 // ─── Launch ───────────────────────────────────────────────────────────────────
