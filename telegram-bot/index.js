@@ -20,9 +20,14 @@ import bs58 from 'bs58';
 import fetch from 'node-fetch'; // Real-world fetch for REST integrations
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').replace(/['"]/g, '').trim();
-const RPC_URL   = (process.env.RPC_URL || 'https://api.devnet.solana.com').replace(/['"]/g, '').trim();
-const USDC_MINT = (process.env.USDC_MINT || '4zMMC9srvvSbhvWxREz676cgVT7n8uyT8D5KWW2EGQuD').replace(/['"]/g, '').trim();
+let rawBotToken = (process.env.TELEGRAM_BOT_TOKEN || '').replace(/['"]/g, '').trim();
+const BOT_TOKEN = rawBotToken;
+
+let rawRpc = (process.env.RPC_URL || '').replace(/['"]/g, '').trim();
+const RPC_URL = rawRpc.startsWith('http') ? rawRpc : 'https://api.devnet.solana.com';
+
+let rawMint = (process.env.USDC_MINT || '').replace(/['"]/g, '').trim();
+const USDC_MINT = rawMint.length > 10 ? rawMint : '4zMMC9srvvSbhvWxREz676cgVT7n8uyT8D5KWW2EGQuD';
 const JUP_USD_MINT = 'JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
