@@ -1,0 +1,7 @@
+[build]
+builder = "RAILPACK"
+buildCommand = "cd bot && npm install"
+
+[deploy]
+startCommand = "cd bot && node index.js"
+restartPolicyType = "ON_FAILURE"
