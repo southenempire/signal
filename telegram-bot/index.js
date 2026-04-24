@@ -269,14 +269,22 @@ if (bot) {
   let auditResult = null;
   let reward = 0;
 
+  const categoryName = {
+    FUEL: 'fuel / gas',
+    GROCERY: 'grocery',
+    ELECTRICITY: 'electricity',
+    RENT: 'rent / property',
+    GENERIC: 'any real-world item, product, or receipt'
+  }[category] || 'real-world item';
+
   try {
     const prompt = `You are the Signal Sovereign Judge. 
-    Analyze this image for a ${category} price.
+    Analyze this image for a ${categoryName} price.
     
     CRITICAL INSTRUCTIONS:
     1. Identify the ORIGINAL CURRENCY ($, €, £, ¥, etc.).
     2. Convert the price to USDC equivalent (approximation is OK).
-    3. If it's a REAL photo of a ${category} (receipt, fuel pump, tag, recipe), extract the price.
+    3. If it's a REAL photo of a ${categoryName} (receipt, fuel pump, tag, shelf label), extract the price.
     4. Respond ONLY with JSON: {
          "verified": true, 
          "originalAmount": 0.00, 
