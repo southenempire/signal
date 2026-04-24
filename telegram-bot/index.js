@@ -225,7 +225,7 @@ if (bot) {
 
 // Category selection
 if (bot) {
-  bot.action(['FUEL','GROCERY','ELECTRICITY','RENT'], async (ctx) => {
+  bot.action(['FUEL','GROCERY','ELECTRICITY','RENT','GENERIC'], async (ctx) => {
   pendingReport.set(ctx.from.id, ctx.match[0]);
   const labels = {
     FUEL: '⛽ Fuel / Gas',
