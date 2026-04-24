@@ -226,7 +226,8 @@ if (bot) {
 // Category selection
 if (bot) {
   bot.action(['FUEL','GROCERY','ELECTRICITY','RENT','GENERIC'], async (ctx) => {
-  pendingReport.set(ctx.from.id, ctx.match[0]);
+  const category = ctx.callbackQuery.data;
+  pendingReport.set(ctx.from.id, category);
   const labels = {
     FUEL: '⛽ Fuel / Gas',
     GROCERY: '🛒 Grocery / Recipes',
@@ -236,7 +237,7 @@ if (bot) {
   };
   await ctx.answerCbQuery();
   await ctx.replyWithHTML(
-    `📸 <b>${labels[ctx.match[0]]} Report</b>\n\n` +
+    `📸 <b>${labels[category]} Report</b>\n\n` +
     `Send a clear photo with the price visible. Make sure lighting is good and the tag/display is readable.\n\n` +
     `<i>Tip: Price tags, fuel pump screens, and receipts all work great.</i>`
   );
