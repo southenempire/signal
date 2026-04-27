@@ -148,29 +148,6 @@ function StatsRow() {
 export default function WaitlistPage() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, mins: 0, secs: 0 });
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date().getTime();
-      const distance = LAUNCH_DATE.getTime() - now;
-
-      if (distance < 0) {
-        clearInterval(timer);
-        window.location.href = "/";
-        return;
-      }
-
-      setTimeLeft({
-        days: Math.floor(distance / (1000 * 60 * 60 * 24)),
-        hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
-        mins: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
-        secs: Math.floor((distance % (1000 * 60)) / 1000)
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,27 +222,27 @@ export default function WaitlistPage() {
               </p>
             </div>
 
-            {/* ─── COUNTDOWN ─── */}
-            <div className="grid grid-cols-4 gap-3 md:gap-4 w-full max-w-sm md:max-w-md mx-auto lg:mx-0">
-              {Object.entries(timeLeft).map(([label, val], i) => (
-                <motion.div 
-                  key={label} 
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.5 + i * 0.1 }}
-                  className="group flex flex-col items-center"
-                >
-                  <div className="w-full aspect-square max-w-[80px] rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-2xl md:text-3xl font-black italic backdrop-blur-xl group-hover:border-[#10B981]/50 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative overflow-hidden">
-                    <span className="relative z-10">{val.toString().padStart(2, '0')}</span>
-                    <div className="absolute inset-0 bg-gradient-to-br from-[#10B981]/[0.06] to-transparent" />
-                    <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#10B981]/30 to-transparent" />
-                  </div>
-                  <div className="text-[9px] md:text-[10px] font-black uppercase text-zinc-500 mt-2 tracking-[0.15em]">
-                    {label}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
+            {/* ─── LIVE CTA ─── */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5 }}
+              className="w-full max-w-sm md:max-w-md mx-auto lg:mx-0"
+            >
+              <a 
+                href="https://t.me/OfficialSignalOracleBot" 
+                target="_blank" 
+                rel="noreferrer"
+                className="group flex items-center justify-center gap-3 w-full p-4 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:border-[#10B981]/50 hover:bg-[#10B981]/10 transition-all shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-xl"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#10B981]/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-[#10B981]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.223-.548.223l.188-2.85 5.18-4.686c.223-.195-.054-.282-.346-.088l-6.4 4.024-2.76-.86c-.6-.185-.61-.6.125-.89l10.736-4.136c.5-.186.954.114.775.891z"/></svg>
+                </div>
+                <span className="font-bold text-white tracking-wider uppercase text-sm group-hover:text-[#10B981] transition-colors">
+                  Open Telegram Bot
+                </span>
+              </a>
+            </motion.div>
 
             {/* ─── EMAIL CAPTURE ─── */}
             <div className="w-full max-w-sm md:max-w-md mx-auto lg:mx-0">
