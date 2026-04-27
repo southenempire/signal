@@ -29,8 +29,8 @@ const RPC_URL = rawRpc.startsWith('http') ? rawRpc : 'https://api.devnet.solana.
 let rawMint = (process.env.USDC_MINT || '').replace(/['"]/g, '').trim();
 const USDC_MINT = rawMint.length > 10 ? rawMint : '4zMMC9srvvSbhvWxREz676cgVT7n8uyT8D5KWW2EGQuD';
 const JUP_USD_MINT = 'JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD';
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').replace(/['"]/g, '').trim();
+const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').replace(/['"]/g, '').trim();
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const MAGICBLOCK_API_URL = 'https://payments.magicblock.app/v1';
 
