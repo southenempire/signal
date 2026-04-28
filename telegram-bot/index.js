@@ -338,6 +338,9 @@ if (bot) {
             });
 
             const gemData = await gemResponse.json();
+            if (!gemData.candidates || !gemData.candidates[0]) {
+                throw new Error(`Gemini API Error: ${gemData.error?.message || 'Invalid API key or empty response'}`);
+            }
             const textResponse = gemData.candidates[0].content.parts[0].text;
             
             // Handle markdown code blocks if gemini returns them
