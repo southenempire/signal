@@ -31,6 +31,7 @@ const USDC_MINT = rawMint.length > 10 ? rawMint : '4zMMC9srvvSbhvWxREz676cgVT7n8
 const JUP_USD_MINT = 'JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD';
 const ANTHROPIC_API_KEY = (process.env.ANTHROPIC_API_KEY || '').replace(/['"]/g, '').trim();
 const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').replace(/['"]/g, '').trim();
+const OPENAI_API_KEY = (process.env.OPENAI_API_KEY || '').replace(/['"]/g, '').trim();
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const MAGICBLOCK_API_URL = 'https://payments.magicblock.app/v1';
 
@@ -355,8 +356,43 @@ if (bot) {
             auditResult = JSON.parse(cleanJson);
             console.log(`[Vision] Fallback SUCCESS: Gemini verified the report.`);
         } catch (secondaryErr) {
-            console.error(`[Vision] Total AI Blackout: ${secondaryErr.message}`);
-            return ctx.replyWithHTML(`🚫 <b>Signal System Outage:</b> All Vision AI endpoints are currently unreachable. Please try again in a few minutes.`);
+            console.error(`[Vision] Fallback 1 (Gemini) failed: ${secondaryErr.message}. Attempting Fallback 2 (OpenAI)...`);
+            
+            try {
+                const oaResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: [
+                            {
+                                role: "user",
+                                content: [
+                                    { type: "text", text: prompt },
+                                    { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
+                                ]
+                            }
+                        ],
+                        max_tokens: 1024
+                    })
+                });
+                
+                const oaData = await oaResponse.json();
+                if (!oaData.choices || !oaData.choices[0]) {
+                    console.error("[Vision] Raw OpenAI Failure Data:", JSON.stringify(oaData, null, 2));
+                    throw new Error(`OpenAI API Error: ${oaData.error?.message || 'Invalid API key or empty response'}`);
+                }
+                const textResponse = oaData.choices[0].message.content;
+                const cleanJson = textResponse.replace(/```json|```/g, '').trim();
+                auditResult = JSON.parse(cleanJson);
+                console.log(`[Vision] Fallback 2 SUCCESS: OpenAI verified the report.`);
+            } catch (tertiaryErr) {
+                console.error(`[Vision] Total AI Blackout (All 3 Models Failed): ${tertiaryErr.message}`);
+                return ctx.replyWithHTML(`🚫 <b>Signal System Outage:</b> All Vision AI endpoints (Claude, Gemini, and OpenAI) are currently unreachable. Please try again in a few minutes.`);
+            }
         }
     }
 
