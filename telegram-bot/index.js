@@ -333,13 +333,20 @@ if (bot) {
                             { text: prompt },
                             { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
                         ]
-                    }]
+                    }],
+                    safetySettings: [
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                    ]
                 })
             });
 
             const gemData = await gemResponse.json();
             if (!gemData.candidates || !gemData.candidates[0]) {
-                throw new Error(`Gemini API Error: ${gemData.error?.message || 'Invalid API key or empty response'}`);
+                console.error("[Vision] Raw Gemini Failure Data:", JSON.stringify(gemData, null, 2));
+                throw new Error(`Gemini API Error: ${gemData.error?.message || gemData.promptFeedback?.blockReason || 'Unknown error. Check logs.'}`);
             }
             const textResponse = gemData.candidates[0].content.parts[0].text;
             
