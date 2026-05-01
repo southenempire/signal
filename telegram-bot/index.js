@@ -415,11 +415,8 @@ if (bot) {
                     usdcPrice: (15.00 + Math.random() * 5).toFixed(2),
                     reason: "Signal Protocol (Demo Mode): Image verified via simulated oracle consensus."
                 };
-            }
-        }
     }
-
-    }
+  }
 
     if (!auditResult || !auditResult.verified) {
         return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${auditResult?.reason || "Invalid data format"}\nPlease submit a real physical data point.`);
