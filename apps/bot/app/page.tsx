@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import HomeContent from './HomeContent';
 
 export default function RootPage() {
-  redirect('/network');
+  return <HomeContent />;
 }
