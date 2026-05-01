@@ -405,7 +405,7 @@ export default function Home() {
 
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                   <CTAButton href="https://t.me/OfficialSignalOracleBot" className="px-10 h-16">
-                    Join the Movement
+                    Join Community
                   </CTAButton>
                   <a href="#how-it-works" className="text-white hover:text-[#10B981] font-bold text-sm transition-colors flex items-center gap-2 group">
                     How it works <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
@@ -572,7 +572,8 @@ export default function Home() {
             <div>
               <h4 className="font-display font-bold text-white text-[10px] mb-6 uppercase tracking-[0.2em]">Social</h4>
               <ul className="space-y-4">
-                <li><a href="https://t.me/OfficialSignalOracleBot" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors flex items-center gap-2">Telegram <ExternalLink size={12}/></a></li>
+                <li><a href="https://t.me/OfficialSignalOracleBot" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors flex items-center gap-2">Telegram Bot <ExternalLink size={12}/></a></li>
+                <li><a href="https://t.me/southenempire" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors flex items-center gap-2">Community Chat <ExternalLink size={12}/></a></li>
                 <li><a href="https://github.com/southenempire/signal" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors flex items-center gap-2">GitHub <ExternalLink size={12}/></a></li>
               </ul>
             </div>

@@ -198,9 +198,16 @@ export default function DocsPage() {
                <div className="text-[9px] font-black uppercase tracking-widest text-[#10B981] mb-2 flex items-center gap-2">
                   <Zap size={10} /> Live Status
                </div>
-               <div className="text-[11px] text-zinc-400 leading-relaxed">
+               <div className="text-[11px] text-zinc-400 leading-relaxed mb-4">
                   Genesis Phase 1 is currently active. Building physical oracle nodes on Solana.
                </div>
+               <a 
+                 href="https://t.me/southenempire" 
+                 target="_blank"
+                 className="flex items-center justify-center gap-2 py-3 rounded-xl bg-[#10B981]/10 border border-[#10B981]/20 text-[10px] font-black uppercase tracking-widest text-[#10B981] hover:bg-[#10B981]/20 transition-all"
+               >
+                 Join Community <ExternalLink size={12} />
+               </a>
             </div>
           </div>
         </aside>
