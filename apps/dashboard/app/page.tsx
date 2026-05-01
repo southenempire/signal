@@ -471,7 +471,7 @@ export default function Home() {
         </section>
 
         {/* ══ REALITY PORTAL HUB ══════════════════════════ */}
-        <section className="py-24 relative z-10">
+        <section id="how-it-works" className="py-24 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* GATEWAY 1: THE NETWORK (Mirror) */}
@@ -534,7 +534,7 @@ export default function Home() {
         </section>
 
         {/* ══ LIVE ACTIVITY PULSE ═══════════════════════ */}
-        <section className="pb-32 relative z-10" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+        <section id="insights" className="pb-32 relative z-10" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
           <div className="pt-24 mb-12 text-center">
             <div className="section-label justify-center">Live Network Activity</div>
             <h2 className="font-display text-2xl font-black text-white">Proof of Physical Work</h2>
@@ -564,7 +564,7 @@ export default function Home() {
               <h4 className="font-display font-bold text-white text-[10px] mb-6 uppercase tracking-[0.2em]">Network</h4>
               <ul className="space-y-4">
                 <li><a href="#how-it-works" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors">How It Works</a></li>
-                <li><a href="#marketplace" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors">Insights</a></li>
+                <li><a href="#insights" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors">Insights</a></li>
                 <li><Link href="/docs" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors">Docs</Link></li>
               </ul>
             </div>
