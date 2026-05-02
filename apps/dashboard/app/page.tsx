@@ -405,7 +405,7 @@ export default function Home() {
 
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                   <CTAButton href="https://t.me/OfficialSignalOracleBot" className="px-10 h-16">
-                    Join Community
+                    Launch Signal Bot
                   </CTAButton>
                   <a href="#how-it-works" className="text-white hover:text-[#10B981] font-bold text-sm transition-colors flex items-center gap-2 group">
                     How it works <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
