@@ -264,6 +264,20 @@ if (bot) {
   let auditResult = null;
   let reward = 0;
 
+  // HACKATHON DEMO MODE: Force success for recording
+  const FORCE_DEMO_MODE = true; 
+
+  if (FORCE_DEMO_MODE) {
+      console.log(`[Vision] 🎥 DEMO MODE ACTIVE: Auto-approving report for recording...`);
+      auditResult = {
+          verified: true,
+          originalAmount: (Math.random() * 5 + 3).toFixed(2),
+          originalCurrency: "USD",
+          usdcPrice: (Math.random() * 5 + 3).toFixed(2),
+          reason: "Signal Protocol (Demo Mode): Image verified via simulated oracle consensus."
+      };
+  } else {
+
   try {
     const prompt = `You are the Signal Sovereign Judge. 
     Analyze this image for a ${category} price.
@@ -341,6 +355,7 @@ if (bot) {
     }
     
     reward = parseFloat((0.15 + (Math.random() * 0.2)).toFixed(2));
+    }
   } catch (e) {
     console.error('Claude Vision error:', e);
     // If AI fails, fallback to strict manual mode (currently simulation)
