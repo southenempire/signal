@@ -256,7 +256,8 @@ if (bot) {
 
   const { filepath: imagePath, hash: imageHash, base64: imageBase64 } = await saveReportImage(ctx, category, ctx.from.id);
 
-  if (isImageDuplicate(imageHash)) {
+  // Only check duplicates if we successfully got a hash
+  if (imageHash && isImageDuplicate(imageHash)) {
     return ctx.replyWithHTML(`🚫 <b>Integrity Error:</b> Duplicate data detected.`);
   }
 
