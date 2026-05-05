@@ -80,7 +80,7 @@ export default function NavBar() {
               rel="noreferrer"
               className="hidden sm:flex items-center gap-2 cta-btn !py-2 !px-5 !text-sm !font-bold group shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]"
             >
-              Join Community
+              Launch Signal Bot
               <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </a>
             <button 

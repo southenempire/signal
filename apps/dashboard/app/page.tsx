@@ -398,8 +398,8 @@ export default function Home() {
                   </h1>
 
                   <p className="text-zinc-400 text-lg md:text-xl max-w-lg leading-relaxed font-medium">
-                    A community-powered network capturing real-world data verified by AI. 
-                    <span className="text-white"> Earn rewards for providing the ground truth.</span>
+                    The world's first decentralized Physical Oracle Network on Solana. 
+                    <span className="text-white"> Capturing ground truth, verified by AI, settled in real-time.</span>
                   </p>
                 </motion.div>
 
