@@ -324,7 +324,7 @@ if (bot) {
         console.error(`[Vision] Primary AI failed: ${primaryErr.message}. Attempting Fallback (Gemini 1.5 Flash)...`);
         
         try {
-            const gemResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            const gemResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -338,6 +338,8 @@ if (bot) {
             });
 
             const gemData = await gemResponse.json();
+            if (gemData.error) throw new Error(`Gemini API Error: ${gemData.error.message}`);
+            if (!gemData.candidates || !gemData.candidates[0]) throw new Error('Gemini returned no candidates');
             const textResponse = gemData.candidates[0].content.parts[0].text;
             
             // Handle markdown code blocks if gemini returns them
