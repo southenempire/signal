@@ -75,13 +75,13 @@ export default function NavBar() {
           {/* CTA & Mobile Toggle */}
           <div className="flex items-center gap-4">
             <a
-              href="https://t.me/+gcVgzcIIu2M3ODFk"
+              href="https://t.me/OfficialSignalOracleBot"
               target="_blank"
               rel="noreferrer"
-              className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-sm text-white font-medium transition-all group"
+              className="hidden sm:flex items-center gap-2 cta-btn !py-2 !px-5 !text-sm !font-bold group shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]"
             >
-              Join Community
-              <ExternalLink className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              Launch Signal Bot
+              <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </a>
             <button 
               className="md:hidden text-gray-400 hover:text-white"

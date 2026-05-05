@@ -398,14 +398,14 @@ export default function Home() {
                   </h1>
 
                   <p className="text-zinc-400 text-lg md:text-xl max-w-lg leading-relaxed font-medium">
-                    A community-powered network capturing real-world data verified by AI. 
-                    <span className="text-white"> Earn rewards for providing the ground truth.</span>
+                    The world's first decentralized Physical Oracle Network on Solana. 
+                    <span className="text-white"> Capturing ground truth, verified by AI, settled in real-time.</span>
                   </p>
                 </motion.div>
 
                 <div className="flex flex-col sm:flex-row items-center gap-6">
                   <CTAButton href="https://t.me/OfficialSignalOracleBot" className="px-10 h-16">
-                    Join Community
+                    Launch Signal Bot
                   </CTAButton>
                   <a href="#how-it-works" className="text-white hover:text-[#10B981] font-bold text-sm transition-colors flex items-center gap-2 group">
                     How it works <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
