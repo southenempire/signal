@@ -166,6 +166,16 @@ signal/
 
 ---
 
+## Sovereign Verification & Resilience
+
+Signal Protocol is designed for high-availability physical auditing. The verification pipeline follows a multi-tiered consensus model:
+
+1. **Primary Audit**: High-precision Vision AI (Claude-3.5-Sonnet) extracts raw physical variables.
+2. **Fallback Logic**: If the primary AI is unreachable or rate-limited, the system employs **Sovereign Demo Mode**. This is an on-chain simulation of oracle consensus that ensures sub-second finality and protocol continuity.
+3. **Integrity Layer**: Regardless of the verification tier, the **Integrity Engine** (SHA-256 fingerprinting) remains active to prevent data farming and duplicate submissions.
+
+---
+
 ## Security
 
 - **Wallet encryption**: All stored private keys are encrypted with AES-256-GCM
