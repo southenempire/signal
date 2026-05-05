@@ -69,7 +69,7 @@ export default function TruthLedger() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
              <div className="w-1.5 h-1.5 rounded-full bg-[#00FFAA] animate-pulse" />
-             <span className="font-mono text-[9px] text-[#00FFAA] uppercase tracking-tighter">Mainnet Sync</span>
+             <span className="font-mono text-[9px] text-[#00FFAA] uppercase tracking-tighter">Devnet Sync</span>
           </div>
         </div>
       </div>

@@ -41,6 +41,7 @@ export async function saveReportImage(ctx, category, telegramId) {
     const filename = `${category.toLowerCase()}_${telegramId}_${ts}.jpg`;
     const filepath = join(dir, filename);
 
+    writeFileSync(filepath, buffer);
     const base64 = buffer.toString('base64');
     return { filepath, hash, base64 };
   } catch (err) {

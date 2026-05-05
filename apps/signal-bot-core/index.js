@@ -220,7 +220,7 @@ if (bot) {
 
 // Category selection
 if (bot) {
-  bot.action(['FUEL','GROCERY','ELECTRICITY','RENT'], async (ctx) => {
+  bot.action(['FUEL','GROCERY','ELECTRICITY','RENT','GENERIC'], async (ctx) => {
   pendingReport.set(ctx.from.id, ctx.match[0]);
   const labels = {
     FUEL: '⛽ Fuel / Gas',
@@ -265,7 +265,7 @@ if (bot) {
   let reward = 0;
 
   // HACKATHON DEMO MODE: Force success for recording
-  const FORCE_DEMO_MODE = true; 
+  const FORCE_DEMO_MODE = process.env.DEMO_MODE === 'true'; 
 
   if (FORCE_DEMO_MODE) {
       console.log(`[Vision] 🎥 DEMO MODE ACTIVE: Auto-approving report for recording...`);

@@ -8,7 +8,7 @@ import VisionSimulator from "../components/VisionSimulator";
 import ImpactFeed from "../components/ImpactFeed";
 import { motion, AnimatePresence } from "framer-motion";
 
-const BOT_API = "http://localhost:3001";
+const BOT_API = process.env.NEXT_PUBLIC_BOT_API || "/api";
 
 /* ═══════════════════════════════════════════════════════
    CANVAS — Particle Network (DePIN nodes)
@@ -270,7 +270,7 @@ function Sparkline({ color }: { color: string }) {
    TICKER BAR
 ═══════════════════════════════════════════════════════ */
 const TICKS = [
-  "SOLANA MAINNET", "VISION AI VERIFIED", "USDC PAYOUTS", "HELIUS WEBHOOKS",
+  "SOLANA DEVNET", "VISION AI VERIFIED", "USDC PAYOUTS", "HELIUS WEBHOOKS",
   "14 GLOBAL ZONES", "JUPITER INTEGRATED", "TELEGRAM NATIVE", "DEPIN ORACLE",
 ];
 function Ticker() {

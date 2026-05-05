@@ -52,7 +52,7 @@ export default function NetworkExplorer() {
               <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Network Status</span>
               <span className="text-[10px] font-mono text-[#10B981] flex items-center gap-2">
                  <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                 SOLANA.MAINNET.ACTIVE
+                 SOLANA.DEVNET.ACTIVE
               </span>
            </div>
            <div className="w-px h-8 bg-white/5" />
@@ -183,7 +183,7 @@ export default function NetworkExplorer() {
            <div className="p-8 border-t border-white/5 bg-white/[0.01] flex items-center justify-between">
               <div className="flex items-center gap-3">
                  <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                 <span className="text-[10px] font-black uppercase tracking-widest text-[#10B981]">Mainnet Verified</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#10B981]">Devnet Verified</span>
               </div>
               <span className="text-[10px] font-mono text-zinc-600">SEC-ID: 0x4f...a2</span>
            </div>
@@ -196,7 +196,7 @@ export default function NetworkExplorer() {
          <div className="flex items-center gap-6">
             <FooterLink label="Dashboard" href="/" />
             <FooterLink label="Documentation" href="/docs" />
-            <FooterLink label="Mainnet Status" href="#" active />
+            <FooterLink label="Network Status" href="#" active />
             <div className="w-px h-4 bg-white/10" />
             <a href="https://github.com/southenempire/signal" target="_blank" className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 hover:text-white transition-colors">
                <Code size={12} /> Source

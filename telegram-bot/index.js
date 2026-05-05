@@ -272,7 +272,7 @@ if (bot) {
   let reward = 0;
 
   // HACKATHON DEMO MODE: Force success for recording
-  const FORCE_DEMO_MODE = true; 
+  const FORCE_DEMO_MODE = process.env.DEMO_MODE === 'true'; 
 
   if (FORCE_DEMO_MODE) {
       console.log(`[Vision] 🎥 DEMO MODE ACTIVE: Auto-approving report for recording...`);
