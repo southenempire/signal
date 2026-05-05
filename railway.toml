@@ -1,7 +1,7 @@
 [build]
 builder = "RAILPACK"
-buildCommand = "cd telegram-bot && npm install"
+buildCommand = "npm install"
 
 [deploy]
-startCommand = "cd telegram-bot && node index.js"
+startCommand = "node index.js"
 restartPolicyType = "ON_FAILURE"
