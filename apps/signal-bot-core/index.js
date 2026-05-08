@@ -1,6 +1,10 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+/**
+ * Signal Protocol Bot — Physical Truth Oracle
+ * Triggering fresh deploy...
+ */
 import { Telegraf, Markup } from 'telegraf';
 import {
   Connection, Keypair, PublicKey, LAMPORTS_PER_SOL
