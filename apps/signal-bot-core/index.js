@@ -366,13 +366,13 @@ if (bot) {
     }
     
     reward = parseFloat((0.15 + (Math.random() * 0.2)).toFixed(2));
-    }
+
   } catch (e) {
     console.error('Claude Vision error:', e);
-    // If AI fails, fallback to strict manual mode (currently simulation)
     auditResult = { usdcPrice: 3.45, originalAmount: 3.45, originalCurrency: 'USD' };
     reward = 0.25;
   }
+  } // end else (not demo mode)
 
   const curSymbol = { USD: '$', EUR: '€', GBP: '£', NGN: '₦' }[auditResult.originalCurrency] || auditResult.originalCurrency;
 
