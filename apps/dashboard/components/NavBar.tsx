@@ -14,6 +14,7 @@ const isLive = () => {
 };
 
 const navItems = [
+  { name: 'Pitch Deck', path: '/pitch', icon: Zap },
   { name: 'Live Network', path: '/network', icon: Network, hideDuringPrelaunch: true },
   { name: 'Developers', path: '/docs', icon: BookOpen },
 ];
