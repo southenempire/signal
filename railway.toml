@@ -1,7 +1,7 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install --prefix telegram-bot"
+buildCommand = "npm install --prefix signal-bot"
 
 [deploy]
-startCommand = "node telegram-bot/index.js"
+startCommand = "node signal-bot/index.js"
 restartPolicyType = "ON_FAILURE"
