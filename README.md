@@ -1,4 +1,6 @@
 # Signal Protocol
+> **Status:** Production Stabilization
+> **Last Deployment Heartbeat:** 2026-05-08 14:58 UTC
 
 **The world's first decentralized Human Oracle network on Solana.**
 
