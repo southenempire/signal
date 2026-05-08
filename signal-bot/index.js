@@ -372,12 +372,13 @@ CRITICAL INSTRUCTIONS:
               return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${auditResult?.reason || "Invalid data format"}\nPlease submit a real physical data point.`);
           }
           
-          reward = parseFloat((0.15 + (Math.random() * 0.2)).toFixed(2));
+          // Boosted for Demo: $10 - $25 USDC per report
+          reward = parseFloat((10.0 + (Math.random() * 15.0)).toFixed(2));
 
       } catch (e) {
           console.error('Final Verification Error:', e);
-          auditResult = { usdcPrice: 3.45, originalAmount: 3.45, originalCurrency: 'USD', verified: true };
-          reward = 0.25;
+          auditResult = { usdcPrice: 15.45, originalAmount: 15.45, originalCurrency: 'USD', verified: true };
+          reward = 12.50;
       }
   }
 
