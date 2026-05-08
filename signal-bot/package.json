@@ -1,6 +1,9 @@
 {
   "name": "signal-bot",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "Signal DePIN Telegram Bot",
   "type": "module",
   "main": "index.js",
