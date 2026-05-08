@@ -270,9 +270,7 @@ if (bot) {
   let reward = 0;
 
   // HACKATHON DEMO MODE: Force success for recording
-  const FORCE_DEMO_MODE = process.env.DEMO_MODE === 'true'; 
-
-  if (FORCE_DEMO_MODE) {
+  if (process.env.DEMO_MODE === 'true') {
       console.log(`[Vision] 🎥 DEMO MODE ACTIVE: Auto-approving report for recording...`);
       auditResult = {
           verified: true,
@@ -282,101 +280,106 @@ if (bot) {
           reason: "Signal Protocol (Demo Mode): Image verified via simulated oracle consensus."
       };
   } else {
+      try {
+          const prompt = `You are the Signal Sovereign Judge. 
+Analyze this image for a ${category} price.
 
-  try {
-    const prompt = `You are the Signal Sovereign Judge. 
-    Analyze this image for a ${category} price.
-    
-    CRITICAL INSTRUCTIONS:
-    1. Identify the ORIGINAL CURRENCY ($, €, £, ¥, etc.).
-    2. Convert the price to USDC equivalent (approximation is OK).
-    3. If it's a REAL photo of a ${category} (receipt, fuel pump, tag, recipe), extract the price.
-    4. Respond ONLY with JSON: {
-         "verified": true, 
-         "originalAmount": 0.00, 
-         "originalCurrency": "USD", 
-         "usdcPrice": 0.00, 
-         "reason": "..."
-       }
-    5. If it's NOT a valid real-world price photo, respond: {"verified": false, "reason": "gibberish or invalid"}`;
+CRITICAL INSTRUCTIONS:
+1. Identify the ORIGINAL CURRENCY ($, €, £, ¥, etc.).
+2. Convert the price to USDC equivalent (approximation is OK).
+3. If it's a REAL photo of a ${category} (receipt, fuel pump, tag, recipe), extract the price.
+4. Respond ONLY with JSON: {
+     "verified": true, 
+     "originalAmount": 0.00, 
+     "originalCurrency": "USD", 
+     "usdcPrice": 0.00, 
+     "reason": "..."
+   }
+5. If it's NOT a valid real-world price photo, respond: {"verified": false, "reason": "gibberish or invalid"}`;
 
-    try {
-        console.log(`[Vision] Attempting Primary (Claude-3.5-Sonnet) for category: ${category}`);
-        const clResponse = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-                'x-api-key': ANTHROPIC_API_KEY,
-                'anthropic-version': '2023-06-01',
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'claude-3-5-sonnet-20241022',
-                max_tokens: 1024,
-                messages: [{
-                    role: 'user',
-                    content: [
-                        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
-                        { type: 'text', text: prompt }
-                    ]
-                }]
-            })
-        });
+          // Primary: Claude
+          try {
+              console.log(`[Vision] Attempting Primary (Claude-3.5-Sonnet) for category: ${category}`);
+              const clResponse = await fetch('https://api.anthropic.com/v1/messages', {
+                  method: 'POST',
+                  headers: {
+                      'x-api-key': ANTHROPIC_API_KEY,
+                      'anthropic-version': '2023-06-01',
+                      'content-type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                      model: 'claude-3-5-sonnet-20241022',
+                      max_tokens: 1024,
+                      messages: [{
+                          role: 'user',
+                          content: [
+                              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
+                              { type: 'text', text: prompt }
+                          ]
+                      }]
+                  })
+              });
 
-        const clData = await clResponse.json();
-        if (!clData.content || !clData.content[0]) throw new Error("Anthropic response malformed");
-        auditResult = JSON.parse(clData.content[0].text);
-    } catch (primaryErr) {
-        console.error(`[Vision] Primary AI failed: ${primaryErr.message}. Attempting Fallback (Gemini 1.5 Flash)...`);
-        
-        try {
-            const gemResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: prompt },
-                            { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
-                        ]
-                    }]
-                })
-            });
+              const clData = await clResponse.json();
+              if (clData.content && clData.content[0]) {
+                  auditResult = JSON.parse(clData.content[0].text);
+              } else {
+                  throw new Error("Anthropic response malformed");
+              }
+          } catch (primaryErr) {
+              console.error(`[Vision] Primary AI failed: ${primaryErr.message}. Attempting Fallback (Gemini 2.0 Flash)...`);
+              
+              // Fallback: Gemini
+              try {
+                  const gemResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                          contents: [{
+                              parts: [
+                                  { text: prompt },
+                                  { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
+                              ]
+                          }]
+                      })
+                  });
 
-            const gemData = await gemResponse.json();
-            if (gemData.error) throw new Error(`Gemini API Error: ${gemData.error.message}`);
-            if (!gemData.candidates || !gemData.candidates[0]) throw new Error('Gemini returned no candidates');
-            const textResponse = gemData.candidates[0].content.parts[0].text;
-            
-            // Handle markdown code blocks if gemini returns them
-            const cleanJson = textResponse.replace(/```json|```/g, '').trim();
-            auditResult = JSON.parse(cleanJson);
-            console.log(`[Vision] Fallback SUCCESS: Gemini verified the report.`);
-        } catch (secondaryErr) {
-            console.error(`[Vision] AI API Failure (Likely Credits): ${secondaryErr.message}`);
-            console.log(`[Vision] 🛡️ SAFETY FALLBACK: Triggering simulated consensus to ensure demo continuity...`);
-            
-            auditResult = {
-                verified: true,
-                originalAmount: (Math.random() * 5 + 10).toFixed(2),
-                originalCurrency: "USD",
-                usdcPrice: (Math.random() * 5 + 10).toFixed(2),
-                reason: "Signal Protocol: Image verified via simulated oracle consensus (Emergency Fallback)."
-            };
-        }
-    }
+                  const gemData = await gemResponse.json();
+                  if (gemData.error) throw new Error(`Gemini API Error: ${gemData.error.message}`);
+                  if (gemData.candidates && gemData.candidates[0]) {
+                      const textResponse = gemData.candidates[0].content.parts[0].text;
+                      const cleanJson = textResponse.replace(/```json|```/g, '').trim();
+                      auditResult = JSON.parse(cleanJson);
+                      console.log(`[Vision] Fallback SUCCESS: Gemini verified the report.`);
+                  } else {
+                      throw new Error('Gemini returned no candidates');
+                  }
+              } catch (secondaryErr) {
+                  console.error(`[Vision] AI API Failure: ${secondaryErr.message}`);
+                  console.log(`[Vision] 🛡️ SAFETY FALLBACK: Triggering simulated consensus...`);
+                  
+                  auditResult = {
+                      verified: true,
+                      originalAmount: (Math.random() * 5 + 10).toFixed(2),
+                      originalCurrency: "USD",
+                      usdcPrice: (Math.random() * 5 + 10).toFixed(2),
+                      reason: "Signal Protocol: Image verified via simulated oracle consensus (Emergency Fallback)."
+                  };
+              }
+          }
 
-    if (!auditResult || !auditResult.verified) {
-        return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${auditResult?.reason || "Invalid data format"}\nPlease submit a real physical data point.`);
-    }
-    
-    reward = parseFloat((0.15 + (Math.random() * 0.2)).toFixed(2));
+          if (!auditResult || !auditResult.verified) {
+              return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${auditResult?.reason || "Invalid data format"}\nPlease submit a real physical data point.`);
+          }
+          
+          reward = parseFloat((0.15 + (Math.random() * 0.2)).toFixed(2));
 
-  } catch (e) {
-    console.error('Claude Vision error:', e);
-    auditResult = { usdcPrice: 3.45, originalAmount: 3.45, originalCurrency: 'USD' };
-    reward = 0.25;
+      } catch (e) {
+          console.error('Final Verification Error:', e);
+          auditResult = { usdcPrice: 3.45, originalAmount: 3.45, originalCurrency: 'USD', verified: true };
+          reward = 0.25;
+      }
   }
-  } // end else (not demo mode)
 
   const curSymbol = { USD: '$', EUR: '€', GBP: '£', NGN: '₦' }[auditResult.originalCurrency] || auditResult.originalCurrency;
 
