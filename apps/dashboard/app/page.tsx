@@ -356,7 +356,7 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-animated overflow-x-hidden">
+    <div className="min-h-screen bg-animated overflow-x-hidden pt-16">
       {/* ── FULL-VIEWPORT BACKGROUND LAYER (canvas + orbs) ── */}
       <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
         <ParticleNetwork />

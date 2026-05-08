@@ -26,9 +26,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased dark bg-black">
-      <body className="min-h-full flex flex-col pt-16">
+      <body className="min-h-full flex flex-col">
         <ClientNavBar />
-        <main className="flex-grow flex flex-col relativ z-0">
+        <main className="flex-grow flex flex-col relative z-0">
           {children}
         </main>
       </body>
