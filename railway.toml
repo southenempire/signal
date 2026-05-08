@@ -1,7 +1,0 @@
-[build]
-builder = "NIXPACKS"
-buildCommand = "npm install --prefix signal-bot"
-
-[deploy]
-startCommand = "node signal-bot/index.js"
-restartPolicyType = "ON_FAILURE"
