@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Zap, Network, BookOpen, ExternalLink, Menu, X } from 'lucide-react';
+import { Network, BookOpen, ExternalLink, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
 const LAUNCH_DATE = new Date("2026-05-01T00:00:00Z");
@@ -14,7 +14,6 @@ const isLive = () => {
 };
 
 const navItems = [
-  { name: 'Pitch Deck', path: '/pitch', icon: Zap },
   { name: 'Live Network', path: '/network', icon: Network, hideDuringPrelaunch: true },
   { name: 'Developers', path: '/docs', icon: BookOpen },
 ];
