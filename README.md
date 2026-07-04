@@ -1,12 +1,11 @@
 # Signal Protocol
-> **Status:** Production Stabilization
-> **Last Deployment Heartbeat:** 2026-05-08 14:58 UTC
+> **The Physical Truth Layer for the Agent Economy.**
+> 
+> [**View Cinematic Pitch Deck**](https://signal-bot-chi.vercel.app/pitch.html) | [**Try the Bot**](https://t.me/OfficialSignalOracleBot)
 
-**The world's first decentralized Human Oracle network on Solana.**
+Signal is a decentralized physical oracle network on Solana that provides sovereign, real-time truth for autonomous entities. We bridge the physical-to-digital gap by turning global nodes into verified data providers. Signal enables AI agents to see, hear, and verify the physical world with cryptographic certainty.
 
-Signal bridges the physical-to-digital gap by turning anyone with a smartphone into a verified data node. Users report real-world prices (fuel, groceries, electricity, rent) through Telegram, where Vision AI authenticates the data and rewards contributors with instant USDC payouts on Solana.
-
-No wallet needed. No app download. Just open Telegram and start earning.
+**Zero Friction. Sub-second Finality. Machine-Ready Truth.**
 
 ---
 
@@ -42,7 +41,7 @@ receipt, shelf label)        authenticates truth)         private transfers)
               │ Claude 3.5│ │SQLite │ │  Express   │
               │ Vision AI │ │  DB   │ │  REST API  │
               │ (Anthropic)│ │       │ │ /api/stats │
-              └────────┬──┘ └───────┘ └──────┬────┘
+              └────────┴──┘ └───────┘ └──────┬────┘
                        │                      │
               ┌────────▼──────────────────────▼────┐
               │          Solana Devnet               │
@@ -50,7 +49,7 @@ receipt, shelf label)        authenticates truth)         private transfers)
               │  │MagicBlock│  │  Jupiter V6 API  │  │
               │  │ Private  │  │  USDC → jupUSD   │  │
               │  │ Payments │  │  Yield Staking   │  │
-              │  └──────────┘  └─────────────────┘  │
+              │  └──────────┘  └─────────────────┐  │
               └─────────────────────────────────────┘
 ```
 
@@ -60,18 +59,28 @@ receipt, shelf label)        authenticates truth)         private transfers)
 
 | Layer | Technology | Purpose |
 |:------|:-----------|:--------|
-| **Interface** | Telegram Bot (Telegraf) | Zero-friction user onboarding — no wallet or app needed |
-| **AI Verification** | Claude-3.5-Sonnet + Gemini Flash (fallback) | Multi-provider Vision AI for physical data authentication |
-| **Blockchain** | Solana (Web3.js + SPL Token) | Wallet generation, USDC transfers, on-chain settlement |
-| **Payments** | MagicBlock Ephemeral Rollup | Private SPL token transfers via Provable Ephemeral Rollups |
-| **DeFi** | Jupiter V6 Aggregator | Real-time USDC → jupUSD swaps for yield generation |
-| **Database** | SQLite (better-sqlite3) | Encrypted user data, report logs, payout history |
-| **Dashboard** | Next.js 14 + Tailwind CSS | Waitlist, network stats, real-time feed visualization |
-| **Hosting** | Railway (Bot) + Vercel (Dashboard) | 24/7 uptime with auto-deploy from GitHub |
+| **Reporting Layer** | Telegram Bot (Telegraf) | Zero-friction user onboarding for human and hardware nodes |
+| **Verification Engine** | Claude-3.5-Sonnet + Gemini Flash | Multi-provider Vision AI for physical data auditing |
+| **Blockchain Core** | Solana (Web3.js + Anchor) | Programmable settlement, rewards, and protocol governance |
+| **Privacy & Speed** | MagicBlock Ephemeral Rollups | Sub-second finality for physical reports via private rollups |
+| **Liquidity Layer** | Jupiter V6 Aggregator | Real-time yield generation (USDC → jupUSD) for nodes |
+| **Agent Access** | Signal Agent SDK | Programmatic physical data procurement for autonomous agents |
+| **Dashboard** | Next.js 14 + Three.js | Real-time visualization of global network truth |
 
 ---
 
 ## Features
+
+### Physical Oracle Protocol
+- **Vision AI Auditing**: Claude-3.5-Sonnet primary → Gemini 1.5 Flash fallback
+- **Sub-second Settlement**: MagicBlock Ephemeral Rollups for near-instant on-chain finality
+- **Integrity Engine**: SHA-256 fingerprinting to prevent physical data spoofing
+- **Yield-Bearing Rewards**: Auto-staking of node rewards into jupUSD via Jupiter
+
+### Agent-First Infrastructure
+- **Signal SDK**: A developer-first library for autonomous agents to request 'ground truth'
+- **Truth Tax**: Transparent, on-chain protocol fees for data requests
+- **Geographic Mesh**: Global distribution of nodes for localized verification
 
 ### Telegram Oracle Bot
 - **5 reporting categories**: Fuel, Grocery, Electricity, Rent, Global Physical Data

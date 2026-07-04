@@ -58,6 +58,18 @@ db.exec(`
     FOREIGN KEY (telegram_id) REFERENCES users(telegram_id)
   );
 
+  CREATE TABLE IF NOT EXISTS yellow_links (
+    telegram_id   INTEGER PRIMARY KEY,
+    evm_address   TEXT NOT NULL,
+    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS yellow_credits (
+    evm_address   TEXT PRIMARY KEY,
+    amount        REAL DEFAULT 0,
+    updated_at    DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE INDEX IF NOT EXISTS idx_reports_telegram ON reports(telegram_id);
   CREATE INDEX IF NOT EXISTS idx_reports_category ON reports(category);
   CREATE INDEX IF NOT EXISTS idx_payouts_telegram ON payouts(telegram_id);
@@ -109,6 +121,16 @@ const stmts = {
       (SELECT COALESCE(SUM(amount), 0) FROM payouts) as totalVolume
   `),
   getDailyReportCount: db.prepare("SELECT COUNT(*) as count FROM reports WHERE telegram_id = ? AND date(created_at) = date('now')"),
+  getYellowLink:      db.prepare('SELECT evm_address FROM yellow_links WHERE telegram_id = ?'),
+  insertYellowLink:   db.prepare('INSERT OR REPLACE INTO yellow_links (telegram_id, evm_address) VALUES (?, ?)'),
+  getYellowCredit:    db.prepare('SELECT amount FROM yellow_credits WHERE evm_address = ?'),
+  insertYellowCredit:  db.prepare('INSERT OR REPLACE INTO yellow_credits (evm_address, amount) VALUES (?, ?)'),
+  getYellowStats:     db.prepare(`
+    SELECT 
+      COUNT(evm_address) as pendingAddresses,
+      COALESCE(SUM(amount), 0) as totalPendingUSDC
+    FROM yellow_credits
+  `),
 };
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -222,6 +244,33 @@ export function getUserTotalEarned(telegramId) {
 export function getDailyReportCount(telegramId) {
   const row = stmts.getDailyReportCount.get(telegramId);
   return row ? row.count : 0;
+}
+
+export function saveYellowLink(telegramId, evmAddress) {
+  stmts.insertYellowLink.run(telegramId, evmAddress);
+}
+
+export function getYellowLink(telegramId) {
+  const row = stmts.getYellowLink.get(telegramId);
+  return row ? row.evm_address : null;
+}
+
+export function getYellowCredit(evmAddress) {
+  const row = stmts.getYellowCredit.get(evmAddress);
+  return row ? row.amount : 0;
+}
+
+export function addYellowCredit(evmAddress, amount) {
+  const current = getYellowCredit(evmAddress);
+  stmts.insertYellowCredit.run(evmAddress, current + amount);
+}
+
+export function getYellowDBStats() {
+  const row = stmts.getYellowStats.get();
+  return {
+    pendingAddresses: row ? row.pendingAddresses : 0,
+    totalPendingUSDC: row ? row.totalPendingUSDC : 0,
+  };
 }
 
 export default db;

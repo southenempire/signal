@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 /**
  * Signal Protocol Bot — Physical Truth Oracle
- * Triggering fresh deploy...
+ * Integrated: Yellow Network (Nitrolite state channel settlement)
  */
 import { Telegraf, Markup } from 'telegraf';
 import {
@@ -17,11 +17,18 @@ import { readFileSync } from 'fs';
 import {
   getOrCreateUser, saveReport, savePayout,
   getLeaderboard, getRecentReports, getNetworkStats,
-  getUserTotalEarned, getDailyReportCount, isImageDuplicate
+  getUserTotalEarned, getDailyReportCount, isImageDuplicate,
+  saveYellowLink, getYellowLink
 } from './db.js';
 import { saveReportImage } from './images.js';
 import bs58 from 'bs58';
-import fetch from 'node-fetch'; // Real-world fetch for REST integrations
+import fetch from 'node-fetch';
+import {
+  initYellow,
+  payReporterYellow,
+  getPendingYellowBalance,
+  getYellowStatus,
+} from './yellow.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -167,6 +174,7 @@ if (BOT_TOKEN) {
 const MAIN_MENU = Markup.keyboard([
   ['📸 Report a Price', '💰 My Rewards'],
   ['🏆 Leaderboard',   '📖 How It Works'],
+  ['🟡 Yellow Channel', '🌐 Network Status'],
 ]).resize();
 
 // /start
@@ -388,7 +396,7 @@ CRITICAL INSTRUCTIONS:
       `✅ <b>Physical Truth Verified!</b>\n` +
       `💲 Original: <b>${curSymbol}${auditResult.originalAmount}</b>\n` +
       `🌍 Standardized: <b>$${auditResult.usdcPrice} USDC</b>\n\n` +
-      `Settling via MagicBlock... ⏳`
+      `Settling via MagicBlock + Yellow... ⏳`
   );
 
   // Zerion Agent Policy Check: Max Payout
@@ -396,7 +404,7 @@ CRITICAL INSTRUCTIONS:
       reward = AGENT_POLICIES.SPEND_LIMIT_USDC;
   }
 
-  // Real MagicBlock Private Payout
+  // Primary rail: MagicBlock Private Payout (Solana)
   const txSig = await payUserMagicBlock(user.keypair.publicKey, reward);
   const usdcBal = await getUSDC(user.keypair.publicKey);
 
@@ -404,16 +412,42 @@ CRITICAL INSTRUCTIONS:
   if (txSig) savePayout(ctx.from.id, reward, txSig);
 
   const updated = getOrCreateUser(ctx.from.id);
-  await ctx.replyWithHTML(
+
+  // Bonus rail: Yellow Network state channel credit (opt-in)
+  const evmAddress = getYellowLink(ctx.from.id);
+  let yellowResult = null;
+  if (evmAddress) {
+    try {
+      yellowResult = await payReporterYellow(evmAddress, reward);
+    } catch (e) {
+      console.warn('[Yellow] Bonus payout failed (non-critical):', e.message);
+    }
+  }
+
+  // Build payout confirmation message
+  let payoutMsg =
     `🎊 <b>Sovereign Payout Complete!</b>\n\n` +
     `💰 Earned: <b>+$${reward} USDC</b>\n` +
     `🛡️ Lane: <b>MagicBlock Private (PER)</b>\n` +
-    `🏦 Balance: <b>$${usdcBal.toFixed(2)}</b>\n\n` +
-    `<i>Verified by Claude-3.5-Sonnet</i>`,
-    MAIN_MENU
-  );
+    `🏦 Balance: <b>$${usdcBal.toFixed(2)}</b>\n`;
+
+  if (yellowResult?.success) {
+    payoutMsg +=
+      `\n🟡 <b>Yellow Bonus Credit!</b>\n` +
+      `└ $${reward} USDC → state channel\n` +
+      `└ Wallet: <code>${evmAddress.slice(0,8)}...${evmAddress.slice(-6)}</code>\n`;
+  } else if (evmAddress) {
+    payoutMsg += `\n🟡 Yellow credit queued (channel initializing)...\n`;
+  } else {
+    payoutMsg += `\n💡 <i>Tip: Tap 🟡 Yellow Channel to earn bonus EVM credits!</i>\n`;
+  }
+
+  payoutMsg += `\n<i>Verified by Claude-3.5-Sonnet · Powered by Signal × Yellow</i>`;
+
+  await ctx.replyWithHTML(payoutMsg, MAIN_MENU);
 });
 }
+
 
 // My Rewards
 if (bot) {
@@ -442,6 +476,7 @@ if (bot) {
       [Markup.button.callback('🪐 Swap USDC to jupUSD', 'swap_jupusd')],
       [Markup.button.callback('💸 Withdraw (USDC)', 'withdraw_init'), Markup.button.callback('🏧 Withdraw (jupUSD)', 'withdraw_jup_init')],
       [Markup.button.callback('🏦 Cash Out to Bank', 'cashout_bank')],
+      [Markup.button.callback('🟡 Link Yellow Wallet', 'yellow_link')],
       [Markup.button.callback('🔑 Export Private Key', 'export_key')]
     ])
   );
@@ -571,10 +606,104 @@ if (bot) {
 });
 }
 
+// ── Yellow Channel Handler ───────────────────────────────────────────────────
+if (bot) {
+  bot.hears('🟡 Yellow Channel', async (ctx) => {
+    const userId = ctx.from.id;
+    const evmAddress = getYellowLink(userId);
+    const status = getYellowStatus();
+
+    if (!status.online) {
+      return ctx.replyWithHTML(
+        `🟡 <b>Yellow Network</b>\n\n` +
+        `⚠️ Yellow settlement rail is <b>offline</b>.\n` +
+        `The protocol owner needs to configure Yellow private keys.\n\n` +
+        `<i>Network: ${status.network} · Node: ${status.nitronodeURL}</i>`
+      );
+    }
+
+    const pending = evmAddress ? getPendingYellowBalance(evmAddress) : 0;
+
+    await ctx.replyWithHTML(
+      `🟡 <b>Yellow Network Channel</b>\n\n` +
+      `Status: <b>🟢 Online</b>\n` +
+      `Network: <b>${status.network}</b>\n` +
+      `Asset: <b>${status.asset.toUpperCase()}</b>\n\n` +
+      (evmAddress
+        ? `🔗 <b>Linked EVM Wallet:</b>\n<code>${evmAddress}</code>\n\n` +
+          `💰 <b>Pending Credits:</b> $${pending.toFixed(4)} USDC\n` +
+          `<i>(settled off-chain via state channels)</i>`
+        : `🔗 <b>No EVM wallet linked yet.</b>\n` +
+          `Link your EVM address to receive rewards via Yellow state channels!`
+      ),
+      Markup.inlineKeyboard([
+        evmAddress
+          ? [Markup.button.callback('🔄 Change EVM Wallet', 'yellow_link')]
+          : [Markup.button.callback('🔗 Link EVM Wallet', 'yellow_link')],
+      ])
+    );
+  });
+}
+
+if (bot) {
+  bot.hears('🌐 Network Status', async (ctx) => {
+    const stats = getNetworkStats();
+    const yellowStatus = getYellowStatus();
+    await ctx.replyWithHTML(
+      `🌐 <b>Signal Network Status</b>\n\n` +
+      `<b>Solana (Primary)</b>\n` +
+      `├ Signalers: ${stats.signalers}\n` +
+      `├ Reports: ${stats.totalReports}\n` +
+      `└ Volume: $${stats.totalVolume.toFixed(2)} USDC\n\n` +
+      `<b>Yellow Network (State Channels)</b>\n` +
+      `├ Status: ${yellowStatus.online ? '🟢 Online' : '🔴 Offline'}\n` +
+      `├ Network: ${yellowStatus.network}\n` +
+      `├ Active Addresses: ${yellowStatus.pendingAddresses}\n` +
+      `└ Pending Volume: $${yellowStatus.totalPendingUSDC.toFixed(4)} USDC`,
+      MAIN_MENU
+    );
+  });
+}
+
+// Yellow: Link EVM wallet action
+if (bot) {
+  bot.action('yellow_link', async (ctx) => {
+    await ctx.answerCbQuery();
+    pendingReport.set(ctx.from.id, 'AWAITING_EVM_ADDRESS');
+    await ctx.replyWithHTML(
+      `🟡 <b>Link Your EVM Wallet</b>\n\n` +
+      `Paste your EVM wallet address (e.g. from MetaMask, Rainbow, or any Ethereum wallet).\n\n` +
+      `<i>Your Signal oracle rewards will be credited to this address via Yellow state channels — instantly and gaslessly.</i>`
+    );
+  });
+}
+
 // Fallback
 if (bot) {
   bot.on('text', async (ctx) => {
   const text = ctx.message.text.trim();
+
+  // Yellow EVM address linking flow
+  if (pendingReport.get(ctx.from.id) === 'AWAITING_EVM_ADDRESS') {
+    pendingReport.delete(ctx.from.id);
+    // Basic EVM address validation (0x + 40 hex chars)
+    if (/^0x[0-9a-fA-F]{40}$/.test(text)) {
+      saveYellowLink(ctx.from.id, text);
+      await ctx.replyWithHTML(
+        `✅ <b>EVM Wallet Linked!</b>\n\n` +
+        `🟡 Address: <code>${text}</code>\n\n` +
+        `Your next verified report will be credited via <b>Yellow state channels</b> as a bonus settlement option.\n\n` +
+        `<i>Powered by Nitrolite · Yellow Network</i>`,
+        MAIN_MENU
+      );
+    } else {
+      await ctx.replyWithHTML(
+        `❌ <b>Invalid EVM address.</b>\n\nMake sure it starts with <code>0x</code> and is 42 characters long.`,
+        MAIN_MENU
+      );
+    }
+    return;
+  }
 
   // Withdraw flow: user pastes a Solana address after /withdraw
   if (text.startsWith('/withdraw') || (text.length === 44 && pendingReport.get(ctx.from.id) === 'AWAITING_ADDRESS')) {
@@ -664,8 +793,22 @@ api.listen(PORT, '0.0.0.0', () => {
   console.log(`📡 Signal API is ONLINE and listening on port ${PORT}`);
 });
 
+// ── Yellow Network stats API endpoint ─────────────────────────────────────────
+api.get('/api/yellow-status', (req, res) => {
+  res.json(getYellowStatus());
+});
+
 // ─── Launch ───────────────────────────────────────────────────────────────────
 async function main() {
+  // Boot Yellow Network in parallel — non-blocking, graceful degradation
+  initYellow().then(online => {
+    if (online) {
+      console.log('🟡 [Yellow] State channel settlement rail ACTIVE');
+    } else {
+      console.log('🟡 [Yellow] Rail offline — set YELLOW_USER_PRIVATE_KEY to enable');
+    }
+  });
+
   if (!bot) {
     console.warn('📡 [API] Starting Express API ONLY (Bot Token Missing)...');
     return;

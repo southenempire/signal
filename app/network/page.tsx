@@ -11,8 +11,17 @@ interface Stats {
   totalVolume: string;
 }
 
+interface YellowStatus {
+  online: boolean;
+  network: string;
+  asset: string;
+  pendingAddresses: number;
+  totalPendingUSDC: number;
+}
+
 export default function NetworkExplorer() {
   const [stats, setStats] = useState<Stats | null>(null);
+  const [yellowStatus, setYellowStatus] = useState<YellowStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,6 +39,18 @@ export default function NetworkExplorer() {
         });
         setLoading(false);
       });
+
+    // Fetch Yellow Network status
+    fetch('/api/yellow-status')
+      .then(res => res.json())
+      .then(data => setYellowStatus(data))
+      .catch(() => setYellowStatus({
+        online: false,
+        network: 'Sepolia Testnet',
+        asset: 'yellow',
+        pendingAddresses: 0,
+        totalPendingUSDC: 0,
+      }));
   }, []);
 
   return (
@@ -127,9 +148,50 @@ export default function NetworkExplorer() {
                    icon={Database} 
                  />
               </div>
-           </div>
+            </div>
 
-           <div className="mt-auto space-y-6">
+            {/* Yellow Network Panel */}
+            <div className="mt-8 p-5 rounded-2xl border" style={{ background: 'rgba(253,218,22,0.03)', borderColor: 'rgba(253,218,22,0.15)' }}>
+               <div className="flex items-center justify-between mb-4">
+                 <div className="flex items-center gap-2">
+                   <div className="w-2 h-2 rounded-full" style={{ background: yellowStatus?.online ? '#FDDA16' : '#444', boxShadow: yellowStatus?.online ? '0 0 8px #FDDA16' : 'none' }} />
+                   <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: '#FDDA16' }}>Yellow Network</span>
+                 </div>
+                 <span className="text-[9px] font-mono px-2 py-0.5 rounded-full" style={{ background: 'rgba(253,218,22,0.1)', color: '#FDDA16', border: '1px solid rgba(253,218,22,0.2)' }}>
+                   {yellowStatus?.online ? 'ONLINE' : 'OFFLINE'}
+                 </span>
+               </div>
+               <p className="text-[9px] text-zinc-500 mb-4 leading-relaxed">State channel settlement via Nitrolite SDK. Off-chain, gasless oracle reward credits.</p>
+               <div className="space-y-2">
+                 <div className="flex justify-between items-center">
+                   <span className="text-[9px] text-zinc-600 font-mono uppercase tracking-wider">Network</span>
+                   <span className="text-[9px] font-mono text-zinc-300">{yellowStatus?.network ?? '—'}</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                   <span className="text-[9px] text-zinc-600 font-mono uppercase tracking-wider">Asset</span>
+                   <span className="text-[9px] font-mono text-zinc-300">{yellowStatus?.asset?.toUpperCase() ?? '—'}</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                   <span className="text-[9px] text-zinc-600 font-mono uppercase tracking-wider">Linked Wallets</span>
+                   <span className="text-[9px] font-mono" style={{ color: '#FDDA16' }}>{yellowStatus?.pendingAddresses ?? 0}</span>
+                 </div>
+                 <div className="flex justify-between items-center">
+                   <span className="text-[9px] text-zinc-600 font-mono uppercase tracking-wider">Pending USDC</span>
+                   <span className="text-[9px] font-mono" style={{ color: '#FDDA16' }}>${(yellowStatus?.totalPendingUSDC ?? 0).toFixed(4)}</span>
+                 </div>
+               </div>
+               <a
+                 href="https://docs.yellow.org"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className="mt-4 w-full h-8 rounded-lg flex items-center justify-center gap-1.5 text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-80"
+                 style={{ background: 'rgba(253,218,22,0.12)', color: '#FDDA16', border: '1px solid rgba(253,218,22,0.2)' }}
+               >
+                 Nitrolite Docs <ExternalLink size={9} />
+               </a>
+            </div>
+
+            <div className="mt-auto space-y-6 pt-8">
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
                  <div className="flex items-center gap-3 mb-3">
                     <Shield size={14} className="text-[#10B981]" />
