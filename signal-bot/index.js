@@ -35,8 +35,6 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const RPC_URL   = process.env.RPC_URL || 'https://api.devnet.solana.com';
 const USDC_MINT = process.env.USDC_MINT || '4zMMC9srvvSbhvWxREz676cgVT7n8uyT8D5KWW2EGQuD';
 const JUP_USD_MINT = 'JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD';
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const MAGICBLOCK_API_URL = 'https://payments.magicblock.app/v1';
@@ -290,21 +288,30 @@ if (bot) {
       };
   } else {
       try {
-          const prompt = `You are the Signal Sovereign Judge. 
-Analyze this image for a ${category} price.
+          const prompt = `You are the Signal Sovereign Judge. Your task is to verify real-world physical price data points.
 
 CRITICAL INSTRUCTIONS:
-1. Identify the ORIGINAL CURRENCY ($, €, £, ¥, etc.).
-2. Convert the price to USDC equivalent (approximation is OK).
-3. If it's a REAL photo of a ${category} (receipt, fuel pump, tag, recipe), extract the price.
-4. Respond ONLY with JSON: {
+1. Reject ANY screenshots of apps, web pages, charts, trading interfaces, spot screens (like Jupiter, Uniswap, etc.), memes, selfies, or stock photos. If it is a digital screen screenshot, set "verified" to false.
+2. Only verify physical photos of:
+   - Printed paper receipts or digital POS invoice screens.
+   - Physical fuel pump screens showing price/volume.
+   - Retail shelf price tags or store price boards.
+3. Identify the price for the category: ${category}.
+4. Extract the ORIGINAL CURRENCY (e.g. USD, EUR, NGN, GBP).
+5. Convert the price to USDC equivalent (approximation is OK).
+6. Respond ONLY with a valid JSON object matching this structure:
+   {
      "verified": true, 
      "originalAmount": 0.00, 
      "originalCurrency": "USD", 
      "usdcPrice": 0.00, 
      "reason": "..."
    }
-5. If it's NOT a valid real-world price photo, respond: {"verified": false, "reason": "gibberish or invalid"}`;
+7. If the image is not a valid physical price photo or is a digital screenshot, respond with:
+   {
+     "verified": false,
+     "reason": "Clear explanation of why it was rejected (e.g. 'Image is a digital trading screenshot, not a physical receipt or tag')"
+   }`;
 
           // Primary: Groq Llama 3.2 90B Vision
           try {
@@ -330,51 +337,19 @@ CRITICAL INSTRUCTIONS:
               });
 
               const groqData = await groqResponse.json();
+              if (groqData.error) {
+                  throw new Error(`Groq API Error: ${groqData.error.message}`);
+              }
               if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
-                  auditResult = JSON.parse(groqData.choices[0].message.content);
+                  const textResponse = groqData.choices[0].message.content;
+                  const cleanJson = textResponse.replace(/```json|```/g, '').trim();
+                  auditResult = JSON.parse(cleanJson);
               } else {
-                  throw new Error("Groq response malformed");
+                  throw new Error("Groq response malformed: " + JSON.stringify(groqData));
               }
           } catch (primaryErr) {
-              console.error(`[Vision] Primary AI failed: ${primaryErr.message}. Attempting Fallback (Gemini 2.0 Flash)...`);
-              
-              // Fallback: Gemini
-              try {
-                  const gemResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                          contents: [{
-                              parts: [
-                                  { text: prompt },
-                                  { inline_data: { mime_type: "image/jpeg", data: imageBase64 } }
-                              ]
-                          }]
-                      })
-                  });
-
-                  const gemData = await gemResponse.json();
-                  if (gemData.error) throw new Error(`Gemini API Error: ${gemData.error.message}`);
-                  if (gemData.candidates && gemData.candidates[0]) {
-                      const textResponse = gemData.candidates[0].content.parts[0].text;
-                      const cleanJson = textResponse.replace(/```json|```/g, '').trim();
-                      auditResult = JSON.parse(cleanJson);
-                      console.log(`[Vision] Fallback SUCCESS: Gemini verified the report.`);
-                  } else {
-                      throw new Error('Gemini returned no candidates');
-                  }
-              } catch (secondaryErr) {
-                  console.error(`[Vision] AI API Failure: ${secondaryErr.message}`);
-                  console.log(`[Vision] 🛡️ SAFETY FALLBACK: Triggering simulated consensus...`);
-                  
-                  auditResult = {
-                      verified: true,
-                      originalAmount: (Math.random() * 5 + 10).toFixed(2),
-                      originalCurrency: "USD",
-                      usdcPrice: (Math.random() * 5 + 10).toFixed(2),
-                      reason: "Signal Protocol: Image verified via simulated oracle consensus (Emergency Fallback)."
-                  };
-              }
+              console.error(`[Vision] Groq AI verification failed: ${primaryErr.message}`);
+              auditResult = { verified: false, reason: `Verification engine error: ${primaryErr.message}` };
           }
 
           if (!auditResult || !auditResult.verified) {
