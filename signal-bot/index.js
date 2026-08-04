@@ -263,7 +263,7 @@ if (bot) {
     return ctx.replyWithHTML(`⚠️ <b>Policy Violation: Daily Limit Reached</b>\nYour agent is limited to ${DAILY_LIMIT} reports/day.`);
   }
 
-  await ctx.reply('🔍 Image received! Llama-3.2-Vision is auditing physical truth...');
+  await ctx.reply('🔍 Image received! Qwen-3.6-Vision is auditing physical truth...');
 
   const { filepath: imagePath, hash: imageHash, base64: imageBase64 } = await saveReportImage(ctx, category, ctx.from.id);
 
@@ -315,7 +315,7 @@ CRITICAL INSTRUCTIONS:
 
           // Primary: Groq Llama 3.2 90B Vision
           try {
-              console.log(`[Vision] Attempting Primary (Groq Llama-3.2-90b-Vision) for category: ${category}`);
+              console.log(`[Vision] Attempting Primary (Groq Qwen-3.6-Vision) for category: ${category}`);
               const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                   method: 'POST',
                   headers: {
@@ -323,7 +323,7 @@ CRITICAL INSTRUCTIONS:
                       'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                      model: 'llama-3.2-90b-vision-preview',
+                      model: 'qwen/qwen3.6-27b',
                       messages: [{
                           role: 'user',
                           content: [
@@ -418,7 +418,7 @@ CRITICAL INSTRUCTIONS:
     payoutMsg += `\n💡 <i>Tip: Tap 🟡 Yellow Channel to earn bonus EVM credits!</i>\n`;
   }
 
-  payoutMsg += `\n<i>Verified by Llama-3.2-Vision · Powered by Signal × Yellow</i>`;
+  payoutMsg += `\n<i>Verified by Qwen-3.6-Vision · Powered by Signal × Yellow</i>`;
 
   await ctx.replyWithHTML(payoutMsg, MAIN_MENU);
 });
