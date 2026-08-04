@@ -341,9 +341,18 @@ CRITICAL INSTRUCTIONS:
               }
               if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
                   const textResponse = groqData.choices[0].message.content;
-                  const cleanText = textResponse.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-                  const cleanJson = cleanText.replace(/```json|```/g, '').trim();
-                  auditResult = JSON.parse(cleanJson);
+                  try {
+                      const start = textResponse.indexOf('{');
+                      const end = textResponse.lastIndexOf('}');
+                      if (start === -1 || end === -1 || end < start) {
+                          throw new Error("No JSON object structure found in response");
+                      }
+                      const jsonString = textResponse.slice(start, end + 1);
+                      auditResult = JSON.parse(jsonString);
+                  } catch (jsonErr) {
+                      console.error(`[Vision] JSON Extraction Failed. Raw response was:\n${textResponse}`);
+                      throw new Error(`Failed to extract valid JSON: ${jsonErr.message}`);
+                  }
               } else {
                   throw new Error("Groq response malformed: " + JSON.stringify(groqData));
               }
