@@ -331,8 +331,7 @@ CRITICAL INSTRUCTIONS:
                               { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
                           ]
                       }],
-                      temperature: 0.1,
-                      response_format: { type: "json_object" }
+                      temperature: 0.1
                   })
               });
 
@@ -342,7 +341,8 @@ CRITICAL INSTRUCTIONS:
               }
               if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
                   const textResponse = groqData.choices[0].message.content;
-                  const cleanJson = textResponse.replace(/```json|```/g, '').trim();
+                  const cleanText = textResponse.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+                  const cleanJson = cleanText.replace(/```json|```/g, '').trim();
                   auditResult = JSON.parse(cleanJson);
               } else {
                   throw new Error("Groq response malformed: " + JSON.stringify(groqData));
@@ -353,7 +353,11 @@ CRITICAL INSTRUCTIONS:
           }
 
           if (!auditResult || !auditResult.verified) {
-              return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${auditResult?.reason || "Invalid data format"}\nPlease submit a real physical data point.`);
+              const escapedReason = (auditResult?.reason || "Invalid data format")
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;');
+              return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${escapedReason}\nPlease submit a real physical data point.`);
           }
           
           // Real DePIN Oracle Payout: $0.15 - $0.35 USDC
