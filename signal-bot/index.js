@@ -37,6 +37,7 @@ const USDC_MINT = process.env.USDC_MINT || '4zMMC9srvvSbhvWxREz676cgVT7n8uyT8D5K
 const JUP_USD_MINT = 'JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD';
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const MAGICBLOCK_API_URL = 'https://payments.magicblock.app/v1';
 
@@ -264,7 +265,7 @@ if (bot) {
     return ctx.replyWithHTML(`⚠️ <b>Policy Violation: Daily Limit Reached</b>\nYour agent is limited to ${DAILY_LIMIT} reports/day.`);
   }
 
-  await ctx.reply('🔍 Image received! Claude-3.5 is auditing physical truth...');
+  await ctx.reply('🔍 Image received! Llama-3.2-Vision is auditing physical truth...');
 
   const { filepath: imagePath, hash: imageHash, base64: imageBase64 } = await saveReportImage(ctx, category, ctx.from.id);
 
@@ -305,34 +306,34 @@ CRITICAL INSTRUCTIONS:
    }
 5. If it's NOT a valid real-world price photo, respond: {"verified": false, "reason": "gibberish or invalid"}`;
 
-          // Primary: Claude
+          // Primary: Groq Llama 3.2 90B Vision
           try {
-              console.log(`[Vision] Attempting Primary (Claude-3.5-Sonnet) for category: ${category}`);
-              const clResponse = await fetch('https://api.anthropic.com/v1/messages', {
+              console.log(`[Vision] Attempting Primary (Groq Llama-3.2-90b-Vision) for category: ${category}`);
+              const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                   method: 'POST',
                   headers: {
-                      'x-api-key': ANTHROPIC_API_KEY,
-                      'anthropic-version': '2023-06-01',
-                      'content-type': 'application/json'
+                      'Authorization': `Bearer ${GROQ_API_KEY}`,
+                      'Content-Type': 'application/json'
                   },
                   body: JSON.stringify({
-                      model: 'claude-3-5-sonnet-20241022',
-                      max_tokens: 1024,
+                      model: 'llama-3.2-90b-vision-preview',
                       messages: [{
                           role: 'user',
                           content: [
-                              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: imageBase64 } },
-                              { type: 'text', text: prompt }
+                              { type: 'text', text: prompt },
+                              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
                           ]
-                      }]
+                      }],
+                      temperature: 0.1,
+                      response_format: { type: "json_object" }
                   })
               });
 
-              const clData = await clResponse.json();
-              if (clData.content && clData.content[0]) {
-                  auditResult = JSON.parse(clData.content[0].text);
+              const groqData = await groqResponse.json();
+              if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
+                  auditResult = JSON.parse(groqData.choices[0].message.content);
               } else {
-                  throw new Error("Anthropic response malformed");
+                  throw new Error("Groq response malformed");
               }
           } catch (primaryErr) {
               console.error(`[Vision] Primary AI failed: ${primaryErr.message}. Attempting Fallback (Gemini 2.0 Flash)...`);
@@ -380,13 +381,13 @@ CRITICAL INSTRUCTIONS:
               return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${auditResult?.reason || "Invalid data format"}\nPlease submit a real physical data point.`);
           }
           
-          // Boosted for Demo: $10 - $25 USDC per report
-          reward = parseFloat((10.0 + (Math.random() * 15.0)).toFixed(2));
+          // Real DePIN Oracle Payout: $0.15 - $0.35 USDC
+          reward = parseFloat((0.15 + (Math.random() * 0.20)).toFixed(2));
 
       } catch (e) {
           console.error('Final Verification Error:', e);
-          auditResult = { usdcPrice: 15.45, originalAmount: 15.45, originalCurrency: 'USD', verified: true };
-          reward = 12.50;
+          auditResult = { verified: false, reason: "API verification error. Please try again." };
+          reward = 0.00;
       }
   }
 
@@ -442,7 +443,7 @@ CRITICAL INSTRUCTIONS:
     payoutMsg += `\n💡 <i>Tip: Tap 🟡 Yellow Channel to earn bonus EVM credits!</i>\n`;
   }
 
-  payoutMsg += `\n<i>Verified by Claude-3.5-Sonnet · Powered by Signal × Yellow</i>`;
+  payoutMsg += `\n<i>Verified by Llama-3.2-Vision · Powered by Signal × Yellow</i>`;
 
   await ctx.replyWithHTML(payoutMsg, MAIN_MENU);
 });
