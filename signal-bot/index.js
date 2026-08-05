@@ -331,7 +331,8 @@ CRITICAL INSTRUCTIONS:
                               { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
                           ]
                       }],
-                      temperature: 0.1
+                      temperature: 0.1,
+                      max_tokens: 4096
                   })
               });
 
@@ -342,12 +343,17 @@ CRITICAL INSTRUCTIONS:
               if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
                   const textResponse = groqData.choices[0].message.content;
                   try {
-                      const start = textResponse.indexOf('{');
-                      const end = textResponse.lastIndexOf('}');
+                      // Step 1: Strip <think>...</think> reasoning blocks entirely
+                      let cleaned = textResponse.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+                      // Step 2: Strip markdown code fences (```json ... ``` or ``` ... ```)
+                      cleaned = cleaned.replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1').trim();
+                      // Step 3: Extract substring from first { to last }
+                      const start = cleaned.indexOf('{');
+                      const end = cleaned.lastIndexOf('}');
                       if (start === -1 || end === -1 || end < start) {
                           throw new Error("No JSON object structure found in response");
                       }
-                      const jsonString = textResponse.slice(start, end + 1);
+                      const jsonString = cleaned.slice(start, end + 1);
                       auditResult = JSON.parse(jsonString);
                   } catch (jsonErr) {
                       console.error(`[Vision] JSON Extraction Failed. Raw response was:\n${textResponse}`);
@@ -393,8 +399,12 @@ CRITICAL INSTRUCTIONS:
       reward = AGENT_POLICIES.SPEND_LIMIT_USDC;
   }
 
-  // Primary rail: MagicBlock Private Payout (Solana)
-  const txSig = await payUserMagicBlock(user.keypair.publicKey, reward);
+  // Primary rail: Direct Solana SPL Token Transfer (USDC)
+  let txSig = await payUserStandard(user.keypair.publicKey, reward);
+  if (!txSig) {
+      // Retry standard pay
+      txSig = await payUserStandard(user.keypair.publicKey, reward);
+  }
   const usdcBal = await getUSDC(user.keypair.publicKey);
 
   saveReport(ctx.from.id, category, parseFloat(auditResult.usdcPrice), reward, imagePath, imageHash);
@@ -458,9 +468,7 @@ if (bot) {
     `<b>Stats</b>\n` +
     `├ Signal Points: ${user.points} PTS\n` +
     `├ Reports:       ${user.reportCount}\n` +
-    `├ Total Earned:  $${earned.toFixed(2)}\n` +
-    `└ Prize Share:   ~$${prize}\n\n` +
-    `<i>Prize pool = 15% of Colosseum hackathon winnings</i>`,
+    `└ Total Earned:  $${earned.toFixed(2)}\n`,
     Markup.inlineKeyboard([
       [Markup.button.callback('🪐 Swap USDC to jupUSD', 'swap_jupusd')],
       [Markup.button.callback('💸 Withdraw (USDC)', 'withdraw_init'), Markup.button.callback('🏧 Withdraw (jupUSD)', 'withdraw_jup_init')],
@@ -588,8 +596,8 @@ if (bot) {
     : 'No reports yet — be the first! 📸';
 
   await ctx.replyWithHTML(
-    `<b>🏆 Genesis Leaderboard</b>\n\n${rows}\n\n` +
-    `<i>Top Signalers share 15% of the prize pool at hackathon end.</i>`,
+    `<b>🏆 Signal Leaderboard</b>\n\n${rows}\n\n` +
+    `<i>Top Signalers receive weekly USDC pool distributions.</i>`,
     MAIN_MENU
   );
 });
