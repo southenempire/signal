@@ -5,6 +5,26 @@ import cors from 'cors';
  * Signal Protocol Bot — Physical Truth Oracle
  * Integrated: Yellow Network (Nitrolite state channel settlement)
  */
+import dns from 'dns';
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1']);
+  const origLookup = dns.lookup;
+  dns.lookup = (hostname, options, callback) => {
+    if (typeof options === 'function') { callback = options; options = {}; }
+    dns.resolve4(hostname, (err, addrs) => {
+      if (!err && addrs && addrs.length > 0) {
+        if (options && options.all) {
+          return callback(null, addrs.map(a => ({ address: a, family: 4 })));
+        }
+        return callback(null, addrs[0], 4);
+      }
+      return origLookup(hostname, options, callback);
+    });
+  };
+} catch (dnsErr) {
+  console.warn('[DNS] Local DNS fallback setup skipped:', dnsErr.message);
+}
+
 import { Telegraf, Markup } from 'telegraf';
 import { ethers } from 'ethers';
 import {
