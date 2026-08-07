@@ -221,7 +221,8 @@ if (BOT_TOKEN) {
 const MAIN_MENU = Markup.keyboard([
   ['📸 Report a Price', '💰 My Rewards'],
   ['🏆 Leaderboard',   '📖 How It Works'],
-  ['🟡 Yellow Channel', '🌐 Network Status'],
+  ['🟡 Yellow Channel', '🚀 BOTChain Hub'],
+  ['🌐 Network Status']
 ]).resize();
 
 // /start
@@ -524,7 +525,7 @@ if (bot) {
       [Markup.button.callback('🪐 Swap USDC to jupUSD', 'swap_jupusd')],
       [Markup.button.callback('💸 Withdraw (USDC)', 'withdraw_init'), Markup.button.callback('🏧 Withdraw (jupUSD)', 'withdraw_jup_init')],
       [Markup.button.callback('🏦 Cash Out to Bank', 'cashout_bank')],
-      [Markup.button.callback('🟡 Link Yellow Wallet', 'yellow_link')],
+      [Markup.button.callback('🚀 Link BOTChain Wallet', 'yellow_link'), Markup.button.callback('🟡 Yellow Wallet', 'yellow_link')],
       [Markup.button.callback('🔑 Export Private Key', 'export_key')]
     ])
   );
@@ -694,6 +695,28 @@ if (bot) {
 }
 
 if (bot) {
+  bot.hears('🚀 BOTChain Hub', async (ctx) => {
+    const evmAddress = getYellowLink(ctx.from.id);
+    await ctx.replyWithHTML(
+      `🚀 <b>BOTChain Network Hub</b>\n\n` +
+      `Status: <b>🟢 Live & Operational</b>\n` +
+      `Chain ID: <b>677 (BOTChain)</b>\n` +
+      `RPC URL: <code>https://rpc.botchain.ai</code>\n\n` +
+      `📜 <b>SignalOracle Contract:</b>\n` +
+      `<code>0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243</code>\n\n` +
+      (evmAddress
+        ? `🔗 <b>Linked Wallet:</b>\n<code>${evmAddress}</code>`
+        : `💡 <i>Link your EVM wallet address to receive multi-rail BOTChain micro-settlements!</i>`
+      ),
+      Markup.inlineKeyboard([
+        [Markup.button.url('🔍 View Explorer Contract', 'https://scan.botchain.ai/address/0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243')],
+        [Markup.button.callback(evmAddress ? '🔄 Change EVM Wallet' : '🔗 Link BOTChain / EVM Wallet', 'yellow_link')]
+      ])
+    );
+  });
+}
+
+if (bot) {
   bot.hears('🌐 Network Status', async (ctx) => {
     const stats = getNetworkStats();
     const yellowStatus = getYellowStatus();
@@ -703,6 +726,10 @@ if (bot) {
       `├ Signalers: ${stats.signalers}\n` +
       `├ Reports: ${stats.totalReports}\n` +
       `└ Volume: $${stats.totalVolume.toFixed(2)} USDC\n\n` +
+      `<b>🚀 BOTChain (Chain ID 677)</b>\n` +
+      `├ Status: 🟢 Online\n` +
+      `├ Oracle Contract: <code>0x19ab...7243</code>\n` +
+      `└ Network: Mainnet / Testnet (677)\n\n` +
       `<b>Yellow Network (State Channels)</b>\n` +
       `├ Status: ${yellowStatus.online ? '🟢 Online' : '🔴 Offline'}\n` +
       `├ Network: ${yellowStatus.network}\n` +
