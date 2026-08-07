@@ -179,27 +179,29 @@ async function payUserStandard(userPubkey, amount) {
   }
 }
 
-// ─── BOTChain EVM Payout Rail (Chain ID 677) ─────────────────────────────────
-const BOTCHAIN_RPC_URL = process.env.BOTCHAIN_RPC_URL || 'https://rpc.botchain.ai';
-const botChainProvider = new ethers.JsonRpcProvider(BOTCHAIN_RPC_URL, 677);
+const BOTCHAIN_ORACLE_ADDRESS = '0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243';
+const SIGNAL_ORACLE_ABI = [
+  "function recordPrice(string calldata category, uint256 usdcPrice, string calldata imageHash, address reporter) external returns (uint256)",
+  "function getReportCount() external view returns (uint256)"
+];
 
-async function payReporterBotChain(evmAddress, amountUsd) {
+async function payReporterBotChain(evmAddress, amountUsd, category = "GROCERY", imageHash = "0x") {
   try {
-    const pKey = process.env.BOTCHAIN_PRIVATE_KEY;
+    const pKey = process.env.YELLOW_USER_PRIVATE_KEY || process.env.BOTCHAIN_PRIVATE_KEY;
     if (!pKey) {
-      return { success: true, pending: true, message: "BOTChain EVM rail active (faucet connected)" };
+      return { success: true, pending: true, message: "BOTChain EVM rail active" };
     }
     const wallet = new ethers.Wallet(pKey, botChainProvider);
-    // Convert USD reward to testnet BOT tokens (1 USD ~ 10 BOT)
-    const amountWei = ethers.parseEther((amountUsd * 10).toFixed(4));
-    const tx = await wallet.sendTransaction({
-      to: evmAddress,
-      value: amountWei
-    });
-    console.log(`[BOTChain] Sent payout to ${evmAddress}: ${tx.hash}`);
-    return { success: true, hash: tx.hash };
+    
+    // Log price data directly to deployed SignalOracle smart contract on BOTChain
+    const contract = new ethers.Contract(BOTCHAIN_ORACLE_ADDRESS, SIGNAL_ORACLE_ABI, wallet);
+    const usdcCents = Math.round(amountUsd * 100);
+    const tx = await contract.recordPrice(category, usdcCents, imageHash, evmAddress || wallet.address);
+    console.log(`[BOTChain Oracle] Recorded price report on-chain: ${tx.hash}`);
+
+    return { success: true, hash: tx.hash, contract: BOTCHAIN_ORACLE_ADDRESS };
   } catch (e) {
-    console.error('[BOTChain] Payout error:', e.message);
+    console.error('[BOTChain] Payout/Oracle error:', e.message);
     return { success: false, error: e.message };
   }
 }
