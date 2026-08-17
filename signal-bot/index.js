@@ -362,9 +362,13 @@ CRITICAL INSTRUCTIONS:
      "reason": "Clear explanation of why it was rejected (e.g. 'Image is a digital trading screenshot, not a physical receipt or tag')"
    }`;
 
-          // Primary: Groq Llama 3.2 90B Vision
-          try {
-              console.log(`[Vision] Attempting Primary (Groq Qwen-3.6-Vision) for category: ${category}`);
+          // Primary: Groq Vision AI with auto-retry on rate limits
+          let groqSuccess = false;
+          let retries = 2;
+
+          while (retries > 0 && !groqSuccess) {
+            try {
+              console.log(`[Vision] Attempting Primary (Groq Qwen-3.6-Vision) for category: ${category} (Attempts left: ${retries})`);
               const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                   method: 'POST',
                   headers: {
@@ -381,12 +385,18 @@ CRITICAL INSTRUCTIONS:
                           ]
                       }],
                       temperature: 0.1,
-                      max_tokens: 4096
+                      max_tokens: 1024
                   })
               });
 
               const groqData = await groqResponse.json();
               if (groqData.error) {
+                  if (groqData.error.code === 'rate_limit_exceeded' || (groqData.error.message && groqData.error.message.includes('Rate limit'))) {
+                      console.warn(`[Vision] Groq TPM Rate limit hit. Waiting 3s before retry...`);
+                      await new Promise(res => setTimeout(res, 3500));
+                      retries--;
+                      continue;
+                  }
                   throw new Error(`Groq API Error: ${groqData.error.message}`);
               }
               if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
@@ -394,7 +404,7 @@ CRITICAL INSTRUCTIONS:
                   try {
                       // Step 1: Strip <think>...</think> reasoning blocks entirely
                       let cleaned = textResponse.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-                      // Step 2: Strip markdown code fences (```json ... ``` or ``` ... ```)
+                      // Step 2: Strip markdown code fences
                       cleaned = cleaned.replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1').trim();
                       // Step 3: Extract substring from first { to last }
                       const start = cleaned.indexOf('{');
@@ -404,6 +414,7 @@ CRITICAL INSTRUCTIONS:
                       }
                       const jsonString = cleaned.slice(start, end + 1);
                       auditResult = JSON.parse(jsonString);
+                      groqSuccess = true;
                   } catch (jsonErr) {
                       console.error(`[Vision] JSON Extraction Failed. Raw response was:\n${textResponse}`);
                       throw new Error(`Failed to extract valid JSON: ${jsonErr.message}`);
@@ -411,9 +422,18 @@ CRITICAL INSTRUCTIONS:
               } else {
                   throw new Error("Groq response malformed: " + JSON.stringify(groqData));
               }
-          } catch (primaryErr) {
-              console.error(`[Vision] Groq AI verification failed: ${primaryErr.message}`);
-              auditResult = { verified: false, reason: `Verification engine error: ${primaryErr.message}` };
+            } catch (primaryErr) {
+                console.error(`[Vision] Groq AI verification failed: ${primaryErr.message}`);
+                retries--;
+                if (retries === 0) {
+                    const friendlyReason = primaryErr.message.includes('Rate limit')
+                      ? "The AI vision engine is currently high-traffic. Please wait 5 seconds and upload your receipt photo again!"
+                      : primaryErr.message;
+                    auditResult = { verified: false, reason: friendlyReason };
+                } else {
+                    await new Promise(res => setTimeout(res, 2000));
+                }
+            }
           }
 
           if (!auditResult || !auditResult.verified) {
