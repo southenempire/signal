@@ -182,7 +182,7 @@
             transition: 0.8s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        .slide:target .reveal,
+        .slide.active .reveal,
         .slide:first-child .reveal {
             opacity: 1;
             transform: translateY(0);
@@ -414,6 +414,19 @@
                 dot.style.transform = i === index ? 'scale(1.5)' : 'scale(1)';
             });
         });
+
+        // IntersectionObserver for scroll reveal animations
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                } else {
+                    entry.target.classList.remove('active');
+                }
+            });
+        }, { threshold: 0.4 });
+
+        slides.forEach(slide => observer.observe(slide));
     </script>
 </body>
 </html>
