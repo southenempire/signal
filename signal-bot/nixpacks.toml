@@ -1,0 +1,15 @@
+# Railway Nixpacks configuration
+# Forces Node 20 (required by better-sqlite3 and package.json engines)
+# Includes Python 3 for node-gyp native compilation
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "npm-9_x", "python311"]
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm install"]
+
+[start]
+cmd = "node index.js"
