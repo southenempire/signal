@@ -334,6 +334,7 @@ if (bot) {
           usdcPrice: (Math.random() * 5 + 3).toFixed(2),
           reason: "Signal Protocol (Demo Mode): Image verified via simulated oracle consensus."
       };
+      reward = parseFloat((0.15 + (Math.random() * 0.20)).toFixed(2));
   } else {
       try {
           const prompt = `You are the Signal Sovereign Judge. Your task is to verify real-world physical price data points.
@@ -459,7 +460,7 @@ CRITICAL INSTRUCTIONS:
       `✅ <b>Physical Truth Verified!</b>\n` +
       `💲 Original: <b>${curSymbol}${auditResult.originalAmount}</b>\n` +
       `🌍 Standardized: <b>$${auditResult.usdcPrice} USDC</b>\n\n` +
-      `Settling via MagicBlock + Yellow... ⏳`
+      `Settling on Solana (SPL) + BOTChain... ⏳`
   );
 
   // Zerion Agent Policy Check: Max Payout
