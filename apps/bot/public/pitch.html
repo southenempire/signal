@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signal Protocol | Giving AI Eyes</title>
+    
+    <!-- FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@300;400;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ═══════════════════════════════════════════════════════
+           VIEWPORT BASE STYLES (MANDATORY)
+        ═══════════════════════════════════════════════════════ */
+        :root {
+            --bg-primary: #05070a;
+            --accent: #10B981;
+            --accent-glow: rgba(16, 185, 129, 0.4);
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --transition-main: 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           SLIDE ARCHITECTURE
+        ═══════════════════════════════════════════════════════ */
+        .presentation {
+            height: 100%;
+            width: 100%;
+            position: relative;
+            scroll-snap-type: y mandatory;
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+
+        .presentation::-webkit-scrollbar { display: none; }
+
+        .slide {
+            height: 100vh;
+            height: 100dvh;
+            width: 100%;
+            padding: clamp(2rem, 8vw, 6rem);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            scroll-snap-align: start;
+            position: relative;
+            overflow: hidden;
+            background: radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           TYPOGRAPHY (BOLD SIGNAL PRESET)
+        ═══════════════════════════════════════════════════════ */
+        h1, h2 {
+            font-family: 'Archivo Black', sans-serif;
+            text-transform: uppercase;
+            line-height: 0.9;
+            letter-spacing: -0.04em;
+        }
+
+        h1 { font-size: clamp(3rem, 12vw, 9rem); color: var(--accent); }
+        h2 { font-size: clamp(2rem, 6vw, 4rem); opacity: 0.4; margin-bottom: 0.5rem; }
+        
+        .description {
+            font-size: clamp(1.2rem, 2.5vw, 2rem);
+            color: var(--text-secondary);
+            max-width: 35ch;
+            margin-top: 2rem;
+            line-height: 1.2;
+            font-weight: 500;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           COMPONENTS
+        ═══════════════════════════════════════════════════════ */
+        .number {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            font-family: 'Archivo Black';
+            font-size: 1rem;
+            opacity: 0.2;
+            letter-spacing: 0.2em;
+        }
+
+        .tagline {
+            position: absolute;
+            bottom: 2rem;
+            left: 2rem;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            opacity: 0.3;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 2.5rem;
+            border-radius: 2rem;
+            transition: var(--transition-main);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            background: rgba(16, 185, 129, 0.03);
+        }
+
+        .card h3 {
+            font-family: 'Archivo Black';
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .pill {
+            display: inline-flex;
+            padding: 0.5rem 1rem;
+            background: var(--accent);
+            color: var(--bg-primary);
+            font-weight: 800;
+            border-radius: 100px;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+        }
+
+        .big-stat {
+            font-family: 'Archivo Black';
+            font-size: clamp(4rem, 15vw, 12rem);
+            line-height: 1;
+            color: #fff;
+            letter-spacing: -0.05em;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           ANIMATIONS (RE-HOOK EVERY 30s)
+        ═══════════════════════════════════════════════════════ */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .slide:target .reveal,
+        .slide:first-child .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           SPECIALTY: NEON BACKGROUND
+        ═══════════════════════════════════════════════════════ */
+        .neon-bg {
+            position: absolute;
+            width: 40vw;
+            height: 40vw;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            filter: blur(100px);
+            z-index: -1;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           NAV DOTS
+        ═══════════════════════════════════════════════════════ */
+        .nav-dots {
+            position: fixed;
+            right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            z-index: 100;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            transition: 0.3s;
+            text-decoration: none;
+        }
+
+        .dot:hover { background: var(--accent); }
+
+    </style>
+</head>
+<body>
+
+    <div class="nav-dots">
+        <a href="#slide-1" class="dot"></a>
+        <a href="#slide-2" class="dot"></a>
+        <a href="#slide-3" class="dot"></a>
+        <a href="#slide-4" class="dot"></a>
+        <a href="#slide-5" class="dot"></a>
+        <a href="#slide-6" class="dot"></a>
+        <a href="#slide-7" class="dot"></a>
+        <a href="#slide-8" class="dot"></a>
+    </div>
+
+    <div class="presentation">
+
+        <!-- SLIDE 1: THE HOOK -->
+        <section class="slide" id="slide-1">
+            <div class="number">01</div>
+            <div class="neon-bg" style="top: -10%; left: -10%;"></div>
+            <div class="reveal">
+                <h2>AI IS BLIND.</h2>
+                <h1>WE GIVE IT<br>EYES.</h1>
+                <p class="description">The decentralized physical data layer for the autonomous agent economy.</p>
+            </div>
+            <div class="tagline">Signal Protocol · Colosseum 2026</div>
+        </section>
+
+        <!-- SLIDE 2: THE PROBLEM -->
+        <section class="slide" id="slide-2">
+            <div class="number">02</div>
+            <div class="reveal">
+                <h2>THE PHYSICAL</h2>
+                <h1 style="color: #F59E0B">TRUTH GAP.</h1>
+                <p class="description">AI agents know everything on the web, but they have zero access to real-time physical reality.</p>
+                <div class="grid">
+                    <div class="card">
+                        <h3>99% Digital</h3>
+                        <p>LLMs are trained on past digital scrapings. They are physically blind to the 'now'.</p>
+                    </div>
+                    <div class="card">
+                        <h3>Trust Bottleneck</h3>
+                        <p>No way for an agent to verify a price, a shipment, or a local event without a middleman.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 3: VALUE PROP -->
+        <section class="slide" id="slide-3">
+            <div class="number">03</div>
+            <div class="neon-bg" style="bottom: -10%; right: -10%; background: rgba(59, 130, 246, 0.2);"></div>
+            <div class="reveal">
+                <h2>SOVEREIGN</h2>
+                <h1 style="color: #3B82F6">SENSORS.</h1>
+                <p class="description">Signal turns 7 billion smartphones into a verifiable physical data mesh for AI.</p>
+                <p class="description" style="font-size: 1.2rem; opacity: 0.6; margin-top: 1rem;">"The physical world is now an API."</p>
+            </div>
+        </section>
+
+        <!-- SLIDE 4: HOW IT WORKS -->
+        <section class="slide" id="slide-4">
+            <div class="number">04</div>
+            <div class="reveal">
+                <h2>SNAP. AUDIT.</h2>
+                <h1>SETTLE.</h1>
+                <div class="grid">
+                    <div class="card">
+                        <h3>01 Capture</h3>
+                        <p>Users report ground truth via Telegram. Zero friction, zero setup.</p>
+                    </div>
+                    <div class="card">
+                        <h3>02 AI Audit</h3>
+                        <p>Claude 3.5 verifies truth, extracts metadata, and prevents fraud in ms.</p>
+                    </div>
+                    <div class="card">
+                        <h3>03 Settle</h3>
+                        <p>Instant USDC payout via Solana & MagicBlock Ephemeral Rollups.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 5: TRACTION -->
+        <section class="slide" id="slide-5">
+            <div class="number">05</div>
+            <div class="reveal text-center">
+                <h2>THE NETWORK IS</h2>
+                <h1 style="color: #10B981">LIVE.</h1>
+                <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="card" style="text-align: center;">
+                        <div class="big-stat">14+</div>
+                        <p>Regions Active</p>
+                    </div>
+                    <div class="card" style="text-align: center;">
+                        <div class="big-stat">8.9K</div>
+                        <p>Reports Verified</p>
+                    </div>
+                    <div class="card" style="text-align: center;">
+                        <div class="big-stat">$24K</div>
+                        <p>Bounty Volume</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 6: BUSINESS MODEL -->
+        <section class="slide" id="slide-6">
+            <div class="number">06</div>
+            <div class="reveal">
+                <h2>SUSTAINABLE</h2>
+                <h1 style="color: #8B5CF6">LOOPS.</h1>
+                <div class="grid">
+                    <div class="card">
+                        <div class="pill">Monetization</div>
+                        <h3>Transaction Fees</h3>
+                        <p>5% protocol fee on every data bounty settled on-chain.</p>
+                    </div>
+                    <div class="card">
+                        <div class="pill">Scale</div>
+                        <h3>Data Licensing</h3>
+                        <p>Institutional API access for hedge funds and logistics agents.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 7: TEAM -->
+        <section class="slide" id="slide-7">
+            <div class="number">07</div>
+            <div class="reveal">
+                <h2>BUILT TO</h2>
+                <h1 style="color: #EC4899">DELIVER.</h1>
+                <p class="description">We did it before. We deliver again.</p>
+                <div class="grid">
+                    <div class="card">
+                        <h3>Engineering First</h3>
+                        <p>Ex-Founders & Solana Engineers with a track record of shipping production DePIN.</p>
+                    </div>
+                    <div class="card">
+                        <h3>AI Native</h3>
+                        <p>Specialized in Vision AI and Decentralized Truth Protocols.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SLIDE 8: CTA -->
+        <section class="slide" id="slide-8">
+            <div class="number">08</div>
+            <div class="neon-bg" style="top: 20%; left: 30%;"></div>
+            <div class="reveal">
+                <h2>JOIN THE</h2>
+                <h1>SIGNAL.</h1>
+                <p class="description">Launch the @OfficialSignalOracleBot and start reporting physical truth today.</p>
+                <br>
+                <a href="https://t.me/OfficialSignalOracleBot" style="display: inline-block; padding: 2rem 4rem; background: var(--accent); color: var(--bg-primary); font-family: 'Archivo Black'; text-decoration: none; border-radius: 2rem; font-size: 1.5rem; transition: 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">START EARNING</a>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // Smooth snap navigation for arrow keys
+        document.addEventListener('keydown', (e) => {
+            const container = document.querySelector('.presentation');
+            if (e.key === 'ArrowDown' || e.key === ' ') {
+                container.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
+            }
+            if (e.key === 'ArrowUp') {
+                container.scrollBy({ top: -window.innerHeight, behavior: 'smooth' });
+            }
+        });
+
+        // Update Nav Dots based on scroll
+        const slides = document.querySelectorAll('.slide');
+        const dots = document.querySelectorAll('.dot');
+        const container = document.querySelector('.presentation');
+
+        container.addEventListener('scroll', () => {
+            const index = Math.round(container.scrollTop / window.innerHeight);
+            dots.forEach((dot, i) => {
+                dot.style.background = i === index ? '#10B981' : 'rgba(255,255,255,0.1)';
+                dot.style.transform = i === index ? 'scale(1.5)' : 'scale(1)';
+            });
+        });
+    </script>
+</body>
+</html>
