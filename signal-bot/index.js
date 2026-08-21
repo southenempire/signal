@@ -221,8 +221,7 @@ if (BOT_TOKEN) {
 const MAIN_MENU = Markup.keyboard([
   ['📸 Report a Price', '💰 My Rewards'],
   ['🏆 Leaderboard',   '📖 How It Works'],
-  ['🟡 Yellow Channel', '🚀 BOTChain Hub'],
-  ['🌐 Network Status']
+  ['🚀 BOTChain Hub',  '🌐 Network Status']
 ]).resize();
 
 // /start
@@ -502,18 +501,7 @@ CRITICAL INSTRUCTIONS:
     `🚀 Chain: <b>BOTChain (ID 677) Active</b>\n` +
     `🏦 Balance: <b>$${usdcBal.toFixed(2)}</b>\n`;
 
-  if (yellowResult?.success) {
-    payoutMsg +=
-      `\n🟡 <b>Yellow Bonus Credit!</b>\n` +
-      `└ $${reward} USDC → state channel\n` +
-      `└ Wallet: <code>${evmAddress.slice(0,8)}...${evmAddress.slice(-6)}</code>\n`;
-  } else if (evmAddress) {
-    payoutMsg += `\n🟡 Yellow credit queued (channel initializing)...\n`;
-  } else {
-    payoutMsg += `\n💡 <i>Tip: Tap 🟡 Yellow Channel to earn bonus EVM credits!</i>\n`;
-  }
-
-  payoutMsg += `\n<i>Verified by Qwen-3.6-Vision · Powered by Signal × Yellow</i>`;
+  payoutMsg += `\n<i>Verified by Qwen-3.6-Vision · Powered by Signal Protocol</i>`;
 
   await ctx.replyWithHTML(payoutMsg, MAIN_MENU);
 });
@@ -739,7 +727,6 @@ if (bot) {
 if (bot) {
   bot.hears('🌐 Network Status', async (ctx) => {
     const stats = getNetworkStats();
-    const yellowStatus = getYellowStatus();
     await ctx.replyWithHTML(
       `🌐 <b>Signal Network Status</b>\n\n` +
       `<b>Solana (Primary)</b>\n` +
@@ -749,12 +736,7 @@ if (bot) {
       `<b>🚀 BOTChain (Chain ID 677)</b>\n` +
       `├ Status: 🟢 Online\n` +
       `├ Oracle Contract: <code>0x19ab...7243</code>\n` +
-      `└ Network: Mainnet / Testnet (677)\n\n` +
-      `<b>Yellow Network (State Channels)</b>\n` +
-      `├ Status: ${yellowStatus.online ? '🟢 Online' : '🔴 Offline'}\n` +
-      `├ Network: ${yellowStatus.network}\n` +
-      `├ Active Addresses: ${yellowStatus.pendingAddresses}\n` +
-      `└ Pending Volume: $${yellowStatus.totalPendingUSDC.toFixed(4)} USDC`,
+      `└ Network: Mainnet / Testnet (677)`,
       MAIN_MENU
     );
   });
