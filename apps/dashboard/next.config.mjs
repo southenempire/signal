@@ -1,13 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-    async redirects() {
-        return [
-          {
-            source: '/pitch',
-            destination: '/pitch.html',
-            permanent: true,
-          },
-        ]
+  async rewrites() {
+    return [
+      {
+        source: '/pitch.html',
+        destination: '/pitch',
       },
+    ];
+  },
 };
+
 export default nextConfig;
