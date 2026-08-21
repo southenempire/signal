@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Book, Code, Terminal, Cpu, Eye, ShieldCheck, Coins, Layers, ArrowRight, Smartphone, Zap, CheckCircle2 } from 'lucide-react';
+import { Book, Code, Terminal, Cpu, Eye, ShieldCheck, Coins, Layers, ArrowRight, Smartphone, Zap, CheckCircle2, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
