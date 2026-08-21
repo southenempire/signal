@@ -1,201 +1,183 @@
 # Signal Protocol
-> **The Physical Truth Layer for the Agent Economy.**
-> 
-> [**View Cinematic Pitch Deck**](https://signal-bot-chi.vercel.app/pitch.html) | [**Try the Bot**](https://t.me/OfficialSignalOracleBot)
 
-Signal is a decentralized physical oracle network on Solana that provides sovereign, real-time truth for autonomous entities. We bridge the physical-to-digital gap by turning global nodes into verified data providers. Signal enables AI agents to see, hear, and verify the physical world with cryptographic certainty.
+**A decentralized DePIN oracle verifying real-world retail price data on-chain via AI Vision.**
 
-**Zero Friction. Sub-second Finality. Machine-Ready Truth.**
+[Website](https://signal-bot-chi.vercel.app) · [Telegram Bot](https://t.me/OfficialSignalOracleBot) · [Pitch Deck](https://signal-bot-chi.vercel.app/pitch.html) · [X (Twitter)](https://x.com/signalprotcol)
 
 ---
 
-## How It Works
+## The Problem
+
+Existing oracle networks (Chainlink, Pyth) capture exchange-level and institutional price feeds. But the real economy — fuel at the pump, groceries on the shelf, local commodities at the market — happens offline. There is no decentralized oracle for **physical, street-level retail prices**. In emerging economies where informal retail dominates, this data gap is massive.
+
+## The Solution
+
+Signal Protocol turns everyday shoppers into verified data nodes. Users photograph real-world receipts and price tags via a Telegram bot. **Qwen-3.6 Vision AI** audits each submission in real-time — rejecting screenshots, digital fakes, and manipulated images — then extracts item names, prices, and currency. Verified contributors earn instant on-chain micro-rewards.
 
 ```
-📸 Snap a photo          →  🧠 Vision AI verifies     →  💰 Earn USDC instantly
-(price tag, fuel pump,       (Claude-3.5-Sonnet          (settled via MagicBlock
-receipt, shelf label)        authenticates truth)         private transfers)
+📸 Snap a receipt   →   🧠 AI Vision verifies   →   ⛓️ Logged on-chain   →   💰 Earn USDC
 ```
-
-1. **Report** — Send a photo of any real-world price to the Signal Telegram bot
-2. **Verify** — Claude-3.5-Sonnet Vision AI extracts and validates the data in real-time
-3. **Earn** — USDC is deposited to your auto-generated Solana wallet via MagicBlock private payments
-4. **Yield** — Optionally stake earned USDC into jupUSD via Jupiter V6 for yield
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        USER (Telegram)                          │
-│         📸 Photo Report  →  📱 @OfficialSignalOracleBot         │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-                    ┌──────────▼──────────┐
-                    │   Signal Bot Core   │
-                    │   (Node.js/Telegraf) │
-                    └──┬───────┬───────┬──┘
-                       │       │       │
-              ┌────────▼──┐ ┌──▼────┐ ┌▼──────────┐
-              │ Claude 3.5│ │SQLite │ │  Express   │
-              │ Vision AI │ │  DB   │ │  REST API  │
-              │ (Anthropic)│ │       │ │ /api/stats │
-              └────────┴──┘ └───────┘ └──────┬────┘
-                       │                      │
-              ┌────────▼──────────────────────▼────┐
-              │          Solana Devnet               │
-              │  ┌──────────┐  ┌─────────────────┐  │
-              │  │MagicBlock│  │  Jupiter V6 API  │  │
-              │  │ Private  │  │  USDC → jupUSD   │  │
-              │  │ Payments │  │  Yield Staking   │  │
-              │  └──────────┘  └─────────────────┐  │
-              └─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                     USER (Telegram)                              │
+│          📸 Photo Report → @OfficialSignalOracleBot              │
+└──────────────────────────┬───────────────────────────────────────┘
+                           │
+                ┌──────────▼──────────┐
+                │   Signal Bot Core   │
+                │  (Node.js/Telegraf)  │
+                └──┬──────┬──────┬────┘
+                   │      │      │
+        ┌──────────▼┐  ┌──▼───┐  ┌▼───────────┐
+        │ Qwen-3.6  │  │SQLite│  │  Express    │
+        │ Vision AI │  │  DB  │  │  REST API   │
+        │  (Groq)   │  │      │  │  /api/stats │
+        └───────────┘  └──────┘  └──────┬──────┘
+                                        │
+   ┌────────────────────────────────────▼──────────────────────┐
+   │                    Settlement Rails                       │
+   │                                                           │
+   │  ┌─────────────┐  ┌──────────────┐  ┌──────────────────┐ │
+   │  │   Solana     │  │  BOTChain    │  │ Yellow Network   │ │
+   │  │  SPL USDC    │  │  Oracle Log  │  │ State Channels   │ │
+   │  │  Payouts     │  │  (Chain 677) │  │ Gasless Settle   │ │
+   │  └─────────────┘  └──────────────┘  └──────────────────┘ │
+   └───────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Tech Stack
+## Multi-Chain Deployments
 
-| Layer | Technology | Purpose |
-|:------|:-----------|:--------|
-| **Reporting Layer** | Telegram Bot (Telegraf) | Zero-friction user onboarding for human and hardware nodes |
-| **Verification Engine** | Claude-3.5-Sonnet + Gemini Flash | Multi-provider Vision AI for physical data auditing |
-| **Blockchain Core** | Solana (Web3.js + Anchor) | Programmable settlement, rewards, and protocol governance |
-| **Privacy & Speed** | MagicBlock Ephemeral Rollups | Sub-second finality for physical reports via private rollups |
-| **Liquidity Layer** | Jupiter V6 Aggregator | Real-time yield generation (USDC → jupUSD) for nodes |
-| **Agent Access** | Signal Agent SDK | Programmatic physical data procurement for autonomous agents |
-| **Dashboard** | Next.js 14 + Three.js | Real-time visualization of global network truth |
+| Chain | Type | Address / Endpoint |
+|:------|:-----|:-------------------|
+| **BOTChain** (Mainnet, Chain ID 677) | Oracle Contract | [`0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243`](https://scan.botchain.ai/address/0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243) |
+| **Solana** (Devnet) | SPL USDC Payouts | `FVyGEtqSKPHkiKgeSa8imWW5gzWNN5A5txwJgs7zFQhb` |
+| **Yellow Network** | State Channel Settlement | Gasless micro-rewards via Nitrolite SDK |
 
 ---
 
 ## Features
 
-### Physical Oracle Protocol
-- **Vision AI Auditing**: Claude-3.5-Sonnet primary → Gemini 1.5 Flash fallback
-- **Sub-second Settlement**: MagicBlock Ephemeral Rollups for near-instant on-chain finality
-- **Integrity Engine**: SHA-256 fingerprinting to prevent physical data spoofing
-- **Yield-Bearing Rewards**: Auto-staking of node rewards into jupUSD via Jupiter
+### Oracle Engine
+- **AI Vision Verification** — Qwen-3.6 27B (via Groq Cloud) audits physical receipt photos in real-time
+- **Anti-Fraud System** — SHA-256 image fingerprinting, duplicate rejection, daily rate limits
+- **5 Reporting Categories** — Fuel, Grocery, Electricity, Rent, Global Physical Data
+- **Multi-Rail Settlement** — Solana SPL USDC + BOTChain on-chain logging + Yellow Network gasless payouts
 
-### Agent-First Infrastructure
-- **Signal SDK**: A developer-first library for autonomous agents to request 'ground truth'
-- **Truth Tax**: Transparent, on-chain protocol fees for data requests
-- **Geographic Mesh**: Global distribution of nodes for localized verification
+### Smart Contract (`SignalOracle.sol`)
+- `recordPrice(category, usdcPrice, imageHash, reporter)` — Logs verified price data on-chain
+- `getReport(index)` — Retrieves a specific verified report
+- `getReportCount()` — Returns total number of on-chain reports
+- Emits `PriceReported` events for indexing and analytics
 
-### Telegram Oracle Bot
-- **5 reporting categories**: Fuel, Grocery, Electricity, Rent, Global Physical Data
-- **Dual AI verification**: Claude-3.5-Sonnet primary → Gemini 1.5 Flash fallback
-- **Anti-fraud system**: Image hash deduplication, daily rate limits, agent spend policies
-- **Auto-generated wallets**: Each user gets a Solana wallet on first interaction
-- **Jupiter integration**: Auto-stake USDC earnings to jupUSD for yield
-- **Withdrawal system**: Send USDC/jupUSD to any external Solana wallet
-- **Private key export**: Full self-custody — users own their keys
-- **Real-time leaderboard**: Point-based ranking system for top contributors
+### Telegram Bot
+- Auto-generated Solana wallet per user on first interaction
+- Real-time leaderboard and contributor rankings
+- Withdrawal system to any external Solana wallet
+- Full self-custody — users can export their private keys
+- BOTChain Hub with live network status
 
-### Web Dashboard
-- **Waitlist capture**: Email collection with Resend API notifications
-- **Network stats API**: Live signaler count, report volume, total payouts
-- **Responsive design**: Mobile-first with animated UI and glassmorphism effects
+### REST API
+- `GET /api/stats` — Live network statistics (signalers, reports, payouts)
+- `GET /api/reports` — Recent verified price reports
+- `GET /api/leaderboard` — Top contributors
 
 ---
 
-## Quick Start
+## Tech Stack
+
+| Layer | Technology |
+|:------|:-----------|
+| Runtime | Node.js 20+ (ESM) |
+| Bot Framework | Telegraf v4 |
+| AI Vision | Qwen-3.6 27B via Groq Cloud API |
+| Blockchain (L1) | Solana (`@solana/web3.js`, `@solana/spl-token`) |
+| Blockchain (EVM) | BOTChain via Ethers.js v6 |
+| State Channels | Yellow Network Nitrolite SDK |
+| Database | SQLite (better-sqlite3) |
+| API Server | Express v5 |
+| Smart Contracts | Solidity 0.8.x |
+
+---
+
+## Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- A Telegram Bot Token ([create one via @BotFather](https://t.me/BotFather))
-- An Anthropic API key ([get one here](https://console.anthropic.com))
+- Node.js 20+
+- A Telegram Bot Token ([create via @BotFather](https://t.me/BotFather))
+- A Groq API Key ([get one here](https://console.groq.com))
 
-### Run the Bot Locally
+### Installation
 
 ```bash
-cd telegram-bot
+git clone https://github.com/southenempire/signal.git
+cd signal
 npm install
+```
 
-# Set environment variables
-export TELEGRAM_BOT_TOKEN="your_bot_token"
-export ANTHROPIC_API_KEY="your_anthropic_key"
-export RPC_URL="https://api.devnet.solana.com"
-export SECRET_KEY="your_encryption_key_64_hex_chars"
+### Environment Variables
 
+Create a `.env` file in the root directory:
+
+```env
+TELEGRAM_BOT_TOKEN=your_bot_token
+GROQ_API_KEY=your_groq_api_key
+RPC_URL=https://api.devnet.solana.com
+USDC_MINT=your_usdc_mint_address
+SOLANA_KEYPAIR_JSON=[your_wallet_keypair_array]
+
+# BOTChain (Optional)
+BOTCHAIN_RPC=https://mainnet-rpc.botchain.ai
+BOTCHAIN_PRIVATE_KEY=your_botchain_private_key
+
+# Yellow Network (Optional)
+YELLOW_USER_PRIVATE_KEY=your_yellow_private_key
+```
+
+### Run
+
+```bash
 npm start
 ```
-
-### Run the Dashboard Locally
-
-```bash
-npm install
-npm run dev
-# Open http://localhost:3000
-```
-
----
-
-## Environment Variables
-
-| Variable | Required | Description |
-|:---------|:--------:|:------------|
-| `TELEGRAM_BOT_TOKEN` | ✅ | Telegram bot API token from @BotFather |
-| `ANTHROPIC_API_KEY` | ✅ | Claude Vision AI for photo verification |
-| `RPC_URL` | ❌ | Solana RPC endpoint (defaults to devnet) |
-| `USDC_MINT` | ❌ | SPL token mint address (defaults to devnet USDC) |
-| `SECRET_KEY` | ❌ | AES-256 encryption key for user wallet storage |
-| `SOLANA_KEYPAIR_JSON` | ❌ | Protocol wallet private key (enables real payouts) |
-| `GEMINI_API_KEY` | ❌ | Fallback Vision AI provider |
-| `RESEND_API_KEY` | ❌ | Email notifications for waitlist signups |
 
 ---
 
 ## Project Structure
 
 ```
-signal/
-├── telegram-bot/           # Core Telegram Oracle Bot
-│   ├── index.js            # Bot logic, AI verification, Solana payments
-│   ├── db.js               # SQLite database with AES-256-GCM encryption
-│   ├── images.js           # Image processing, hashing, dedup
-│   └── package.json
-├── app/                    # Next.js 14 Dashboard
-│   ├── page.tsx            # Main landing page
-│   └── globals.css         # Design system
-├── apps/bot/               # Vercel-deployed waitlist frontend
-│   └── app/
-│       ├── waitlist/       # Countdown + email capture UI
-│       └── api/waitlist/   # Serverless API with Resend integration
-└── README.md
+signal-bot/
+├── index.js              # Main bot logic, AI verification, settlement
+├── db.js                 # SQLite database layer
+├── yellow.js             # Yellow Network state channel integration
+├── images.js             # Image storage and hash management
+├── contracts/
+│   ├── SignalOracle.sol   # On-chain oracle contract (Solidity)
+│   └── deployed.json     # Deployment metadata (BOTChain)
+├── deploy_botchain.js    # BOTChain deployment script
+├── package.json
+└── railway.toml          # Railway deployment config
 ```
 
 ---
 
-## Live Deployment
+## Ecosystem
 
-| Service | URL | Status |
-|:--------|:----|:------:|
-| **Telegram Bot** | [@OfficialSignalOracleBot](https://t.me/OfficialSignalOracleBot) | 🟢 Live |
-| **Dashboard** | Vercel | 🟢 Live |
-| **Bot Infrastructure** | Railway | 🟢 Live |
-
----
-
-## Sovereign Verification & Resilience
-
-Signal Protocol is designed for high-availability physical auditing. The verification pipeline follows a multi-tiered consensus model:
-
-1. **Primary Audit**: High-precision Vision AI (Claude-3.5-Sonnet) extracts raw physical variables.
-2. **Fallback Logic**: If the primary AI is unreachable or rate-limited, the system employs **Sovereign Demo Mode**. This is an on-chain simulation of oracle consensus that ensures sub-second finality and protocol continuity.
-3. **Integrity Layer**: Regardless of the verification tier, the **Integrity Engine** (SHA-256 fingerprinting) remains active to prevent data farming and duplicate submissions.
+Signal Protocol is part of the **BOTChain Ecosystem Incubation Program** and has applied for listings on:
+- [DefiLlama](https://defillama.com) — TVL adapter submitted
+- [Alchemy DApp Store](https://www.alchemy.com/dapps) — Application under review
+- [Superteam Earn](https://superteam.fun) — Agentic Engineering Grant applicant
 
 ---
 
-## Security
+## Contributing
 
-- **Wallet encryption**: All stored private keys are encrypted with AES-256-GCM
-- **Image deduplication**: SHA-256 hashing prevents duplicate report submissions
-- **Agent policies**: Configurable daily report limits and per-session spend caps
-- **Safe Mode**: Bot operates without real payouts when no production identity is configured
-- **No secrets in repo**: All sensitive data is managed via environment variables
-
----
+Contributions are welcome. Please open an issue first to discuss what you would like to change.
 
 ## License
 
@@ -203,4 +185,4 @@ MIT
 
 ---
 
-Built on Solana · Verified by Claude · Powered by Jupiter · Secured by MagicBlock
+**Built by [@Southen_](https://x.com/Southen13)**
