@@ -338,16 +338,22 @@ export default function Home() {
     const fetch_ = async () => {
       try {
         const [s, l, r] = await Promise.all([
-          fetch(`${BOT_API}/api/stats`),
-          fetch(`${BOT_API}/api/leaderboard`),
-          fetch(`${BOT_API}/api/reports`),
+          fetch(`/api/network-stats`),
+          fetch(`${BOT_API}/api/leaderboard`).then(res => res.ok ? res.json() : []).catch(() => []),
+          fetch(`${BOT_API}/api/reports`).then(res => res.ok ? res.json() : []).catch(() => []),
         ]);
-        const stats = await s.json(), lb = await l.json(), rpts = await r.json();
-        setNodeCount(stats.signalers || 0);
-        setVolume(parseFloat(stats.totalVolume) || 0);
+        const stats = await s.json();
+        setNodeCount(stats.activeNodes || 0);
+        const parsedVolume = stats.totalVolume ? parseFloat(stats.totalVolume.toString().replace(/,/g, '')) : 0;
+        setVolume(parsedVolume);
         setTotalReports(stats.totalReports || 0);
-        setLeaderboard(lb); setLiveReports(rpts); setApiConnected(true);
-      } catch { setApiConnected(false); }
+        setLeaderboard(l); 
+        setLiveReports(r); 
+        setApiConnected(true);
+      } catch (err) { 
+        console.error('Stats fetch error:', err);
+        setApiConnected(false); 
+      }
       setLatency(40 + Math.floor(Math.random() * 14));
     };
     fetch_();
@@ -469,6 +475,32 @@ export default function Home() {
                 </motion.div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ══ PARTNER SPOTLIGHT ══════════════════════════ */}
+        <section className="py-12 relative z-10 border-t border-white/5">
+          <div className="glass p-8 rounded-[32px] border border-white/10 flex flex-col md:flex-row items-center justify-between gap-8 max-w-4xl mx-auto">
+            <div className="flex items-center gap-6">
+              <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-white/10 flex-shrink-0 bg-[#05070a] flex items-center justify-center">
+                <Image src="/botchain-logo.png" alt="BOTChain Logo" fill className="object-contain p-2" />
+              </div>
+              <div className="space-y-2 text-left">
+                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#10B981]">Incubation & Launch Partner</span>
+                <h3 className="font-display font-bold text-xl text-white">Sovereign Oracle Infrastructure by BOTChain</h3>
+                <p className="text-zinc-500 text-sm max-w-xl leading-relaxed">
+                  Signal is officially incubated by the BOTChain Foundation. Every verified physical price report is logged permanently on the BOTChain Mainnet ledger for cryptographic traceability.
+                </p>
+              </div>
+            </div>
+            <a 
+              href="https://botchain.ai" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="px-6 py-3 rounded-xl border border-white/10 text-xs font-black uppercase tracking-widest text-white hover:bg-white/5 transition-all flex items-center gap-2 whitespace-nowrap"
+            >
+              Explore BOTChain <ArrowRight size={14} />
+            </a>
           </div>
         </section>
 
