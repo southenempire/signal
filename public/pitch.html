@@ -3,409 +3,417 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signal Pitch Deck - Profit from Truth</title>
-    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=JetBrains+Mono:wght@400;700&family=Satoshi:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Signal Protocol | Giving AI Eyes</title>
+    
+    <!-- FONTS -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@300;400;700&display=swap" rel="stylesheet">
+
     <style>
-        /* === VIEWPORT BASE === */
+        /* ═══════════════════════════════════════════════════════
+           VIEWPORT BASE STYLES (MANDATORY)
+        ═══════════════════════════════════════════════════════ */
         :root {
-            --bg-dark: #050508;
-            --accent-cyan: #00ffcc;
-            --accent-magenta: #ff00aa;
+            --bg-primary: #05070a;
+            --accent: #10B981;
+            --accent-glow: rgba(16, 185, 129, 0.4);
             --text-primary: #ffffff;
             --text-secondary: #94a3b8;
-            --slide-transition: 0.8s cubic-bezier(0.23, 1, 0.32, 1);
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --transition-main: 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
         body {
-            background: var(--bg-dark);
+            background: var(--bg-primary);
             color: var(--text-primary);
-            font-family: 'Satoshi', sans-serif;
+            font-family: 'Space Grotesk', sans-serif;
             overflow: hidden;
             height: 100vh;
-            width: 100vw;
+            height: 100dvh;
         }
 
+        /* ═══════════════════════════════════════════════════════
+           SLIDE ARCHITECTURE
+        ═══════════════════════════════════════════════════════ */
         .presentation {
-            height: 100vh;
-            width: 100vw;
+            height: 100%;
+            width: 100%;
             position: relative;
+            scroll-snap-type: y mandatory;
+            overflow-y: auto;
+            scrollbar-width: none;
         }
+
+        .presentation::-webkit-scrollbar { display: none; }
 
         .slide {
-            position: absolute;
-            top: 0;
-            left: 0;
+            height: 100vh;
+            height: 100dvh;
             width: 100%;
-            height: 100%;
-            opacity: 0;
-            visibility: hidden;
-            transition: var(--slide-transition);
+            padding: clamp(2rem, 8vw, 6rem);
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: clamp(2rem, 8vw, 6rem);
-            background: var(--bg-dark);
+            scroll-snap-align: start;
+            position: relative;
             overflow: hidden;
+            background: radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
         }
 
-        .slide.active {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        /* === GRID BACKGROUND === */
-        .grid-overlay {
-            position: absolute;
-            inset: 0;
-            background-image: linear-gradient(rgba(0, 255, 204, 0.03) 1px, transparent 1px),
-                            linear-gradient(90deg, rgba(0, 255, 204, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        .glow {
-            position: absolute;
-            width: 600px;
-            height: 600px;
-            background: radial-gradient(circle, rgba(0, 255, 204, 0.05) 0%, transparent 70%);
-            border-radius: 50%;
-            filter: blur(80px);
-            pointer-events: none;
-        }
-
-        /* === TYPOGRAPHY === */
+        /* ═══════════════════════════════════════════════════════
+           TYPOGRAPHY (BOLD SIGNAL PRESET)
+        ═══════════════════════════════════════════════════════ */
         h1, h2 {
             font-family: 'Archivo Black', sans-serif;
             text-transform: uppercase;
             line-height: 0.9;
-            margin-bottom: 1.5rem;
+            letter-spacing: -0.04em;
         }
 
-        h1 { font-size: clamp(3rem, 10vw, 8rem); }
-        h2 { font-size: clamp(2rem, 6vw, 4rem); color: var(--accent-cyan); }
+        h1 { font-size: clamp(3rem, 12vw, 9rem); color: var(--accent); }
+        h2 { font-size: clamp(2rem, 6vw, 4rem); opacity: 0.4; margin-bottom: 0.5rem; }
+        
+        .description {
+            font-size: clamp(1.2rem, 2.5vw, 2rem);
+            color: var(--text-secondary);
+            max-width: 35ch;
+            margin-top: 2rem;
+            line-height: 1.2;
+            font-weight: 500;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           COMPONENTS
+        ═══════════════════════════════════════════════════════ */
+        .number {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            font-family: 'Archivo Black';
+            font-size: 1rem;
+            opacity: 0.2;
+            letter-spacing: 0.2em;
+        }
 
         .tagline {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent-cyan);
-            font-size: clamp(0.8rem, 1.5vw, 1.2rem);
+            position: absolute;
+            bottom: 2rem;
+            left: 2rem;
+            font-size: 0.7rem;
+            text-transform: uppercase;
             letter-spacing: 0.3em;
-            margin-bottom: 1rem;
-            display: block;
+            opacity: 0.3;
         }
 
-        p {
-            font-size: clamp(1.1rem, 2vw, 1.8rem);
-            color: var(--text-secondary);
-            max-width: 800px;
-            line-height: 1.4;
-        }
-
-        /* === COMPONENTS === */
-        .step-grid {
+        .grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
-            margin-top: 4rem;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 3rem;
+            width: 100%;
+            max-width: 1200px;
         }
 
-        .step-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(0, 255, 204, 0.1);
-            padding: 2rem;
-            border-radius: 24px;
+        .card {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 2.5rem;
+            border-radius: 2rem;
+            transition: var(--transition-main);
             position: relative;
             overflow: hidden;
         }
 
-        .step-number {
-            font-family: 'Archivo Black', sans-serif;
-            font-size: 4rem;
-            opacity: 0.1;
-            position: absolute;
-            top: -1rem;
-            right: 0;
+        .card:hover {
+            border-color: var(--accent);
+            transform: translateY(-5px);
+            background: rgba(16, 185, 129, 0.03);
         }
 
-        .feature-list {
-            list-style: none;
-            margin-top: 2rem;
-        }
-
-        .feature-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            font-size: 1.5rem;
+        .card h3 {
+            font-family: 'Archivo Black';
+            font-size: 1.2rem;
             margin-bottom: 1rem;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .card p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .pill {
+            display: inline-flex;
+            padding: 0.5rem 1rem;
+            background: var(--accent);
+            color: var(--bg-primary);
+            font-weight: 800;
+            border-radius: 100px;
+            text-transform: uppercase;
+            font-size: 0.7rem;
+            letter-spacing: 0.1em;
+            margin-bottom: 1.5rem;
+        }
+
+        .big-stat {
+            font-family: 'Archivo Black';
+            font-size: clamp(4rem, 15vw, 12rem);
+            line-height: 1;
             color: #fff;
+            letter-spacing: -0.05em;
         }
 
-        .feature-item::before {
-            content: '>';
-            color: var(--accent-cyan);
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: bold;
+        /* ═══════════════════════════════════════════════════════
+           ANIMATIONS (RE-HOOK EVERY 30s)
+        ═══════════════════════════════════════════════════════ */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: 0.8s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        /* === NAVIGATION === */
-        .nav-controls {
+        .slide:target .reveal,
+        .slide:first-child .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           SPECIALTY: NEON BACKGROUND
+        ═══════════════════════════════════════════════════════ */
+        .neon-bg {
+            position: absolute;
+            width: 40vw;
+            height: 40vw;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            filter: blur(100px);
+            z-index: -1;
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        /* ═══════════════════════════════════════════════════════
+           NAV DOTS
+        ═══════════════════════════════════════════════════════ */
+        .nav-dots {
             position: fixed;
-            bottom: 2rem;
             right: 2rem;
+            top: 50%;
+            transform: translateY(-50%);
             display: flex;
+            flex-direction: column;
             gap: 1rem;
             z-index: 100;
         }
 
-        .nav-btn {
-            background: rgba(0, 255, 204, 0.1);
-            border: 1px solid var(--accent-cyan);
-            color: var(--accent-cyan);
-            padding: 1rem 1.5rem;
-            cursor: pointer;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: bold;
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
             transition: 0.3s;
+            text-decoration: none;
         }
 
-        .nav-btn:hover {
-            background: var(--accent-cyan);
-            color: var(--bg-dark);
-        }
-
-        .progress-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            height: 4px;
-            background: var(--accent-cyan);
-            transition: 0.3s;
-            z-index: 101;
-        }
-
-        /* === VIDEO PLACEHOLDER === */
-        .video-container {
-            width: 100%;
-            max-width: 1000px;
-            aspect-ratio: 16/9;
-            background: #000;
-            border: 1px solid var(--accent-cyan);
-            box-shadow: 0 0 50px rgba(0, 255, 204, 0.2);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            margin: 0 auto;
-        }
-
-        .video-placeholder-text {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent-cyan);
-            text-align: center;
-        }
-
-        /* === ROADMAP === */
-        .roadmap {
-            display: flex;
-            flex-direction: column;
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        .milestone {
-            display: flex;
-            gap: 2rem;
-            align-items: center;
-        }
-
-        .date {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent-magenta);
-            width: 150px;
-            font-weight: bold;
-        }
-
-        /* === ANIMATIONS === */
-        .active .animate-in {
-            animation: fadeInUp 0.8s forwards;
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .delay-1 { animation-delay: 0.2s; }
-        .delay-2 { animation-delay: 0.4s; }
-        .delay-3 { animation-delay: 0.6s; }
+        .dot:hover { background: var(--accent); }
 
     </style>
 </head>
 <body>
+
+    <div class="nav-dots">
+        <a href="#slide-1" class="dot"></a>
+        <a href="#slide-2" class="dot"></a>
+        <a href="#slide-3" class="dot"></a>
+        <a href="#slide-4" class="dot"></a>
+        <a href="#slide-5" class="dot"></a>
+        <a href="#slide-6" class="dot"></a>
+        <a href="#slide-7" class="dot"></a>
+        <a href="#slide-8" class="dot"></a>
+    </div>
+
     <div class="presentation">
-        <div class="grid-overlay"></div>
-        <div class="glow" style="top: -10%; left: -10%;"></div>
-        <div class="glow" style="bottom: -10%; right: -10%;"></div>
 
-        <!-- Slide 1: Hook -->
-        <section class="slide active">
-            <span class="tagline animate-in">PRESENTING SIGNAL</span>
-            <h1 class="animate-in delay-1">Profit From <br><span style="color: var(--accent-cyan)">Truth.</span></h1>
-            <p class="animate-in delay-2">The world's first decentralized human oracle network on Solana. Bridging the physical-to-digital gap for AI agents.</p>
+        <!-- SLIDE 1: THE HOOK -->
+        <section class="slide" id="slide-1">
+            <div class="number">01</div>
+            <div class="neon-bg" style="top: -10%; left: -10%;"></div>
+            <div class="reveal">
+                <h2>AI IS BLIND.</h2>
+                <h1>WE GIVE IT<br>EYES.</h1>
+                <p class="description">The decentralized physical data layer for the autonomous agent economy.</p>
+            </div>
+            <div class="tagline">Signal Protocol · Colosseum 2026</div>
         </section>
 
-        <!-- Slide 2: Problem -->
-        <section class="slide">
-            <span class="tagline">THE GAP</span>
-            <h2 class="animate-in">AI is blind to the <br>Physical World.</h2>
-            <p class="animate-in delay-1">Centralized data is stale, biased, and expensive. Autonomous agents can't "see" real-world prices or inventory without a trusted human layer.</p>
-        </section>
-
-        <!-- Slide 3: Value Prop -->
-        <section class="slide">
-            <span class="tagline">OUR MISSION</span>
-            <h2 class="animate-in">The Physical Data Layer <br>for the Agentic Web.</h2>
-            <p class="animate-in delay-1">Signal turns 7 billion smartphones into verified data nodes. Real-time, cryptographically verified ground truth at the speed of Solana.</p>
-        </section>
-
-        <!-- Slide 4: How It Works -->
-        <section class="slide">
-            <span class="tagline">PROTOCOL FLOW</span>
-            <h2 class="animate-in">Snap. Verify. Earn.</h2>
-            <div class="step-grid">
-                <div class="step-card animate-in delay-1">
-                    <div class="step-number">01</div>
-                    <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">SNAP</h3>
-                    <p style="font-size: 1.1rem;">Submit real-world evidence via Telegram. No wallet or app required.</p>
-                </div>
-                <div class="step-card animate-in delay-2">
-                    <div class="step-number">02</div>
-                    <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">VERIFY</h3>
-                    <p style="font-size: 1.1rem;">Vision AI authenticates the data and settles truth in seconds.</p>
-                </div>
-                <div class="step-card animate-in delay-3">
-                    <div class="step-number">03</div>
-                    <h3 style="color: var(--accent-cyan); margin-bottom: 1rem;">EARN</h3>
-                    <p style="font-size: 1.1rem;">Instant USDC payouts on Solana via MagicBlock private rollups.</p>
+        <!-- SLIDE 2: THE PROBLEM -->
+        <section class="slide" id="slide-2">
+            <div class="number">02</div>
+            <div class="reveal">
+                <h2>THE PHYSICAL</h2>
+                <h1 style="color: #F59E0B">TRUTH GAP.</h1>
+                <p class="description">AI agents know everything on the web, but they have zero access to real-time physical reality.</p>
+                <div class="grid">
+                    <div class="card">
+                        <h3>99% Digital</h3>
+                        <p>LLMs are trained on past digital scrapings. They are physically blind to the 'now'.</p>
+                    </div>
+                    <div class="card">
+                        <h3>Trust Bottleneck</h3>
+                        <p>No way for an agent to verify a price, a shipment, or a local event without a middleman.</p>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Slide 5: Demo -->
-        <section class="slide">
-            <span class="tagline">LIVE PRODUCT</span>
-            <h2 class="animate-in">Seeing is Believing.</h2>
-            <div class="video-container animate-in delay-1">
-                <!-- Drop your YouTube embed code here -->
-                <div class="video-placeholder-text">
-                    [ PASTE YOUTUBE EMBED HERE ]<br>
-                    <span style="font-size: 0.8rem; opacity: 0.5;">Waiting for Demo Link...</span>
+        <!-- SLIDE 3: VALUE PROP -->
+        <section class="slide" id="slide-3">
+            <div class="number">03</div>
+            <div class="neon-bg" style="bottom: -10%; right: -10%; background: rgba(59, 130, 246, 0.2);"></div>
+            <div class="reveal">
+                <h2>SOVEREIGN</h2>
+                <h1 style="color: #3B82F6">SENSORS.</h1>
+                <p class="description">Signal turns 7 billion smartphones into a verifiable physical data mesh for AI.</p>
+                <p class="description" style="font-size: 1.2rem; opacity: 0.6; margin-top: 1rem;">"The physical world is now an API."</p>
+            </div>
+        </section>
+
+        <!-- SLIDE 4: HOW IT WORKS -->
+        <section class="slide" id="slide-4">
+            <div class="number">04</div>
+            <div class="reveal">
+                <h2>SNAP. AUDIT.</h2>
+                <h1>SETTLE.</h1>
+                <div class="grid">
+                    <div class="card">
+                        <h3>01 Capture</h3>
+                        <p>Users report ground truth via Telegram. Zero friction, zero setup.</p>
+                    </div>
+                    <div class="card">
+                        <h3>02 AI Audit</h3>
+                        <p>Claude 3.5 verifies truth, extracts metadata, and prevents fraud in ms.</p>
+                    </div>
+                    <div class="card">
+                        <h3>03 Settle</h3>
+                        <p>Instant USDC payout via Solana & MagicBlock Ephemeral Rollups.</p>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Slide 6: Market -->
-        <section class="slide">
-            <span class="tagline">THE OPPORTUNITY</span>
-            <h2 class="animate-in">Physical Truth <br>as a Service.</h2>
-            <p class="animate-in delay-1">The AI Agent economy requires trusted physical inputs. Signal powers the next generation of Supply Chain, Insurance, and Retail AI.</p>
-        </section>
-
-        <!-- Slide 7: Business Model -->
-        <section class="slide">
-            <span class="tagline">ECONOMICS</span>
-            <h2 class="animate-in">Sustainable <br>Value Capture.</h2>
-            <ul class="feature-list animate-in delay-1">
-                <li class="feature-item">Data Query Fees for AI Agents</li>
-                <li class="feature-item">Protocol Verification Fees</li>
-                <li class="feature-item">Node Staking & Governance</li>
-            </ul>
-        </section>
-
-        <!-- Slide 8: Traction -->
-        <section class="slide">
-            <span class="tagline">MOMENTUM</span>
-            <h2 class="animate-in">Active in 14+ <br>Global Regions.</h2>
-            <ul class="feature-list animate-in delay-1">
-                <li class="feature-item">Live on Telegram: @OfficialSignalOracleBot</li>
-                <li class="feature-item">Integrated with MagicBlock & Jupiter</li>
-                <li class="feature-item">1,000+ Verified Data Points Collected</li>
-            </ul>
-        </section>
-
-        <!-- Slide 9: Roadmap -->
-        <section class="slide">
-            <span class="tagline">THE FUTURE</span>
-            <h2 class="animate-in">Road to Mainnet.</h2>
-            <div class="roadmap">
-                <div class="milestone animate-in delay-1">
-                    <div class="date">Q1 2026</div>
-                    <div>Genesis Launch & Bot Alpha (Current)</div>
-                </div>
-                <div class="milestone animate-in delay-2">
-                    <div class="date">Q2 2026</div>
-                    <div>Developer SDK & Agent API Release</div>
-                </div>
-                <div class="milestone animate-in delay-3">
-                    <div class="date">Q3 2026</div>
-                    <div>Solana Mainnet Migration & Governance</div>
+        <!-- SLIDE 5: TRACTION -->
+        <section class="slide" id="slide-5">
+            <div class="number">05</div>
+            <div class="reveal text-center">
+                <h2>THE NETWORK IS</h2>
+                <h1 style="color: #10B981">LIVE.</h1>
+                <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="card" style="text-align: center;">
+                        <div class="big-stat">14+</div>
+                        <p>Regions Active</p>
+                    </div>
+                    <div class="card" style="text-align: center;">
+                        <div class="big-stat">8.9K</div>
+                        <p>Reports Verified</p>
+                    </div>
+                    <div class="card" style="text-align: center;">
+                        <div class="big-stat">$24K</div>
+                        <p>Bounty Volume</p>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Slide 10: Team -->
-        <section class="slide">
-            <span class="tagline">THE BUILDERS</span>
-            <h2 class="animate-in">Team Signal.</h2>
-            <p class="animate-in delay-1">Experienced Solana developers and AI researchers dedicated to decentralized ground truth.</p>
-            <div class="step-card animate-in delay-2" style="margin-top: 2rem;">
-                 <p style="font-size: 1.2rem; color: var(--accent-cyan);">[ INSERT YOUR FLEX FACTS HERE ]</p>
+        <!-- SLIDE 6: BUSINESS MODEL -->
+        <section class="slide" id="slide-6">
+            <div class="number">06</div>
+            <div class="reveal">
+                <h2>SUSTAINABLE</h2>
+                <h1 style="color: #8B5CF6">LOOPS.</h1>
+                <div class="grid">
+                    <div class="card">
+                        <div class="pill">Monetization</div>
+                        <h3>Transaction Fees</h3>
+                        <p>5% protocol fee on every data bounty settled on-chain.</p>
+                    </div>
+                    <div class="card">
+                        <div class="pill">Scale</div>
+                        <h3>Data Licensing</h3>
+                        <p>Institutional API access for hedge funds and logistics agents.</p>
+                    </div>
+                </div>
             </div>
         </section>
 
-        <!-- Slide 11: Call to Action -->
-        <section class="slide" style="text-align: center; align-items: center;">
-            <span class="tagline">JOIN THE MOVEMENT</span>
-            <h2 class="animate-in">Profit from Truth.</h2>
-            <div style="background: white; padding: 1rem; width: 200px; height: 200px; margin: 2rem auto;" class="animate-in delay-1">
-                <!-- QR Code Placeholder -->
-                <div style="width: 100%; height: 100%; border: 2px dashed #000; display: flex; align-items: center; justify-content: center; color: #000; font-family: monospace; font-size: 0.7rem;">QR CODE TO BOT</div>
+        <!-- SLIDE 7: TEAM -->
+        <section class="slide" id="slide-7">
+            <div class="number">07</div>
+            <div class="reveal">
+                <h2>BUILT TO</h2>
+                <h1 style="color: #EC4899">DELIVER.</h1>
+                <p class="description">We did it before. We deliver again.</p>
+                <div class="grid">
+                    <div class="card">
+                        <h3>Engineering First</h3>
+                        <p>Ex-Founders & Solana Engineers with a track record of shipping production DePIN.</p>
+                    </div>
+                    <div class="card">
+                        <h3>AI Native</h3>
+                        <p>Specialized in Vision AI and Decentralized Truth Protocols.</p>
+                    </div>
+                </div>
             </div>
-            <p class="animate-in delay-2" style="font-family: 'JetBrains Mono'; color: var(--accent-cyan);">t.me/OfficialSignalOracleBot</p>
         </section>
 
-        <div class="nav-controls">
-            <button class="nav-btn" onclick="prevSlide()">< PREV</button>
-            <button class="nav-btn" onclick="nextSlide()">NEXT ></button>
-        </div>
-        <div class="progress-bar" id="progress"></div>
+        <!-- SLIDE 8: CTA -->
+        <section class="slide" id="slide-8">
+            <div class="number">08</div>
+            <div class="neon-bg" style="top: 20%; left: 30%;"></div>
+            <div class="reveal">
+                <h2>JOIN THE</h2>
+                <h1>SIGNAL.</h1>
+                <p class="description">Launch the @OfficialSignalOracleBot and start reporting physical truth today.</p>
+                <br>
+                <a href="https://t.me/OfficialSignalOracleBot" style="display: inline-block; padding: 2rem 4rem; background: var(--accent); color: var(--bg-primary); font-family: 'Archivo Black'; text-decoration: none; border-radius: 2rem; font-size: 1.5rem; transition: 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">START EARNING</a>
+            </div>
+        </section>
+
     </div>
 
     <script>
-        let currentSlide = 0;
-        const slides = document.querySelectorAll('.slide');
-        const progress = document.getElementById('progress');
-
-        function showSlide(n) {
-            slides[currentSlide].classList.remove('active');
-            currentSlide = (n + slides.length) % slides.length;
-            slides[currentSlide].classList.add('active');
-            progress.style.width = `${((currentSlide + 1) / slides.length) * 100}%`;
-        }
-
-        function nextSlide() { showSlide(currentSlide + 1); }
-        function prevSlide() { showSlide(currentSlide - 1); }
-
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
-            if (e.key === 'ArrowLeft') prevSlide();
+        // Smooth snap navigation for arrow keys
+        document.addEventListener('keydown', (e) => {
+            const container = document.querySelector('.presentation');
+            if (e.key === 'ArrowDown' || e.key === ' ') {
+                container.scrollBy({ top: window.innerHeight, behavior: 'smooth' });
+            }
+            if (e.key === 'ArrowUp') {
+                container.scrollBy({ top: -window.innerHeight, behavior: 'smooth' });
+            }
         });
 
-        // Initialize progress
-        showSlide(0);
+        // Update Nav Dots based on scroll
+        const slides = document.querySelectorAll('.slide');
+        const dots = document.querySelectorAll('.dot');
+        const container = document.querySelector('.presentation');
+
+        container.addEventListener('scroll', () => {
+            const index = Math.round(container.scrollTop / window.innerHeight);
+            dots.forEach((dot, i) => {
+                dot.style.background = i === index ? '#10B981' : 'rgba(255,255,255,0.1)';
+                dot.style.transform = i === index ? 'scale(1.5)' : 'scale(1)';
+            });
+        });
     </script>
 </body>
 </html>
