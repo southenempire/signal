@@ -415,7 +415,9 @@ export default function Home() {
                 {/* Relatable Social Proof */}
                 <div className="pt-8 border-t border-white/5 grid grid-cols-2 gap-8">
                    <div>
-                      <div className="text-2xl font-black text-white tabular-nums">${(volume / 1000).toFixed(1)}k+</div>
+                      <div className="text-2xl font-black text-white tabular-nums">
+                         {volume >= 1000 ? `$${(volume / 1000).toFixed(1)}k+` : `$${volume.toFixed(2)}`}
+                      </div>
                       <div className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Community Payouts</div>
                    </div>
                    <div>
@@ -485,8 +487,8 @@ export default function Home() {
             >
               <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                    <span>Truth Finality</span>
-                    <span className="text-[#10B981]">Managed by Dune</span>
+                    <span>On-Chain Indexing</span>
+                    <span className="text-[#10B981]">Powered by Dune</span>
                  </div>
                  <div className="h-1 rounded-full bg-white/5 overflow-hidden">
                     <motion.div 
