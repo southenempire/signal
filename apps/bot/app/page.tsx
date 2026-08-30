@@ -606,6 +606,7 @@ export default function Home() {
             <div>
               <h4 className="font-display font-bold text-white text-[10px] mb-6 uppercase tracking-[0.2em]">Social</h4>
               <ul className="space-y-4">
+                <li><a href="https://x.com/signalprotcol" target="_blank" rel="noopener noreferrer" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors flex items-center gap-2">X / Twitter <ExternalLink size={12}/></a></li>
                 <li><a href="https://t.me/OfficialSignalOracleBot" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors flex items-center gap-2">Telegram Bot <ExternalLink size={12}/></a></li>
                 <li><a href="https://t.me/+gcVgzcIIu2M3ODFk" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors flex items-center gap-2">Community Chat <ExternalLink size={12}/></a></li>
                 <li><a href="https://github.com/southenempire/signal" className="text-zinc-500 text-sm hover:text-[#10B981] transition-colors flex items-center gap-2">GitHub <ExternalLink size={12}/></a></li>
