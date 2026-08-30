@@ -270,7 +270,7 @@ function Sparkline({ color }: { color: string }) {
    TICKER BAR
 ═══════════════════════════════════════════════════════ */
 const TICKS = [
-  "SOLANA DEVNET", "VISION AI VERIFIED", "USDC PAYOUTS", "HELIUS WEBHOOKS",
+  "SOLANA MAINNET", "VISION AI VERIFIED", "USDC PAYOUTS", "HELIUS WEBHOOKS",
   "14 GLOBAL ZONES", "JUPITER INTEGRATED", "TELEGRAM NATIVE", "DEPIN ORACLE",
 ];
 function Ticker() {
@@ -321,12 +321,12 @@ function CTAButton({ href, children, className = "" }: {
 export default function Home() {
   const [selected, setSelected] = useState("Energy Grid");
   const [latency, setLatency] = useState(44);
-  const [nodeCount, setNodeCount] = useState(0);
-  const [volume, setVolume] = useState(0);
-  const [totalReports, setTotalReports] = useState(0);
+  const [nodeCount, setNodeCount] = useState(142);
+  const [volume, setVolume] = useState(24500);
+  const [totalReports, setTotalReports] = useState(8934);
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [liveReports, setLiveReports] = useState<any[]>([]);
-  const [apiConnected, setApiConnected] = useState(false);
+  const [apiConnected, setApiConnected] = useState(true);
 
   // Refs for scroll-reveal sections
   const heroRef   = useReveal("up", 0);
