@@ -696,6 +696,16 @@ export default function Home() {
                     Developers
                   </Link>
                 </li>
+                <li>
+                  <a
+                    href="/brand-kit.html"
+                    className={`text-xs sm:text-sm transition-colors ${
+                      isLight ? "text-zinc-600 hover:text-zinc-900" : "text-zinc-600 hover:text-white"
+                    }`}
+                  >
+                    Media & Brand Kit
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
