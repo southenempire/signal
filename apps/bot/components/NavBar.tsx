@@ -3,131 +3,136 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { Zap, Network, BookOpen, ExternalLink, Menu, X } from 'lucide-react';
+import { Network, BookOpen, ExternalLink, Menu, X, Sun, Moon } from 'lucide-react';
 import { useState } from 'react';
+import { useTheme } from './ThemeProvider';
 
-const LAUNCH_DATE = new Date("2026-05-01T00:00:00Z");
-const isLive = () => {
-    const now = new Date().getTime();
-    return now >= LAUNCH_DATE.getTime();
-};
+const BOT_URL = "https://t.me/OfficialSignalOracleBot";
 
 const navItems = [
-  { name: 'Live Network', path: '/network', icon: Network, hideDuringPrelaunch: true },
+  { name: 'Live Network', path: '/network', icon: Network },
   { name: 'Developers', path: '/docs', icon: BookOpen },
 ];
 
 export default function NavBar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { theme, toggle } = useTheme();
+  const isLight = theme === 'light';
 
   return (
-    <header className="fixed top-0 inset-x-0 z-50 bg-black/40 backdrop-blur-xl border-b border-white/5">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-9 h-9 rounded-xl overflow-hidden border border-white/10 group-hover:border-[#10B981]/50 transition-all shadow-2xl">
-              <Image 
-                src="/logo.png" 
-                alt="Signal" 
-                fill
-                className="object-cover transition-transform group-hover:scale-110" 
-              />
-            </div>
-            <span className="text-white font-[Space_Grotesk] font-bold tracking-tight text-xl hidden sm:block">
-              Signal
-            </span>
-          </Link>
-
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-6">
-            {navItems
-              .filter(item => !item.hideDuringPrelaunch || isLive())
-              .map((item) => {
-              const isActive = pathname === item.path;
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.path}
-                  href={item.path}
-                  className={`relative px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2
-                    ${isActive ? 'text-white' : 'text-gray-400 hover:text-white'}
-                  `}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.name}
-                  {isActive && (
-                    <motion.div
-                      layoutId="navbar-indicator"
-                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#10B981] to-transparent"
-                      initial={false}
-                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* CTA & Mobile Toggle */}
-          <div className="flex items-center gap-4">
-            <a
-              href="https://t.me/OfficialSignalOracleBot"
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:flex items-center gap-2 cta-btn !py-2 !px-5 !text-sm !font-bold group shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)]"
-            >
-              Launch Signal Bot
-              <ExternalLink className="w-3.5 h-3.5 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-            </a>
-            <button 
-              className="md:hidden text-gray-400 hover:text-white"
-              onClick={() => setIsOpen(!isOpen)}
-            >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile Nav */}
-      <motion.div 
-        initial={false}
-        animate={{ height: isOpen ? 'auto' : 0, opacity: isOpen ? 1 : 0 }}
-        className="md:hidden overflow-hidden bg-black/95 border-b border-white/5"
+    <header className="fixed top-3 inset-x-0 z-50 px-4 sm:px-8 max-w-7xl mx-auto">
+      <div
+        className={`rounded-2xl backdrop-blur-2xl transition-all duration-300 border px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between shadow-2xl ${
+          isLight
+            ? "bg-white/80 border-zinc-200/80 shadow-zinc-200/40"
+            : "bg-[#0c0d14]/75 border-white/[0.08] shadow-black/80"
+        }`}
       >
-        <div className="px-4 py-4 space-y-1">
-          {navItems
-            .filter(item => !item.hideDuringPrelaunch || isLive())
-            .map((item) => {
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-white/10 shadow-md">
+            <Image src="/logo.png" alt="Signal" fill className="object-cover" />
+          </div>
+          <span className={`font-bold tracking-tight text-lg ${isLight ? "text-zinc-900" : "text-white"}`}>
+            Signal
+          </span>
+        </Link>
+
+        {/* Desktop Nav */}
+        <nav className="hidden md:flex items-center gap-2">
+          {navItems.map((item) => {
             const isActive = pathname === item.path;
             const Icon = item.icon;
             return (
               <Link
                 key={item.path}
                 href={item.path}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium
-                  ${isActive ? 'bg-white/5 text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white'}
-                `}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  isActive
+                    ? isLight ? "text-zinc-900 bg-black/5" : "text-white bg-white/10"
+                    : isLight ? "text-zinc-600 hover:text-zinc-900 hover:bg-black/5" : "text-zinc-400 hover:text-zinc-100 hover:bg-white/5"
+                }`}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-3.5 h-3.5" />
                 {item.name}
               </Link>
             );
           })}
-          <a
-             href="https://t.me/OfficialSignalOracleBot"
-             target="_blank"
-             className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-[#10B981] hover:bg-white/5 mt-4"
+        </nav>
+
+        {/* Right CTA + Controls */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Light/Dark Toggle */}
+          <button
+            onClick={toggle}
+            aria-label="Toggle theme"
+            className={`p-2 rounded-full border transition-all ${
+              isLight
+                ? "bg-black/5 border-zinc-300 text-zinc-700 hover:bg-black/10"
+                : "bg-white/5 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white"
+            }`}
           >
-            Launch Telegram Bot <ExternalLink className="w-5 h-5" />
+            {isLight ? <Moon size={15} className="text-[#7C5CFC]" /> : <Sun size={15} className="text-[#00D4AA]" />}
+          </button>
+
+          {/* Launch Bot CTA */}
+          <a
+            href={BOT_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold text-white transition-all shadow-lg hover:opacity-95 hover:scale-[1.02] active:scale-[0.98]"
+            style={{
+              background: "linear-gradient(135deg, #7C5CFC, #E040FB)",
+              boxShadow: "0 0 24px rgba(124,92,252,0.4)",
+            }}
+          >
+            <span>Launch Signal Bot</span>
+            <ExternalLink className="w-3 h-3" />
           </a>
+
+          {/* Mobile menu toggle */}
+          <button
+            className={`md:hidden p-1.5 rounded-lg transition-colors ${
+              isLight ? "text-zinc-700 hover:bg-black/5" : "text-zinc-400 hover:bg-white/10"
+            }`}
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            {isOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
-      </motion.div>
+      </div>
+
+      {/* Mobile Nav Dropdown */}
+      {isOpen && (
+        <div
+          className={`md:hidden mt-2 p-4 rounded-2xl border backdrop-blur-2xl transition-all shadow-2xl ${
+            isLight ? "bg-white/95 border-zinc-200" : "bg-[#0c0d14]/95 border-white/10"
+          }`}
+        >
+          <div className="space-y-1">
+            {navItems.map((item) => {
+              const isActive = pathname === item.path;
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.path}
+                  href={item.path}
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ${
+                    isActive
+                      ? isLight ? "bg-black/5 text-zinc-900" : "bg-white/10 text-white"
+                      : isLight ? "text-zinc-600 hover:bg-black/5" : "text-zinc-400 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </header>
   );
 }

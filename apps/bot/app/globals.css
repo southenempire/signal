@@ -3,18 +3,34 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Tokens ─────────────────────────────────────────── */
+/* ── Tokens — Dark (default) ────────────────────────── */
 :root {
-  --bg:      #0a0a0c;
-  --fg:      #f4f4f5;
-  --muted:   #94a3b8;
-  --primary: #10B981;
-  --p-glow:  rgba(16, 185, 129, 0.25);
-  --green:   #10B981;
-  --g-glow:  rgba(16, 185, 129, 0.2);
-  --pink:    #f43f5e;
-  --border:  rgba(255,255,255,0.06);
-  --card:    rgba(22, 22, 26, 0.8);
+  --bg:         #060608;
+  --bg-nav:     rgba(6,6,8,0.80);
+  --bg-card:    rgba(255,255,255,0.03);
+  --border:     rgba(255,255,255,0.07);
+  --fg:         #ffffff;
+  --fg-muted:   #71717a;
+  --fg-sub:     #3f3f46;
+  --purple:     #7C5CFC;
+  --pink:       #E040FB;
+  --teal:       #00D4AA;
+  --scrollbar:  rgba(124,92,252,0.4);
+}
+
+/* ── Tokens — Light ─────────────────────────────────── */
+html.light {
+  --bg:         #f4f4f6;
+  --bg-nav:     rgba(244,244,246,0.85);
+  --bg-card:    rgba(0,0,0,0.03);
+  --border:     rgba(0,0,0,0.08);
+  --fg:         #0a0a10;
+  --fg-muted:   #52525b;
+  --fg-sub:     #a1a1aa;
+  --purple:     #6d4de8;
+  --pink:       #c026d3;
+  --teal:       #00a888;
+  --scrollbar:  rgba(109,77,232,0.4);
 }
 
 /* ── Reset & base ───────────────────────────────────── */

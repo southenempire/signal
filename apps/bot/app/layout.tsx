@@ -19,18 +19,22 @@ export const metadata: Metadata = {
   },
 };
 
+import { ThemeProvider } from "../components/ThemeProvider";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased dark bg-black">
-      <body className="min-h-full flex flex-col pt-16">
-        <ClientNavBar />
-        <main className="flex-grow flex flex-col relativ z-0">
-          {children}
-        </main>
+    <html lang="en" className="h-full antialiased">
+      <body className="min-h-full flex flex-col pt-16 transition-colors duration-300">
+        <ThemeProvider>
+          <ClientNavBar />
+          <main className="flex-grow flex flex-col relative z-0">
+            {children}
+          </main>
+        </ThemeProvider>
       </body>
     </html>
   );
