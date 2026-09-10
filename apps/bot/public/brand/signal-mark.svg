@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#0E0F17"/>
+  <rect x="4" y="4" width="504" height="504" rx="108" stroke="url(#border-grad)" stroke-width="4" stroke-opacity="0.4"/>
+  <circle cx="256" cy="256" r="160" stroke="#7C5CFC" stroke-opacity="0.2" stroke-width="4" stroke-dasharray="8 8"/>
+  <circle cx="256" cy="256" r="100" stroke="#E040FB" stroke-opacity="0.3" stroke-width="4"/>
+  <circle cx="256" cy="256" r="32" fill="url(#core-grad)"/>
+  <!-- Signal radar pulses -->
+  <path d="M176 176C220.183 131.817 291.817 131.817 336 176" stroke="url(#radar-grad)" stroke-width="16" stroke-linecap="round"/>
+  <path d="M136 136C202.274 69.7258 309.726 69.7258 376 136" stroke="url(#radar-grad)" stroke-width="16" stroke-linecap="round" stroke-opacity="0.7"/>
+  <path d="M96 96C184.366 7.63444 327.634 7.63444 416 96" stroke="url(#radar-grad)" stroke-width="16" stroke-linecap="round" stroke-opacity="0.4"/>
+  <defs>
+    <linearGradient id="border-grad" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7C5CFC"/>
+      <stop offset="1" stop-color="#E040FB"/>
+    </linearGradient>
+    <linearGradient id="core-grad" x1="224" y1="224" x2="288" y2="288" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#00D4AA"/>
+      <stop offset="1" stop-color="#7C5CFC"/>
+    </linearGradient>
+    <linearGradient id="radar-grad" x1="96" y1="96" x2="416" y2="416" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7C5CFC"/>
+      <stop offset="0.5" stop-color="#E040FB"/>
+      <stop offset="1" stop-color="#00D4AA"/>
+    </linearGradient>
+  </defs>
+</svg>
