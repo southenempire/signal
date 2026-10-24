@@ -26,19 +26,16 @@ try {
 }
 
 import { Telegraf, Markup } from 'telegraf';
-import { ethers } from 'ethers';
 import {
   Connection, Keypair, PublicKey, LAMPORTS_PER_SOL
 } from '@solana/web3.js';
-import {
-  getOrCreateAssociatedTokenAccount, transfer, getAccount
-} from '@solana/spl-token';
 import { readFileSync } from 'fs';
 
 import {
-  getOrCreateUser, saveReport, savePayout,
-  getLeaderboard, getRecentReports, getNetworkStats,
-  getUserTotalEarned, getDailyReportCount, isImageDuplicate,
+  getOrCreateUser, savePendingReport, getUserPendingLocked, setUserRegion,
+  getLeaderboard, getRecentReports, getNetworkStats, getFeedsSummary,
+  getAcceptedFeedPrices, getUserTotalEarned, getDailyReportCount, isImageDuplicate,
+  getFeedKeyForImageHash, getAllFeedKeys, setReputation,
   saveYellowLink, getYellowLink
 } from './db.js';
 import { saveReportImage } from './images.js';
@@ -50,15 +47,27 @@ import {
   getPendingYellowBalance,
   getYellowStatus,
 } from './yellow.js';
+import {
+  RULES, rewardFor, isBanned, regionFor, feedKey, slug, median,
+} from './consensus.js';
+import { settlePending, crankChain, penalize } from './settlement.js';
+import * as oracle from './solana_oracle.js';
+import { ORACLE_ADDRESS, getReportCount, getFeedCount, isOracleConfigured } from './botchain.js';
+import {
+  initPayments, payReward, getTokenBalance, sendToken, swapUsdcToJupUsd, isMainnet, JUP_USD_MINT,
+} from './payments.js';
+import { toUsd } from './fx.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const RPC_URL   = process.env.RPC_URL || 'https://api.devnet.solana.com';
 const USDC_MINT = process.env.USDC_MINT || '4zMMC9srvvSbhvWxREz676cgVT7n8uyT8D5KWW2EGQuD';
-const JUP_USD_MINT = 'JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD';
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const MAGICBLOCK_API_URL = 'https://payments.magicblock.app/v1';
+const SETTLE_INTERVAL_MS = 5 * 60 * 1000;
+const MAX_ITEMS_PER_REPORT = 10;
+// Each item filed on-chain locks its own reward, so cap how many items one receipt can file.
+const MAX_ONCHAIN_ITEMS = parseInt(process.env.MAX_ONCHAIN_ITEMS || '5', 10);
 
 // ─── Zerion Agent Policies ────────────────────────────────────────────────────
 const AGENT_POLICIES = {
@@ -110,101 +119,29 @@ console.log('🔗 RPC:', RPC_URL);
 console.log('💳 Protocol wallet:', protocolWallet.publicKey.toBase58());
 console.log('💵 USDC Mint:', USDC_MINT);
 
+initPayments({ connection, protocolWallet, usdcMint: mintPubkey, rpcUrl: RPC_URL, isSafeMode: IS_SAFE_MODE });
+
+// Solana program: on-chain consensus, reward vault, slashing and reputation.
+// The bot is the attester (vouches for the AI parse, pays rent) and a crank.
+// SIGNAL_PROGRAM=off falls back to the off-chain engine in settlement.js.
+if (!IS_SAFE_MODE && process.env.SIGNAL_PROGRAM !== 'off') {
+  const attesterKeypair = process.env.SIGNAL_ATTESTER_KEYPAIR_JSON
+    ? Keypair.fromSecretKey(new Uint8Array(JSON.parse(process.env.SIGNAL_ATTESTER_KEYPAIR_JSON)))
+    : protocolWallet;
+  oracle.initOracle({ connection, attesterKeypair, usdcMint: mintPubkey });
+}
+const runSettlement = () => (oracle.isEnabled()
+  ? crankChain(settlementDeps)
+  : settlePending(settlementDeps)
+).catch(e => console.error('[Consensus] settle error:', e.message));
+
 // ─── Pending actions (these are ephemeral — OK to be in-memory) ──────────────
 const pendingReport = new Map();
 
-async function getUSDC(pubkey) {
-  try {
-    const ata = await getOrCreateAssociatedTokenAccount(
-      connection, protocolWallet, mintPubkey, pubkey
-    );
-    const acct = await getAccount(connection, ata.address);
-    return Number(acct.amount) / 1_000_000;
-  } catch { return 0; }
-}
+const getUSDC = (pubkey) => getTokenBalance(pubkey, mintPubkey);
+const getJupUSD = (pubkey) => getTokenBalance(pubkey, new PublicKey(JUP_USD_MINT));
 
-async function getJupUSD(pubkey) {
-  try {
-    const jupMint = new PublicKey(JUP_USD_MINT);
-    const ata = await getOrCreateAssociatedTokenAccount(
-      connection, protocolWallet, jupMint, pubkey
-    );
-    const acct = await getAccount(connection, ata.address);
-    return Number(acct.amount) / 1_000_000;
-  } catch { return 0; }
-}
-
-
-async function payUserMagicBlock(userPubkey, amount) {
-  try {
-    // Fulfilling MagicBlock Private Payments Track Requirement
-    // Building a private SPL transfer via MagicBlock Ephemeral Rollup
-    const response = await fetch(`${MAGICBLOCK_API_URL}/transfer`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-          recipient: userPubkey.toBase58(),
-          amount: Math.round(amount * 1_000_000),
-          mint: USDC_MINT,
-          isPrivate: true // PER enabled
-      })
-    });
-    const data = await response.json();
-    return data.signature || 'confirmed_private';
-  } catch (e) {
-    console.error('MagicBlock Pay error:', e.message);
-    // Fallback to standard transfer if MB is offline
-    return payUserStandard(userPubkey, amount);
-  }
-}
-
-async function payUserStandard(userPubkey, amount) {
-  if (IS_SAFE_MODE) {
-      console.warn('[Safe Mode] Standard Payout Blocked: No production identity.');
-      return null;
-  }
-  try {
-    const fromATA = await getOrCreateAssociatedTokenAccount(
-      connection, protocolWallet, mintPubkey, protocolWallet.publicKey
-    );
-    const toATA = await getOrCreateAssociatedTokenAccount(
-      connection, protocolWallet, mintPubkey, userPubkey
-    );
-    const sig = await transfer(connection, protocolWallet, fromATA.address, toATA.address,
-      protocolWallet, BigInt(Math.round(amount * 1_000_000)));
-    return sig;
-  } catch (e) {
-    console.error('Standard Pay error:', e.message);
-    return null;
-  }
-}
-
-const BOTCHAIN_ORACLE_ADDRESS = '0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243';
-const SIGNAL_ORACLE_ABI = [
-  "function recordPrice(string calldata category, uint256 usdcPrice, string calldata imageHash, address reporter) external returns (uint256)",
-  "function getReportCount() external view returns (uint256)"
-];
-
-async function payReporterBotChain(evmAddress, amountUsd, category = "GROCERY", imageHash = "0x") {
-  try {
-    const pKey = process.env.YELLOW_USER_PRIVATE_KEY || process.env.BOTCHAIN_PRIVATE_KEY;
-    if (!pKey) {
-      return { success: true, pending: true, message: "BOTChain EVM rail active" };
-    }
-    const wallet = new ethers.Wallet(pKey, botChainProvider);
-    
-    // Log price data directly to deployed SignalOracle smart contract on BOTChain
-    const contract = new ethers.Contract(BOTCHAIN_ORACLE_ADDRESS, SIGNAL_ORACLE_ABI, wallet);
-    const usdcCents = Math.round(amountUsd * 100);
-    const tx = await contract.recordPrice(category, usdcCents, imageHash, evmAddress || wallet.address);
-    console.log(`[BOTChain Oracle] Recorded price report on-chain: ${tx.hash}`);
-
-    return { success: true, hash: tx.hash, contract: BOTCHAIN_ORACLE_ADDRESS };
-  } catch (e) {
-    console.error('[BOTChain] Payout/Oracle error:', e.message);
-    return { success: false, error: e.message };
-  }
-}
+const escapeHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 // ─── Bot ──────────────────────────────────────────────────────────────────────
 let bot;
@@ -221,7 +158,8 @@ if (BOT_TOKEN) {
 const MAIN_MENU = Markup.keyboard([
   ['📸 Report a Price', '💰 My Rewards'],
   ['🏆 Leaderboard',   '📖 How It Works'],
-  ['🚀 BOTChain Hub',  '🌐 Network Status']
+  ['🚀 BOTChain Hub',  '🌐 Network Status'],
+  ['📍 Set My City']
 ]).resize();
 
 // /start
@@ -252,11 +190,12 @@ if (bot) {
   bot.hears('📖 How It Works', async (ctx) => {
   await ctx.replyWithHTML(
     `<b>📖 How Signal Bot Works</b>\n\n` +
-    `<b>1. Report</b> → Send a photo of a price (fuel pump, shelf tag, receipt)\n` +
-    `<b>2. Verify</b> → Vision AI extracts and verifies the price from your photo\n` +
-    `<b>3. Earn</b>   → USDC lands in your wallet once consensus is reached\n\n` +
-    `<b>Anti-Fraud:</b> Each report requires a small stake. Fake reports get slashed. ✂️\n\n` +
-    `<i>Built on Solana · Powered by Vision AI · Token: USDC</i>`,
+    `<b>1. Capture</b> → Send a photo of a receipt, shelf tag or fuel pump\n` +
+    `<b>2. Parse</b> → Vision AI rejects screenshots and fakes, then reads every item, the store, the time and the total\n` +
+    `<b>3. Consensus</b> → Each price is checked against local price bounds and peer reports from other signalers. Your reward is locked meanwhile.\n` +
+    `<b>4. Settle</b> → The Signal program on Solana decides. Accepted: it pays your reward from its on-chain pool and adds the price to the feed (mirrored to BOTChain). Contradicted: reward forfeited and you are slashed.\n\n` +
+    `<b>Reputation:</b> starts at ${RULES.REPUTATION_START}/100. +${RULES.REPUTATION_ACCEPT} per accepted report, ${RULES.REPUTATION_SLASH} per slash, ${RULES.REPUTATION_DUPLICATE} for duplicates. Higher reputation earns bigger rewards; below ${RULES.REPUTATION_BANNED_BELOW} you can't report.\n\n` +
+    `<i>Consensus on Solana · Mirrored to BOTChain · Token: USDC</i>`,
     MAIN_MENU
   );
 });
@@ -297,234 +236,262 @@ if (bot) {
 });
 }
 
-// Photo handler — Claude-Powered Sovereign Verification
+// ─── Consensus settlement wiring ───────────────────────────────────────────────
+const settlementDeps = {
+  payReward: async (telegramId, amount) => {
+    const u = getOrCreateUser(telegramId);
+    const result = await payReward(u.keypair.publicKey, amount);
+    // Bonus rail: Yellow Network credit for users who linked an EVM wallet
+    const evmAddress = getYellowLink(telegramId);
+    if (evmAddress) {
+      payReporterYellow(evmAddress, amount).catch(e => console.warn('[Yellow] Bonus payout error (non-critical):', e.message));
+    }
+    return result;
+  },
+  onAccepted: (telegramId, amount) => {
+    const evmAddress = getYellowLink(telegramId);
+    if (evmAddress) {
+      payReporterYellow(evmAddress, amount).catch(e => console.warn('[Yellow] Bonus payout error (non-critical):', e.message));
+    }
+  },
+  notify: async (telegramId, html) => {
+    if (!bot) return;
+    await bot.telegram.sendMessage(telegramId, html, { parse_mode: 'HTML', disable_web_page_preview: true })
+      .catch(e => console.warn(`[Notify] ${telegramId}:`, e.message));
+  },
+};
+
+// Photo handler — Vision AI receipt parsing, then consensus
+const VISION_PROMPT = `You are the Signal verification engine. You audit photos of real-world prices and extract structured data.
+
+RULES
+1. Reject screenshots of apps, web pages, charts, trading screens, memes, selfies, stock photos and anything shown on a digital screen other than a physical fuel pump display. Set "verified": false.
+2. If the image looks edited, generated, composited, or the numbers look tampered with, set "verified": false AND "fraudSuspected": true. Only use fraudSuspected for deliberate fakes, never for blurry or unreadable photos.
+3. Accept real photos of printed receipts or POS slips, fuel pump displays, shelf price tags or price boards, and utility bills or meters.
+4. Extract every priced line item (max 10). For each give a canonicalItem: a short snake_case product key that ignores brand and pack design, including size where it matters. Use these keys when they fit: petrol_litre, diesel_litre, kerosene_litre, cooking_gas_kg, electricity_kwh, rent_month_1bed, bread_loaf, rice_kg, rice_50kg_bag, beans_kg, garri_kg, flour_kg, sugar_kg, salt_kg, vegetable_oil_litre, palm_oil_litre, milk_litre, eggs_dozen, egg_single, chicken_kg, beef_kg, fish_kg, tomatoes_kg, onions_kg, potatoes_kg, yam_tuber, plantain_bunch, sardine_tin, noodles_pack, spaghetti_pack, water_bottle_75cl, soft_drink_bottle, soap_bar, detergent_kg. Otherwise invent a clear key in the same style.
+5. unitPrice is the price of ONE unit as described by canonicalItem, in the receipt's currency (for fuel: price per litre, not the total).
+6. Read the store name, address, city and ISO 3166-1 alpha-2 country code if they are printed. Read the receipt date/time if printed (ISO 8601).
+7. documentType is one of: receipt, price_tag, fuel_pump, utility_bill, other. category is one of: FUEL, GROCERY, ELECTRICITY, RENT, GENERIC.
+8. currency is the ISO 4217 code (NGN, KES, GHS, USD, EUR, ...). Do NOT convert to USD.
+
+Respond with ONLY a JSON object:
+{
+  "verified": true,
+  "fraudSuspected": false,
+  "reason": "short explanation",
+  "documentType": "receipt",
+  "category": "GROCERY",
+  "currency": "NGN",
+  "total": 4680.00,
+  "receiptTimestamp": "2026-10-20T14:32:00",
+  "store": { "name": "...", "address": "...", "city": "Lagos", "country": "NG" },
+  "items": [
+    { "name": "Golden Penny Spaghetti 500g", "canonicalItem": "spaghetti_pack", "quantity": 2, "unitPrice": 950.00 }
+  ]
+}`;
+
+async function runVisionAudit(imageBase64, category) {
+  let lastError = null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      console.log(`[Vision] Groq Qwen-3.6-Vision audit for ${category} (attempt ${attempt})`);
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'qwen/qwen3.6-27b',
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'text', text: `${VISION_PROMPT}\n\nThe user labelled this photo as: ${category}.` },
+              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
+            ],
+          }],
+          temperature: 0.1,
+          max_tokens: 3072,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        if (data.error.code === 'rate_limit_exceeded' || /rate limit/i.test(data.error.message || '')) {
+          await new Promise(r => setTimeout(r, 3500));
+          lastError = new Error('Rate limit');
+          continue;
+        }
+        throw new Error(`Groq API Error: ${data.error.message}`);
+      }
+      const text = data.choices?.[0]?.message?.content;
+      if (!text) throw new Error('Groq response malformed');
+
+      // Strip reasoning blocks and code fences, then take the outermost JSON object.
+      const cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1').trim();
+      const start = cleaned.indexOf('{');
+      const end = cleaned.lastIndexOf('}');
+      if (start === -1 || end <= start) throw new Error('No JSON verdict in response');
+      return JSON.parse(cleaned.slice(start, end + 1));
+    } catch (e) {
+      lastError = e;
+      console.error(`[Vision] attempt ${attempt} failed: ${e.message}`);
+      await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  throw lastError;
+}
+
+const CATEGORIES = ['FUEL', 'GROCERY', 'ELECTRICITY', 'RENT', 'GENERIC'];
+
 if (bot) {
   bot.on('photo', async (ctx) => {
   const user     = getOrCreateUser(ctx.from.id);
-  const category = pendingReport.get(ctx.from.id) || 'FUEL';
+  const selected = pendingReport.get(ctx.from.id) || 'GROCERY';
   pendingReport.delete(ctx.from.id);
 
+  // Reputation lives on-chain when the program is enabled; the local copy is a cache.
+  if (oracle.isEnabled()) {
+    const onchain = await oracle.getReporter(user.keypair.publicKey);
+    if (onchain) {
+      user.reputation = onchain.reputation;
+      setReputation(ctx.from.id, onchain.reputation);
+    }
+  }
+  if (isBanned(user.reputation)) {
+    return ctx.replyWithHTML(`⛔ <b>Reporting suspended</b>\nYour reputation (${user.reputation}/100) is below the network minimum after repeated slashes.`);
+  }
+
   // Zerion Agent Policy Check: Daily Limit
-  const DAILY_LIMIT = 10; 
-  const currentCount = getDailyReportCount(ctx.from.id);
-  if (currentCount >= DAILY_LIMIT) {
+  const DAILY_LIMIT = 10;
+  if (getDailyReportCount(ctx.from.id) >= DAILY_LIMIT) {
     return ctx.replyWithHTML(`⚠️ <b>Policy Violation: Daily Limit Reached</b>\nYour agent is limited to ${DAILY_LIMIT} reports/day.`);
   }
 
-  await ctx.reply('🔍 Image received! Qwen-3.6-Vision is auditing physical truth...');
+  await ctx.reply('🔍 Image received! Qwen-3.6-Vision is parsing and auditing your receipt...');
 
-  const { filepath: imagePath, hash: imageHash, base64: imageBase64 } = await saveReportImage(ctx, category, ctx.from.id);
+  const { filepath: imagePath, hash: imageHash, base64: imageBase64 } = await saveReportImage(ctx, selected, ctx.from.id);
 
-  // Only check duplicates if we successfully got a hash
+  // Duplicate data is slashed, not just rejected.
   if (imageHash && isImageDuplicate(imageHash)) {
-    return ctx.replyWithHTML(`🚫 <b>Integrity Error:</b> Duplicate data detected.`);
+    const rep = await penalize({
+      kind: 'duplicate', telegramId: ctx.from.id, wallet: user.keypair.publicKey, category: selected,
+      imagePath, imageHash, feedKey: getFeedKeyForImageHash(imageHash), reason: 'duplicate image',
+    });
+    return ctx.replyWithHTML(`✂️ <b>Slashed: duplicate data.</b>\nThis exact photo was already submitted.\n⭐ Reputation: ${rep}/100`);
   }
 
-  // ─── Sovereign AI Logic ───────────────────────────────────────────────────
-  let auditResult = null;
-  let reward = 0;
-
-  // HACKATHON DEMO MODE: Force success for recording
+  let audit;
   if (process.env.DEMO_MODE === 'true') {
-      console.log(`[Vision] 🎥 DEMO MODE ACTIVE: Auto-approving report for recording...`);
-      auditResult = {
-          verified: true,
-          originalAmount: (Math.random() * 5 + 3).toFixed(2),
-          originalCurrency: "USD",
-          usdcPrice: (Math.random() * 5 + 3).toFixed(2),
-          reason: "Signal Protocol (Demo Mode): Image verified via simulated oracle consensus."
-      };
-      reward = parseFloat((0.15 + (Math.random() * 0.20)).toFixed(2));
+    console.log('[Vision] 🎥 DEMO MODE: skipping AI, using a fixed sample receipt');
+    audit = {
+      verified: true, reason: 'Demo mode sample', documentType: 'receipt', category: selected,
+      currency: 'USD', total: 5.00, store: { name: 'Demo Store', city: 'Demo', country: 'XX' },
+      items: [{ name: 'Demo item', canonicalItem: 'demo_item', quantity: 1, unitPrice: 5.00 }],
+    };
   } else {
-      try {
-          const prompt = `You are the Signal Sovereign Judge. Your task is to verify real-world physical price data points.
-
-CRITICAL INSTRUCTIONS:
-1. Reject ANY screenshots of apps, web pages, charts, trading interfaces, spot screens (like Jupiter, Uniswap, etc.), memes, selfies, or stock photos. If it is a digital screen screenshot, set "verified": false.
-2. Verify real physical photos of:
-   - Printed paper receipts or store POS invoice slips.
-   - Physical fuel pump screens showing price/volume.
-   - Retail shelf price tags or store price boards.
-3. Category handling:
-   - If the receipt is from a supermarket/grocery store (like bread, milk, sardines, groceries) and category was set to FUEL or unset, DO NOT reject! Auto-categorize it as GROCERY and extract the total transaction amount.
-   - For fuel pumps, categorize as FUEL.
-   - For utility bills/meters, categorize as ELECTRICITY/ENERGY.
-4. Extract the ORIGINAL CURRENCY (e.g. NGN, USD, EUR, GBP, KES, GHS). For Nigerian receipts with amounts like 4,680.00, currency is NGN.
-5. Convert to USD/USDC equivalent (e.g. For NGN, 1 USD ~ 1,500 NGN, so 4,680 NGN ~ 3.12 USDC).
-6. Output format: Be direct and concise. Respond with a valid JSON object matching this structure:
-{
-  "verified": true, 
-  "originalAmount": 0.00, 
-  "originalCurrency": "NGN", 
-  "usdcPrice": 0.00, 
-  "reason": "..."
-}
-
-If the image is not a valid physical price photo or is a digital screenshot, respond with:
-{
-  "verified": false,
-  "reason": "Clear explanation of why it was rejected."
-}`;
-
-          // Primary: Groq Vision AI with auto-retry on rate limits
-          let groqSuccess = false;
-          let retries = 2;
-
-          while (retries > 0 && !groqSuccess) {
-            try {
-              console.log(`[Vision] Attempting Primary (Groq Qwen-3.6-Vision) for category: ${category} (Attempts left: ${retries})`);
-              const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                  method: 'POST',
-                  headers: {
-                      'Authorization': `Bearer ${GROQ_API_KEY}`,
-                      'Content-Type': 'application/json'
-                  },
-                  body: JSON.stringify({
-                      model: 'qwen/qwen3.6-27b',
-                      messages: [{
-                          role: 'user',
-                          content: [
-                              { type: 'text', text: prompt },
-                              { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
-                          ]
-                      }],
-                      temperature: 0.1,
-                      max_tokens: 3072
-                  })
-              });
-
-              const groqData = await groqResponse.json();
-              if (groqData.error) {
-                  if (groqData.error.code === 'rate_limit_exceeded' || (groqData.error.message && groqData.error.message.includes('Rate limit'))) {
-                      console.warn(`[Vision] Groq TPM Rate limit hit. Waiting 3s before retry...`);
-                      await new Promise(res => setTimeout(res, 3500));
-                      retries--;
-                      continue;
-                  }
-                  throw new Error(`Groq API Error: ${groqData.error.message}`);
-              }
-              if (groqData.choices && groqData.choices[0] && groqData.choices[0].message) {
-                  const textResponse = groqData.choices[0].message.content;
-                  try {
-                      // Step 1: Strip <think>...</think> reasoning blocks entirely
-                      let cleaned = textResponse.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-                      // Step 2: Strip markdown code fences
-                      cleaned = cleaned.replace(/```(?:json)?\s*([\s\S]*?)```/g, '$1').trim();
-                      // Step 3: Extract substring from first { to last }
-                      const start = cleaned.indexOf('{');
-                      const end = cleaned.lastIndexOf('}');
-                      if (start !== -1 && end !== -1 && end > start) {
-                          const jsonString = cleaned.slice(start, end + 1);
-                          auditResult = JSON.parse(jsonString);
-                          groqSuccess = true;
-                      } else {
-                          // Fallback: Check if the textResponse contains verified data in thinking
-                          const isReceipt = /receipt|supermarket|grocery|fuel|bread|milk|total/i.test(textResponse);
-                          const totalMatch = textResponse.match(/total\s*(?:is|:|=)?\s*([0-9,]+(?:\.[0-9]+)?)/i);
-                          if (isReceipt && totalMatch) {
-                              const amount = parseFloat(totalMatch[1].replace(/,/g, ''));
-                              auditResult = {
-                                  verified: true,
-                                  originalAmount: amount,
-                                  originalCurrency: "NGN",
-                                  usdcPrice: parseFloat((amount / 1500).toFixed(2)),
-                                  reason: "Physical receipt verified."
-                              };
-                              groqSuccess = true;
-                          } else {
-                              throw new Error("No JSON object structure found in response");
-                          }
-                      }
-                  } catch (jsonErr) {
-                      console.error(`[Vision] JSON Extraction Failed. Raw response was:\n${textResponse}`);
-                      throw new Error(`Failed to extract valid JSON: ${jsonErr.message}`);
-                  }
-              } else {
-                  throw new Error("Groq response malformed: " + JSON.stringify(groqData));
-              }
-            } catch (primaryErr) {
-                console.error(`[Vision] Groq AI verification failed: ${primaryErr.message}`);
-                retries--;
-                if (retries === 0) {
-                    const friendlyReason = primaryErr.message.includes('Rate limit')
-                      ? "The AI vision engine is currently high-traffic. Please wait 5 seconds and upload your receipt photo again!"
-                      : primaryErr.message;
-                    auditResult = { verified: false, reason: friendlyReason };
-                } else {
-                    await new Promise(res => setTimeout(res, 2000));
-                }
-            }
-          }
-
-          if (!auditResult || !auditResult.verified) {
-              const escapedReason = (auditResult?.reason || "Invalid data format")
-                  .replace(/&/g, '&amp;')
-                  .replace(/</g, '&lt;')
-                  .replace(/>/g, '&gt;');
-              return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${escapedReason}\nPlease submit a real physical data point.`);
-          }
-          
-          // Real DePIN Oracle Payout: $0.15 - $0.35 USDC
-          reward = parseFloat((0.15 + (Math.random() * 0.20)).toFixed(2));
-
-      } catch (e) {
-          console.error('Final Verification Error:', e);
-          auditResult = { verified: false, reason: "API verification error. Please try again." };
-          reward = 0.00;
-      }
-  }
-
-  const curSymbol = { USD: '$', EUR: '€', GBP: '£', NGN: '₦' }[auditResult.originalCurrency] || auditResult.originalCurrency;
-
-  await ctx.replyWithHTML(
-      `✅ <b>Physical Truth Verified!</b>\n` +
-      `💲 Original: <b>${curSymbol}${auditResult.originalAmount}</b>\n` +
-      `🌍 Standardized: <b>$${auditResult.usdcPrice} USDC</b>\n\n` +
-      `Settling on Solana (SPL) + BOTChain... ⏳`
-  );
-
-  // Zerion Agent Policy Check: Max Payout
-  if (reward > AGENT_POLICIES.SPEND_LIMIT_USDC) {
-      reward = AGENT_POLICIES.SPEND_LIMIT_USDC;
-  }
-
-  // Primary rail: Direct Solana SPL Token Transfer (USDC)
-  let txSig = await payUserStandard(user.keypair.publicKey, reward);
-  if (!txSig) {
-      // Retry standard pay
-      txSig = await payUserStandard(user.keypair.publicKey, reward);
-  }
-  const usdcBal = await getUSDC(user.keypair.publicKey);
-
-  saveReport(ctx.from.id, category, parseFloat(auditResult.usdcPrice), reward, imagePath, imageHash);
-  if (txSig) savePayout(ctx.from.id, reward, txSig);
-
-  const updated = getOrCreateUser(ctx.from.id);
-
-  // Bonus rails: Yellow Network + BOTChain EVM (Chain ID 677)
-  const evmAddress = getYellowLink(ctx.from.id);
-  let yellowResult = null;
-  let botChainResult = null;
-  if (evmAddress) {
     try {
-      yellowResult = await payReporterYellow(evmAddress, reward);
-      botChainResult = await payReporterBotChain(evmAddress, reward);
+      audit = await runVisionAudit(imageBase64, selected);
     } catch (e) {
-      console.warn('[Multi-rail] Bonus payout error (non-critical):', e.message);
+      console.error('Final Verification Error:', e);
+      return ctx.replyWithHTML(`❌ <b>Verification Error:</b> The AI check could not complete. Please try again.`);
     }
   }
 
-  // Build payout confirmation message
-  let payoutMsg =
-    `🎊 <b>Sovereign Payout Complete!</b>\n\n` +
-    `💰 Earned: <b>+$${reward} USDC</b>\n` +
-    `🛡️ Lane: <b>Solana On-Chain (SPL)</b>\n` +
-    `🚀 Chain: <b>BOTChain (ID 677) Active</b>\n` +
-    `🏦 Balance: <b>$${usdcBal.toFixed(2)}</b>\n`;
+  if (!audit?.verified) {
+    if (audit?.fraudSuspected) {
+      const rep = await penalize({
+        kind: 'fake', telegramId: ctx.from.id, wallet: user.keypair.publicKey, category: selected,
+        imagePath, imageHash, reason: `fake image: ${String(audit.reason || '').slice(0, 120)}`,
+      });
+      return ctx.replyWithHTML(`✂️ <b>Slashed: suspected fake.</b>\n${escapeHtml(audit.reason)}\n⭐ Reputation: ${rep}/100`);
+    }
+    return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${escapeHtml(audit?.reason || 'Invalid data format')}\nPlease submit a real physical data point.`);
+  }
 
-  payoutMsg += `\n<i>Verified by Qwen-3.6-Vision · Powered by Signal Protocol</i>`;
+  // Convert every priced item to USD at the live FX rate.
+  const category = CATEGORIES.includes(audit.category) ? audit.category : selected;
+  const currency = String(audit.currency || 'USD').toUpperCase();
+  const region = regionFor(audit.store, user.region);
+  const observations = [];
+  let totalUsd;
+  try {
+    for (const item of (audit.items || []).slice(0, MAX_ITEMS_PER_REPORT)) {
+      const unit = Number(item.unitPrice);
+      if (!Number.isFinite(unit) || unit <= 0) continue;
+      const key = feedKey(category, region, item.canonicalItem || item.name);
+      if (observations.some(o => o.feedKey === key)) continue; // one price per item per photo
+      observations.push({
+        feedKey: key,
+        itemName: String(item.name || item.canonicalItem).slice(0, 80),
+        priceUsd: Number((await toUsd(unit, currency)).toFixed(4)),
+      });
+    }
+    const total = Number(audit.total);
+    totalUsd = Number.isFinite(total) && total > 0
+      ? await toUsd(total, currency)
+      : observations.reduce((s, o) => s + o.priceUsd, 0);
+  } catch (e) {
+    console.error('[FX] conversion failed:', e.message);
+    return ctx.replyWithHTML(`❌ <b>Verification Error:</b> Could not convert ${escapeHtml(currency)} prices right now. Please try again shortly.`);
+  }
 
-  await ctx.replyWithHTML(payoutMsg, MAIN_MENU);
+  if (!observations.length) {
+    return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> No readable item prices were found.\nPlease submit a clearer photo.`);
+  }
+
+  // File each item with the Solana program: it locks the reward and runs the bounds check.
+  let reward = Math.min(rewardFor(user.reputation), AGENT_POLICIES.SPEND_LIMIT_USDC);
+  let onchainNote = '';
+  if (oracle.isEnabled()) {
+    const filed = [];
+    let failure = null;
+    for (const o of observations.slice(0, MAX_ONCHAIN_ITEMS)) {
+      try {
+        const res = await oracle.submitReport({
+          reporterKeypair: user.keypair, feedKey: o.feedKey, imageHashHex: imageHash, priceUsd: o.priceUsd,
+        });
+        o.onchainReport = res.report;
+        o.rewardUsd = res.rewardUsd;
+        filed.push(o);
+      } catch (e) {
+        failure = e?.error?.errorCode?.code || e.message;
+        console.error(`[Oracle] submit_report ${o.feedKey} failed:`, failure);
+        if (/PoolExhausted|ReporterBanned/.test(failure)) break;
+      }
+    }
+    if (!filed.length) {
+      const why = /PoolExhausted/.test(failure || '') ? 'The reward pool is fully committed right now. Please try again later.'
+        : /ReporterBanned/.test(failure || '') ? 'Your on-chain reputation is below the network minimum.'
+        : 'The Solana program rejected the submission. Please try again.';
+      return ctx.replyWithHTML(`❌ <b>Not filed:</b> ${why}`);
+    }
+    observations.splice(0, observations.length, ...filed);
+    reward = filed.reduce((sum, o) => sum + o.rewardUsd, 0);
+    onchainNote = `⛓️ Filed on Solana: ${filed.length} item${filed.length === 1 ? '' : 's'}, each checked by the program.\n`;
+  }
+
+  const reportId = savePendingReport({
+    telegramId: ctx.from.id, category, totalUsd, reward, imagePath, imageHash, region,
+    storeName: audit.store?.name || null, receiptTs: audit.receiptTimestamp || null,
+    originalAmount: Number(audit.total) || null, originalCurrency: currency, observations,
+  });
+
+  const itemLines = observations.slice(0, 5)
+    .map(o => `• ${escapeHtml(o.itemName)} — $${o.priceUsd.toFixed(2)}`)
+    .join('\n');
+  await ctx.replyWithHTML(
+    `🧾 <b>Receipt parsed — report #${reportId}</b>\n` +
+    (audit.store?.name ? `🏪 ${escapeHtml(audit.store.name)}${audit.store.city ? `, ${escapeHtml(audit.store.city)}` : ''}\n` : '') +
+    (audit.receiptTimestamp ? `🕒 ${escapeHtml(audit.receiptTimestamp)}\n` : '') +
+    `🌍 Region: <code>${escapeHtml(region)}</code>\n` +
+    `💲 Total: ${escapeHtml(currency)} ${escapeHtml(audit.total)} ≈ $${totalUsd.toFixed(2)}\n\n` +
+    `${itemLines}${observations.length > 5 ? `\n…and ${observations.length - 5} more` : ''}\n\n` +
+    onchainNote +
+    `⏳ <b>Pending consensus.</b> Checking against local price bounds and peer reports.\n` +
+    `🔒 Reward locked: <b>$${reward.toFixed(2)} USDC</b> — released when accepted, forfeited if slashed.`,
+    MAIN_MENU
+  );
+
+  // Settle right away when there is already enough data; peers settle on the timer.
+  runSettlement();
+
 });
 }
 
@@ -537,7 +504,12 @@ if (bot) {
   const usdc    = await getUSDC(user.keypair.publicKey);
   const jupusd  = await getJupUSD(user.keypair.publicKey);
   const earned  = getUserTotalEarned(ctx.from.id);
-  const prize   = (user.points * 0.036).toFixed(2);
+  const pending = getUserPendingLocked(ctx.from.id);
+  const onchain = oracle.isEnabled() ? await oracle.getReporter(user.keypair.publicKey) : null;
+  if (onchain) {
+    user.reputation = onchain.reputation;
+    pending.locked = onchain.lockedUsd;
+  }
 
   await ctx.replyWithHTML(
     `<b>💼 Your Signal Portfolio</b>\n\n` +
@@ -545,13 +517,16 @@ if (bot) {
     `<b>Balances</b>\n` +
     `├ SOL:    ${(sol / LAMPORTS_PER_SOL).toFixed(4)} SOL\n` +
     `├ USDC:   $${usdc.toFixed(2)}\n` +
-    `└ jupUSD: $${jupusd.toFixed(2)}\n\n` +
+    `├ jupUSD: $${jupusd.toFixed(2)}\n` +
+    `└ Locked: $${pending.locked.toFixed(2)} (${pending.count} report${pending.count === 1 ? '' : 's'} pending consensus)\n\n` +
     `<b>Stats</b>\n` +
+    `├ Reputation:    ${user.reputation}/100${onchain ? ' (on-chain)' : ''}\n` +
     `├ Signal Points: ${user.points} PTS\n` +
     `├ Reports:       ${user.reportCount}\n` +
+    `├ Region:        ${escapeHtml(user.region || 'not set')}\n` +
     `└ Total Earned:  $${earned.toFixed(2)}\n`,
     Markup.inlineKeyboard([
-      [Markup.button.callback('🪐 Swap USDC to jupUSD', 'swap_jupusd')],
+      [Markup.button.callback('🪐 Auto-stake USDC → jupUSD', 'stake_jupusd')],
       [Markup.button.callback('💸 Withdraw (USDC)', 'withdraw_init'), Markup.button.callback('🏧 Withdraw (jupUSD)', 'withdraw_jup_init')],
       [Markup.button.callback('🏦 Cash Out to Bank', 'cashout_bank')],
       [Markup.button.callback('🚀 Link BOTChain Wallet', 'yellow_link'), Markup.button.callback('🟡 Yellow Wallet', 'yellow_link')],
@@ -561,49 +536,37 @@ if (bot) {
 });
 }
 
-
-// Jupiter Swap Action — Real V6 Integration
+// Jupiter auto-stake: real USDC → jupUSD swap from the user's custodial wallet
 if (bot) {
-  bot.action('swap_jupusd', async (ctx) => {
+  bot.action('stake_jupusd', async (ctx) => {
+  await ctx.answerCbQuery();
+  if (IS_SAFE_MODE) {
+    return ctx.reply('🛡️ Swaps are disabled until the protocol identity is configured.');
+  }
+  if (!isMainnet()) {
+    return ctx.replyWithHTML(`🪐 <b>jupUSD auto-stake is mainnet-only.</b>\nThis bot is running on Solana devnet, where jupUSD has no liquidity.`);
+  }
   const user = getOrCreateUser(ctx.from.id);
   const usdc = await getUSDC(user.keypair.publicKey);
-
   if (usdc < 0.1) {
-    return ctx.answerCbQuery('⚠️ Minimum $0.10 USDC required for Jupiter swap.', { show_alert: true });
+    return ctx.reply('⚠️ Minimum $0.10 USDC required to auto-stake.');
   }
-
-  if (IS_SAFE_MODE) {
-    return ctx.answerCbQuery('🛡️ [SAFE MODE]: Swaps are disabled until production identity is configured.', { show_alert: true });
-  }
-
-  await ctx.answerCbQuery('🪐 Initiating Jupiter V6 Swap...');
-  await ctx.replyWithHTML(`⏳ Swapping <b>$${usdc.toFixed(2)} USDC</b> for <b>jupUSD</b> yield via Jupiter...`);
-  
+  await ctx.replyWithHTML(`⏳ Swapping <b>$${usdc.toFixed(2)} USDC</b> into <b>jupUSD</b> via Jupiter...`);
   try {
-    // ─── REAL JUPITER V6 SWAP API CORE ──────────────────────────────────────────
-    const quoteResponse = await fetch(
-        `https://quote-api.jup.ag/v6/quote?inputMint=${USDC_MINT}&outputMint=${JUP_USD_MINT}&amount=${Math.round(usdc * 1_000_000)}&slippageBps=50`
-    );
-    const quoteData = await quoteResponse.json();
-    
-    // In a production app, we would build the full tx here. 
-    // For the hackathon demo, we provide the real-time quote signature.
-    const mockSig = bs58.encode(Buffer.from(`JUPV6_${Date.now()}_${quoteData.outAmount}`));
-
+    const { signature, outAmount } = await swapUsdcToJupUsd(user.keypair, usdc);
     await ctx.replyWithHTML(
-        `✅ <b>Jupiter Swap Complete!</b>\n\n` +
-        `🪐 <b>Output:</b> ${ (Number(quoteData.outAmount) / 1_000_000).toFixed(4) } jupUSD\n` +
-        `📝 <b>Signature:</b> <a href="https://solscan.io/tx/${mockSig}">${mockSig.slice(0,16)}...</a>\n\n` +
-        `Your yield engine is now active! 📈`
+      `✅ <b>Auto-stake complete</b>\n\n` +
+      `🪐 Received: <b>${outAmount.toFixed(4)} jupUSD</b>\n` +
+      `📝 <a href="https://solscan.io/tx/${signature}">${signature.slice(0, 16)}...</a>`
     );
   } catch (e) {
-    console.error('Jupiter error:', e);
-    await ctx.reply('❌ Jupiter aggregator unreachable. Reverting swap...');
+    console.error('[Jupiter] swap failed:', e.message);
+    await ctx.replyWithHTML(`❌ <b>Swap failed:</b> ${escapeHtml(e.message)}\nNo funds were moved.`);
   }
 });
 }
 
-// Withdrawal Prompt Action
+// Withdrawal Prompt Actions
 if (bot) {
   bot.action('withdraw_init', async (ctx) => {
   pendingReport.set(ctx.from.id, 'AWAITING_ADDRESS');
@@ -613,19 +576,28 @@ if (bot) {
     `Reply to this message by pasting your Solana wallet address (e.g., Phantom or Solflare) to receive your USDC.`
   );
 });
-}
 
-if (bot) {
-bot.action('withdraw_jup_init', async (ctx) => {
+  bot.action('withdraw_jup_init', async (ctx) => {
   pendingReport.set(ctx.from.id, 'AWAITING_ADDRESS_JUP');
   await ctx.answerCbQuery();
   await ctx.replyWithHTML(
     `🏧 <b>Withdraw jupUSD</b>\n\n` +
-    `Paste your Solana wallet address to receive your yield-bearing jupUSD.`
+    `Paste your Solana wallet address to receive your jupUSD.`
   );
 });
 }
 
+// Region: lets reports without a printed store city still join a local feed
+if (bot) {
+  bot.hears('📍 Set My City', async (ctx) => {
+  pendingReport.set(ctx.from.id, 'AWAITING_CITY');
+  await ctx.replyWithHTML(
+    `📍 <b>Set your city</b>\n\n` +
+    `Send your country code and city, e.g. <code>NG Lagos</code> or <code>KE Nairobi</code>.\n` +
+    `<i>Used for price feeds when a receipt doesn't print the store's city.</i>`
+  );
+});
+}
 
 // Cash Out to Bank Action
 if (bot) {
@@ -677,8 +649,7 @@ if (bot) {
     : 'No reports yet — be the first! 📸';
 
   await ctx.replyWithHTML(
-    `<b>🏆 Signal Leaderboard</b>\n\n${rows}\n\n` +
-    `<i>Top Signalers receive weekly USDC pool distributions.</i>`,
+    `<b>🏆 Signal Leaderboard</b>\n\n${rows}`,
     MAIN_MENU
   );
 });
@@ -728,17 +699,17 @@ if (bot) {
     const evmAddress = getYellowLink(ctx.from.id);
     await ctx.replyWithHTML(
       `🚀 <b>BOTChain Network Hub</b>\n\n` +
-      `Status: <b>🟢 Live & Operational</b>\n` +
+      `Oracle writes: <b>${isOracleConfigured() ? '🟢 enabled' : '🔴 not configured'}</b>\n` +
       `Chain ID: <b>677 (BOTChain)</b>\n` +
       `RPC URL: <code>https://rpc.botchain.ai</code>\n\n` +
       `📜 <b>SignalOracle Contract:</b>\n` +
-      `<code>0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243</code>\n\n` +
+      `<code>${ORACLE_ADDRESS}</code>\n\n` +
       (evmAddress
         ? `🔗 <b>Linked Wallet:</b>\n<code>${evmAddress}</code>`
         : `💡 <i>Link your EVM wallet address to receive multi-rail BOTChain micro-settlements!</i>`
       ),
       Markup.inlineKeyboard([
-        [Markup.button.url('🔍 View Explorer Contract', 'https://scan.botchain.ai/address/0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243')],
+        [Markup.button.url('🔍 View Explorer Contract', `https://scan.botchain.ai/address/${ORACLE_ADDRESS}`)],
         [Markup.button.callback(evmAddress ? '🔄 Change EVM Wallet' : '🔗 Link BOTChain / EVM Wallet', 'yellow_link')]
       ])
     );
@@ -748,16 +719,31 @@ if (bot) {
 if (bot) {
   bot.hears('🌐 Network Status', async (ctx) => {
     const stats = getNetworkStats();
+    const [onChainReports, onChainFeeds, solReports, pool] = await Promise.all([
+      getReportCount(), getFeedCount(),
+      oracle.isEnabled() ? oracle.reportCount() : null,
+      oracle.isEnabled() ? oracle.poolBalance() : null,
+    ]);
+    const pid = oracle.programId()?.toBase58();
     await ctx.replyWithHTML(
       `🌐 <b>Signal Network Status</b>\n\n` +
-      `<b>Solana (Primary)</b>\n` +
+      (pid
+        ? `<b>◎ Solana program (consensus)</b>\n` +
+          `├ Reports filed: ${solReports ?? 'n/a'}\n` +
+          `├ Reward pool: ${pool === null ? 'n/a' : `$${pool.toFixed(2)} USDC`}\n` +
+          `└ Program: <a href="https://explorer.solana.com/address/${pid}?cluster=devnet">${pid.slice(0, 6)}...${pid.slice(-4)}</a>\n\n`
+        : '') +
+      `<b>Consensus</b>\n` +
       `├ Signalers: ${stats.signalers}\n` +
-      `├ Reports: ${stats.totalReports}\n` +
-      `└ Volume: $${stats.totalVolume.toFixed(2)} USDC\n\n` +
-      `<b>🚀 BOTChain (Chain ID 677)</b>\n` +
-      `├ Status: 🟢 Online\n` +
-      `├ Oracle Contract: <code>0x19ab...7243</code>\n` +
-      `└ Network: Mainnet / Testnet (677)`,
+      `├ Accepted: ${stats.acceptedReports}\n` +
+      `├ Pending: ${stats.pendingReports}\n` +
+      `├ Slashed: ${stats.slashedReports}\n` +
+      `└ Rewards paid: $${stats.totalVolume.toFixed(2)} USDC\n\n` +
+      `<b>🚀 BOTChain mirror (Chain ID 677)</b>\n` +
+      `├ Status: ${onChainReports === null ? '🔴 Unreachable' : '🟢 Online'}\n` +
+      `├ On-chain reports: ${onChainReports ?? 'n/a'}\n` +
+      `├ Price feeds: ${onChainFeeds ?? 'n/a'}\n` +
+      `└ Oracle Contract: <code>${ORACLE_ADDRESS.slice(0, 6)}...${ORACLE_ADDRESS.slice(-4)}</code>`,
       MAIN_MENU
     );
   });
@@ -803,17 +789,36 @@ if (bot) {
     return;
   }
 
-  // Withdraw flow: user pastes a Solana address after /withdraw
-  if (text.startsWith('/withdraw') || (text.length === 44 && pendingReport.get(ctx.from.id) === 'AWAITING_ADDRESS')) {
-    const user   = getOrCreateUser(ctx.from.id);
-    let address  = text.replace('/withdraw', '').trim();
+  // Region setting flow
+  if (pendingReport.get(ctx.from.id) === 'AWAITING_CITY') {
+    pendingReport.delete(ctx.from.id);
+    const m = text.match(/^([A-Za-z]{2})[\s,]+(.+)$/);
+    if (!m || !slug(m[2])) {
+      await ctx.replyWithHTML(`❌ Use a 2-letter country code then the city, e.g. <code>NG Lagos</code>.`, MAIN_MENU);
+      return;
+    }
+    const region = `${m[1].toLowerCase()}-${slug(m[2])}`;
+    getOrCreateUser(ctx.from.id);
+    setUserRegion(ctx.from.id, region);
+    await ctx.replyWithHTML(`✅ Region set to <code>${region}</code>.`, MAIN_MENU);
+    return;
+  }
+
+  // Withdraw flow: user pastes a Solana address (USDC or jupUSD)
+  const awaiting = pendingReport.get(ctx.from.id);
+  if (text.startsWith('/withdraw') || awaiting === 'AWAITING_ADDRESS' || awaiting === 'AWAITING_ADDRESS_JUP') {
+    const user    = getOrCreateUser(ctx.from.id);
+    const address = text.replace('/withdraw', '').trim();
+    const isJup   = awaiting === 'AWAITING_ADDRESS_JUP';
+    const mint    = isJup ? new PublicKey(JUP_USD_MINT) : mintPubkey;
+    const symbol  = isJup ? 'jupUSD' : 'USDC';
 
     // No address yet — ask for it
     if (!address || address.length < 32) {
-      pendingReport.set(ctx.from.id, 'AWAITING_ADDRESS');
+      pendingReport.set(ctx.from.id, isJup ? 'AWAITING_ADDRESS_JUP' : 'AWAITING_ADDRESS');
       await ctx.replyWithHTML(
-        `💸 <b>Withdraw USDC</b>\n\n` +
-        `Send your Solana wallet address to receive your USDC.\n` +
+        `💸 <b>Withdraw ${symbol}</b>\n\n` +
+        `Send your Solana wallet address to receive your ${symbol}.\n` +
         `<i>Make sure it's a valid Solana public key.</i>`
       );
       return;
@@ -823,32 +828,21 @@ if (bot) {
 
     try {
       const destPubkey = new PublicKey(address);
-      const usdc = await getUSDC(user.keypair.publicKey);
+      const balance = await getTokenBalance(user.keypair.publicKey, mint);
 
-      if (usdc < 0.01) {
-        await ctx.reply('⚠️ You need at least $0.01 USDC to withdraw. Keep reporting!');
+      if (balance < 0.01) {
+        await ctx.reply(`⚠️ You need at least 0.01 ${symbol} to withdraw. Keep reporting!`);
         return;
       }
 
-      await ctx.reply(`⏳ Sending $${usdc.toFixed(2)} USDC to ${address.slice(0,8)}...`);
-
-      // Transfer from user's bot wallet to their external wallet
-      const fromATA = await getOrCreateAssociatedTokenAccount(
-        connection, protocolWallet, mintPubkey, user.keypair.publicKey
-      );
-      const toATA = await getOrCreateAssociatedTokenAccount(
-        connection, protocolWallet, mintPubkey, destPubkey
-      );
-      await transfer(
-        connection, user.keypair, fromATA.address, toATA.address,
-        user.keypair, BigInt(Math.round(usdc * 1_000_000))
-      );
+      await ctx.reply(`⏳ Sending ${balance.toFixed(2)} ${symbol} to ${address.slice(0,8)}...`);
+      const sig = await sendToken(user.keypair, destPubkey, balance, mint);
 
       await ctx.replyWithHTML(
         `✅ <b>Withdrawal Complete!</b>\n\n` +
-        `💸 Sent: <b>$${usdc.toFixed(2)} USDC</b>\n` +
-        `📍 To: <code>${address}</code>\n\n` +
-        `<i>Transaction confirmed on Solana</i>`,
+        `💸 Sent: <b>${balance.toFixed(2)} ${symbol}</b>\n` +
+        `📍 To: <code>${address}</code>\n` +
+        `📝 <a href="https://solscan.io/tx/${sig}${isMainnet() ? '' : '?cluster=devnet'}">View transaction</a>`,
         MAIN_MENU
       );
     } catch (e) {
@@ -866,16 +860,57 @@ const api = express();
 api.use(cors());
 api.use(express.json());
 
-api.get('/api/stats', (req, res) => {
+api.get('/api/stats', async (req, res) => {
   const stats = getNetworkStats();
+  const [onChainReports, onChainFeeds, solReports, pool] = await Promise.all([
+    getReportCount(), getFeedCount(),
+    oracle.isEnabled() ? oracle.reportCount() : null,
+    oracle.isEnabled() ? oracle.poolBalance() : null,
+  ]);
   res.json({
-    activeNodes:   stats.signalers,
-    totalReports:  stats.totalReports,
-    totalVolume:   stats.totalVolume.toFixed(2),
-    signalers:     stats.signalers,
-    rpcUrl:        RPC_URL,
-    usdcMint:      USDC_MINT,
+    activeNodes:     stats.signalers,
+    totalReports:    stats.totalReports,
+    acceptedReports: stats.acceptedReports,
+    pendingReports:  stats.pendingReports,
+    slashedReports:  stats.slashedReports,
+    totalVolume:     stats.totalVolume.toFixed(2),
+    signalers:       stats.signalers,
+    solanaProgram:   oracle.programId()?.toBase58() ?? null,
+    solanaReports:   solReports,
+    rewardPoolUsdc:  pool,
+    onChainReports,
+    onChainFeeds,
+    oracleContract:  ORACLE_ADDRESS,
+    rpcUrl:          RPC_URL,
+    usdcMint:        USDC_MINT,
   });
+});
+
+// Price feeds. With the Solana program enabled these are read from chain (Feed accounts);
+// feed ids are hashes, so names come from the keys this bot has filed.
+api.get('/api/feeds', async (req, res) => {
+  if (oracle.isEnabled()) {
+    try {
+      const names = new Map(getAllFeedKeys().map(k => [oracle.feedIdHex(k), k]));
+      const feeds = await oracle.listFeeds();
+      return res.json(feeds.map(f => ({
+        feed: names.get(f.feedIdHex) || f.feedIdHex,
+        medianUsd: f.medianUsd,
+        samples: f.samples,
+        updatedAt: f.updatedAt ? new Date(f.updatedAt * 1000).toISOString() : null,
+        account: f.address,
+        source: 'solana',
+      })));
+    } catch (e) {
+      console.error('[Oracle] listFeeds failed:', e.message);
+    }
+  }
+  res.json(getFeedsSummary(RULES.BOUNDS_WINDOW_DAYS).map(f => ({
+    feed: f.feed_key,
+    medianUsd: Number((median(getAcceptedFeedPrices(f.feed_key, RULES.BOUNDS_WINDOW_DAYS)) ?? 0).toFixed(4)),
+    samples: f.samples,
+    updatedAt: f.updated_at,
+  })));
 });
 
 api.get('/api/leaderboard', (req, res) => {
@@ -907,6 +942,9 @@ async function main() {
     }
   });
 
+  // Consensus: settle pending reports as peer data arrives and timeouts pass
+  setInterval(runSettlement, SETTLE_INTERVAL_MS);
+
   if (!bot) {
     console.warn('📡 [API] Starting Express API ONLY (Bot Token Missing)...');
     return;
@@ -927,5 +965,5 @@ async function main() {
 
 main();
 
-process.once('SIGINT',  () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT',  () => bot?.stop('SIGINT'));
+process.once('SIGTERM', () => bot?.stop('SIGTERM'));

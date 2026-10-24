@@ -1,0 +1,1938 @@
+{
+  "address": "HmCLsXYjktA3EaSmipee7qzDNTefJASUWaXeiafwmquS",
+  "metadata": {
+    "name": "signal_oracle",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Signal Protocol: physical price oracle with on-chain consensus, locked rewards and slashing"
+  },
+  "instructions": [
+    {
+      "name": "flag_duplicate",
+      "discriminator": [
+        144,
+        234,
+        203,
+        71,
+        30,
+        52,
+        178,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "attester",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "existing_report",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  111,
+                  114,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "existing_report.feed",
+                "account": "Report"
+              },
+              {
+                "kind": "arg",
+                "path": "image_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "offender_wallet"
+        },
+        {
+          "name": "offender",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  111,
+                  114,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offender_wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "image_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "flag_fake",
+      "discriminator": [
+        39,
+        231,
+        254,
+        129,
+        9,
+        224,
+        1,
+        152
+      ],
+      "accounts": [
+        {
+          "name": "attester",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "offender_wallet"
+        },
+        {
+          "name": "offender",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  111,
+                  114,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "offender_wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "image_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "fund_pool",
+      "discriminator": [
+        36,
+        57,
+        233,
+        176,
+        181,
+        20,
+        87,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "funder",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "funder_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "funder"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "docs": [
+            "The reward pool. Token authority is the config PDA, so only this program can pay out."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "params",
+          "type": {
+            "defined": {
+              "name": "ConfigParams"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "peer_check",
+      "discriminator": [
+        209,
+        100,
+        34,
+        237,
+        27,
+        155,
+        21,
+        209
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "report_a",
+          "writable": true
+        },
+        {
+          "name": "report_b",
+          "writable": true
+        },
+        {
+          "name": "peer_link",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  101,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "report_a"
+              },
+              {
+                "kind": "account",
+                "path": "report_b"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "settle",
+      "discriminator": [
+        175,
+        42,
+        185,
+        87,
+        144,
+        131,
+        102,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "cranker",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "report",
+          "writable": true
+        },
+        {
+          "name": "reporter",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  111,
+                  114,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "report.reporter",
+                "account": "Report"
+              }
+            ]
+          }
+        },
+        {
+          "name": "feed",
+          "writable": true,
+          "relations": [
+            "report"
+          ]
+        },
+        {
+          "name": "reporter_wallet"
+        },
+        {
+          "name": "reporter_ata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "reporter_wallet"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "submit_report",
+      "discriminator": [
+        27,
+        178,
+        64,
+        9,
+        20,
+        46,
+        250,
+        14
+      ],
+      "accounts": [
+        {
+          "name": "attester",
+          "docs": [
+            "Vouches that the AI parsed this price from a real photo. Pays rent, so reporters",
+            "never need SOL."
+          ],
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "reporter_wallet",
+          "docs": [
+            "The reporter consents to filing under their identity."
+          ],
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "reporter",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  111,
+                  114,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "reporter_wallet"
+              }
+            ]
+          }
+        },
+        {
+          "name": "feed",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  101,
+                  101,
+                  100
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "feed_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "report",
+          "docs": [
+            "`init`, not `init_if_needed`: a second filing of the same photo for the same item fails here."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  112,
+                  111,
+                  114,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "feed"
+              },
+              {
+                "kind": "arg",
+                "path": "image_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "config"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "config.usdc_mint",
+                "account": "Config"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "feed_id",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "image_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "price",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "Feed",
+      "discriminator": [
+        69,
+        191,
+        16,
+        227,
+        132,
+        187,
+        84,
+        227
+      ]
+    },
+    {
+      "name": "PeerLink",
+      "discriminator": [
+        74,
+        250,
+        17,
+        66,
+        247,
+        212,
+        57,
+        6
+      ]
+    },
+    {
+      "name": "Report",
+      "discriminator": [
+        232,
+        246,
+        229,
+        227,
+        242,
+        105,
+        190,
+        2
+      ]
+    },
+    {
+      "name": "Reporter",
+      "discriminator": [
+        233,
+        37,
+        148,
+        250,
+        155,
+        158,
+        118,
+        161
+      ]
+    }
+  ],
+  "events": [
+    {
+      "name": "DuplicateFlagged",
+      "discriminator": [
+        51,
+        141,
+        77,
+        201,
+        6,
+        201,
+        97,
+        172
+      ]
+    },
+    {
+      "name": "FakeFlagged",
+      "discriminator": [
+        149,
+        87,
+        127,
+        107,
+        29,
+        243,
+        18,
+        116
+      ]
+    },
+    {
+      "name": "PeerChecked",
+      "discriminator": [
+        176,
+        137,
+        27,
+        96,
+        130,
+        5,
+        186,
+        217
+      ]
+    },
+    {
+      "name": "PoolFunded",
+      "discriminator": [
+        164,
+        221,
+        242,
+        68,
+        164,
+        64,
+        24,
+        214
+      ]
+    },
+    {
+      "name": "ReportSettled",
+      "discriminator": [
+        87,
+        164,
+        64,
+        79,
+        171,
+        90,
+        184,
+        249
+      ]
+    },
+    {
+      "name": "ReportSubmitted",
+      "discriminator": [
+        30,
+        14,
+        109,
+        53,
+        161,
+        40,
+        129,
+        244
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidParams",
+      "msg": "A tolerance is above 100% or a parameter is zero"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidPrice",
+      "msg": "Price must be greater than zero"
+    },
+    {
+      "code": 6003,
+      "name": "ReporterBanned",
+      "msg": "Reporter reputation is below the network minimum"
+    },
+    {
+      "code": 6004,
+      "name": "PoolExhausted",
+      "msg": "The reward pool has no unlocked funds for this report"
+    },
+    {
+      "code": 6005,
+      "name": "FeedMismatch",
+      "msg": "Both reports must be on the same feed"
+    },
+    {
+      "code": 6006,
+      "name": "SameReporter",
+      "msg": "A reporter cannot confirm their own report"
+    },
+    {
+      "code": 6007,
+      "name": "OutsidePeerWindow",
+      "msg": "Reports are too far apart in time to count as peers"
+    },
+    {
+      "code": 6008,
+      "name": "ReportsOutOfOrder",
+      "msg": "Pass the two reports in address order: report_a < report_b"
+    },
+    {
+      "code": 6009,
+      "name": "NothingPending",
+      "msg": "Neither report is pending"
+    },
+    {
+      "code": 6010,
+      "name": "AlreadySettled",
+      "msg": "The report has already been settled"
+    },
+    {
+      "code": 6011,
+      "name": "StillPending",
+      "msg": "Not enough evidence yet and the pending timeout has not passed"
+    },
+    {
+      "code": 6012,
+      "name": "AccountMismatch",
+      "msg": "The account passed does not match the report"
+    },
+    {
+      "code": 6013,
+      "name": "Overflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Bounds",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "None"
+          },
+          {
+            "name": "Agree"
+          },
+          {
+            "name": "Disagree"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Config",
+      "docs": [
+        "One per program, PDA [\"config\"]. Holds the rules and the reward pool's accounting.",
+        "The pool itself is the vault: ATA(config, usdc_mint)."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "attester",
+            "docs": [
+              "Off-chain verifier (the Signal bot) that vouches for the AI receipt parse."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "usdc_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_reward",
+            "docs": [
+              "Reward at reputation 50, in base units. Scales 0.5x–1.5x with reputation."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "min_bounds_samples",
+            "docs": [
+              "Accepted samples a feed needs before its median is used as local bounds."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "bounds_tolerance_bps",
+            "type": "u16"
+          },
+          {
+            "name": "peer_tolerance_bps",
+            "type": "u16"
+          },
+          {
+            "name": "peer_quorum",
+            "docs": [
+              "Contradicting peers needed to slash when the feed has no bounds yet."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "peer_window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "pending_timeout_secs",
+            "type": "i64"
+          },
+          {
+            "name": "bootstrap_min_reputation",
+            "type": "u8"
+          },
+          {
+            "name": "ban_below_reputation",
+            "type": "u8"
+          },
+          {
+            "name": "total_locked",
+            "docs": [
+              "Sum of rewards locked in pending reports. Vault balance minus this is spendable."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "report_count",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigParams",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "attester",
+            "type": "pubkey"
+          },
+          {
+            "name": "base_reward",
+            "type": "u64"
+          },
+          {
+            "name": "min_bounds_samples",
+            "type": "u8"
+          },
+          {
+            "name": "bounds_tolerance_bps",
+            "type": "u16"
+          },
+          {
+            "name": "peer_tolerance_bps",
+            "type": "u16"
+          },
+          {
+            "name": "peer_quorum",
+            "type": "u8"
+          },
+          {
+            "name": "peer_window_secs",
+            "type": "i64"
+          },
+          {
+            "name": "pending_timeout_secs",
+            "type": "i64"
+          },
+          {
+            "name": "bootstrap_min_reputation",
+            "type": "u8"
+          },
+          {
+            "name": "ban_below_reputation",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Decision",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Accept"
+          },
+          {
+            "name": "Slash"
+          },
+          {
+            "name": "Expire"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DuplicateFlagged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offender",
+            "type": "pubkey"
+          },
+          {
+            "name": "original_report",
+            "type": "pubkey"
+          },
+          {
+            "name": "new_reputation",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FakeFlagged",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "offender",
+            "type": "pubkey"
+          },
+          {
+            "name": "image_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "new_reputation",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Feed",
+      "docs": [
+        "One per item per region, PDA [\"feed\", feed_id] where feed_id = sha256(\"FUEL:ng-lagos:petrol_litre\").",
+        "Keeps the last FEED_CAPACITY accepted prices; the median is what other programs read."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "feed_id",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "prices",
+            "docs": [
+              "Ring buffer of accepted prices, in USD micro-units (6 decimals, like USDC)."
+            ],
+            "type": {
+              "array": [
+                "u64",
+                16
+              ]
+            }
+          },
+          {
+            "name": "len",
+            "type": "u8"
+          },
+          {
+            "name": "head",
+            "type": "u8"
+          },
+          {
+            "name": "total_samples",
+            "type": "u64"
+          },
+          {
+            "name": "updated_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PeerChecked",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "report_a",
+            "type": "pubkey"
+          },
+          {
+            "name": "report_b",
+            "type": "pubkey"
+          },
+          {
+            "name": "agree",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PeerLink",
+      "docs": [
+        "PDA [\"peer\", report_a, report_b] with report_a < report_b. Existing means this pair was",
+        "already compared, so a crank cannot count the same peer twice."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PoolFunded",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "funder",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Report",
+      "docs": [
+        "One per priced item on a photo, PDA [\"report\", feed, image_hash].",
+        "Because the image hash is a seed, the same photo cannot be filed twice for the same item:",
+        "the second `init` fails."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "reporter",
+            "type": "pubkey"
+          },
+          {
+            "name": "feed",
+            "type": "pubkey"
+          },
+          {
+            "name": "image_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "price",
+            "docs": [
+              "USD micro-units (6 decimals)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "reward",
+            "docs": [
+              "Locked at submission; paid on accept, released back to the pool otherwise."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "submitted_at",
+            "type": "i64"
+          },
+          {
+            "name": "bounds",
+            "type": {
+              "defined": {
+                "name": "Bounds"
+              }
+            }
+          },
+          {
+            "name": "confirmations",
+            "type": "u8"
+          },
+          {
+            "name": "contradictions",
+            "type": "u8"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": {
+                "name": "ReportStatus"
+              }
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReportSettled",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "report",
+            "type": "pubkey"
+          },
+          {
+            "name": "reporter",
+            "type": "pubkey"
+          },
+          {
+            "name": "decision",
+            "type": {
+              "defined": {
+                "name": "Decision"
+              }
+            }
+          },
+          {
+            "name": "reward_paid",
+            "type": "u64"
+          },
+          {
+            "name": "new_reputation",
+            "type": "u8"
+          },
+          {
+            "name": "feed_median",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReportStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Accepted"
+          },
+          {
+            "name": "Slashed"
+          },
+          {
+            "name": "Expired"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReportSubmitted",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "report",
+            "type": "pubkey"
+          },
+          {
+            "name": "reporter",
+            "type": "pubkey"
+          },
+          {
+            "name": "feed",
+            "type": "pubkey"
+          },
+          {
+            "name": "price",
+            "type": "u64"
+          },
+          {
+            "name": "reward",
+            "type": "u64"
+          },
+          {
+            "name": "bounds",
+            "type": {
+              "defined": {
+                "name": "Bounds"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Reporter",
+      "docs": [
+        "One per reporter wallet, PDA [\"reporter\", wallet]. Their on-chain reputation."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "reputation",
+            "type": "u8"
+          },
+          {
+            "name": "accepted",
+            "type": "u32"
+          },
+          {
+            "name": "slashed",
+            "type": "u32"
+          },
+          {
+            "name": "locked",
+            "docs": [
+              "Rewards currently locked in this reporter's pending reports."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

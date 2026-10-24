@@ -186,8 +186,8 @@ function TelegramInspector({ isLight }: { isLight: boolean }) {
    MAIN PAGE
 ══════════════════════════════════════════════════════ */
 export default function Home() {
-  const [volume, setVolume]           = useState(24500);
-  const [nodeCount, setNodeCount]     = useState(142);
+  const [volume, setVolume]           = useState(0);
+  const [nodeCount, setNodeCount]     = useState(0);
   const { theme } = useTheme();
   const isLight = theme === 'light';
 

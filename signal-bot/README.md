@@ -56,7 +56,7 @@ Signal Protocol turns everyday shoppers into verified data nodes. Users photogra
 
 | Chain | Type | Address / Endpoint |
 |:------|:-----|:-------------------|
-| **BOTChain** (Mainnet, Chain ID 677) | Oracle Contract | [`0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243`](https://scan.botchain.ai/address/0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243) |
+| **BOTChain** (Mainnet, Chain ID 677) | Oracle Contract | [`0x9119b3D7e7DcC540F08D62CeBC5bC2f83e8793f2`](https://scan.botchain.ai/address/0x9119b3D7e7DcC540F08D62CeBC5bC2f83e8793f2) |
 | **Solana** (Devnet) | SPL USDC Payouts | `FVyGEtqSKPHkiKgeSa8imWW5gzWNN5A5txwJgs7zFQhb` |
 | **Yellow Network** | State Channel Settlement | Gasless micro-rewards via Nitrolite SDK |
 
@@ -132,9 +132,28 @@ RPC_URL=https://api.devnet.solana.com
 USDC_MINT=your_usdc_mint_address
 SOLANA_KEYPAIR_JSON=[your_wallet_keypair_array]
 
-# BOTChain (Optional)
-BOTCHAIN_RPC=https://mainnet-rpc.botchain.ai
-BOTCHAIN_PRIVATE_KEY=your_botchain_private_key
+# BOTChain oracle — without these, consensus results are NOT recorded on-chain
+BOTCHAIN_RPC=https://rpc.botchain.ai
+BOTCHAIN_PRIVATE_KEY=your_botchain_private_key   # must be the SignalOracle owner (deployer)
+BOTCHAIN_ORACLE_ADDRESS=0x...                    # address of the redeployed SignalOracle
+REPORTER_SALT=random_secret                      # hashes Telegram IDs into on-chain reporter IDs
+
+# Solana program (../signal-program) — on-chain consensus, reward vault, slashing, reputation.
+# The bot files each item as attester and cranks peer_check/settle. Rewards are paid by the program.
+SIGNAL_PROGRAM=on                                # "off" falls back to the off-chain engine
+SIGNAL_ATTESTER_KEYPAIR_JSON=                    # optional; defaults to SOLANA_KEYPAIR_JSON
+MAX_ONCHAIN_ITEMS=5                              # items per receipt filed on-chain (each locks a reward)
+
+# Payout rail for the off-chain fallback only: "standard" (SPL transfer) or "magicblock" (Private Payments API)
+PAYOUT_RAIL=standard
+MAGICBLOCK_API_URL=https://payments.magicblock.app
+MAGICBLOCK_EPHEMERAL_RPC=https://devnet.magicblock.app
+
+# Jupiter auto-stake (USDC → jupUSD) — mainnet only
+SOLANA_CLUSTER=devnet                            # set to mainnet to enable swaps
+JUPITER_API_KEY=                                 # optional, from portal.jup.ag
+JUPITER_PLATFORM_FEE_BPS=0                       # protocol fee on swaps (needs JUPITER_FEE_ACCOUNT)
+JUPITER_FEE_ACCOUNT=                             # treasury jupUSD token account
 
 # Yellow Network (Optional)
 YELLOW_USER_PRIVATE_KEY=your_yellow_private_key

@@ -1,0 +1,28 @@
+{
+  "private": true,
+  "scripts": {
+    "test": "anchor build && ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts",
+    "codama": "codama run js"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@solana/spl-token": "^0.4.15",
+    "@solana/web3.js": "^1.99.0"
+  },
+  "devDependencies": {
+    "@codama/cli": "1.6.3",
+    "@codama/nodes-from-anchor": "1.5.6",
+    "@codama/renderers-js": "2.5.0",
+    "@types/bn.js": "^5.2.0",
+    "@types/chai": "^4.3.20",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.10.2",
+    "anchor-bankrun": "^0.5.0",
+    "chai": "^4.5.0",
+    "mocha": "^10.8.2",
+    "solana-bankrun": "^0.4.0",
+    "ts-mocha": "^11.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

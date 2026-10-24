@@ -1,5 +1,5 @@
 {
-  "address": "0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243",
+  "address": "0x9119b3D7e7DcC540F08D62CeBC5bC2f83e8793f2",
   "abi": [
     {
       "inputs": [],
@@ -11,15 +11,46 @@
       "inputs": [
         {
           "indexed": true,
+          "internalType": "bytes32",
+          "name": "feedId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "key",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "medianPrice",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "samples",
+          "type": "uint256"
+        }
+      ],
+      "name": "FeedUpdated",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
           "internalType": "uint256",
           "name": "reportId",
           "type": "uint256"
         },
         {
-          "indexed": false,
-          "internalType": "string",
-          "name": "category",
-          "type": "string"
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "feedId",
+          "type": "bytes32"
         },
         {
           "indexed": false,
@@ -28,20 +59,172 @@
           "type": "uint256"
         },
         {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "timestamp",
-          "type": "uint256"
-        },
-        {
           "indexed": true,
-          "internalType": "address",
-          "name": "reporter",
-          "type": "address"
+          "internalType": "bytes32",
+          "name": "reporterId",
+          "type": "bytes32"
         }
       ],
       "name": "PriceReported",
       "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "reporterId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "imageHash",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "newReputation",
+          "type": "uint8"
+        }
+      ],
+      "name": "ReporterSlashed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "reporterId",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "newReputation",
+          "type": "uint8"
+        }
+      ],
+      "name": "ReputationUpdated",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "INITIAL_REPUTATION",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "feedIds",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "feeds",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "key",
+          "type": "string"
+        },
+        {
+          "internalType": "uint256",
+          "name": "medianPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "samples",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "updatedAt",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "feedKey",
+          "type": "string"
+        }
+      ],
+      "name": "getFeed",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "medianPrice",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "samples",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "updatedAt",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getFeedCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
     },
     {
       "inputs": [
@@ -54,9 +237,9 @@
       "name": "getReport",
       "outputs": [
         {
-          "internalType": "string",
-          "name": "category",
-          "type": "string"
+          "internalType": "bytes32",
+          "name": "feedId",
+          "type": "bytes32"
         },
         {
           "internalType": "uint256",
@@ -74,8 +257,13 @@
           "type": "string"
         },
         {
+          "internalType": "bytes32",
+          "name": "reporterId",
+          "type": "bytes32"
+        },
+        {
           "internalType": "address",
-          "name": "reporter",
+          "name": "wallet",
           "type": "address"
         }
       ],
@@ -90,6 +278,44 @@
           "internalType": "uint256",
           "name": "",
           "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "reporterId",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getReputation",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "knownReporter",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
         }
       ],
       "stateMutability": "view",
@@ -112,7 +338,7 @@
       "inputs": [
         {
           "internalType": "string",
-          "name": "category",
+          "name": "feedKey",
           "type": "string"
         },
         {
@@ -126,9 +352,29 @@
           "type": "string"
         },
         {
+          "internalType": "bytes32",
+          "name": "reporterId",
+          "type": "bytes32"
+        },
+        {
           "internalType": "address",
-          "name": "reporter",
+          "name": "wallet",
           "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "feedMedian",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "feedSamples",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint8",
+          "name": "newReputation",
+          "type": "uint8"
         }
       ],
       "name": "recordPrice",
@@ -153,9 +399,9 @@
       "name": "reports",
       "outputs": [
         {
-          "internalType": "string",
-          "name": "category",
-          "type": "string"
+          "internalType": "bytes32",
+          "name": "feedId",
+          "type": "bytes32"
         },
         {
           "internalType": "uint256",
@@ -173,14 +419,98 @@
           "type": "string"
         },
         {
+          "internalType": "bytes32",
+          "name": "reporterId",
+          "type": "bytes32"
+        },
+        {
           "internalType": "address",
-          "name": "reporter",
+          "name": "wallet",
           "type": "address"
         }
       ],
       "stateMutability": "view",
       "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "reputation",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "reporterId",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "string",
+          "name": "imageHash",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "reason",
+          "type": "string"
+        },
+        {
+          "internalType": "uint8",
+          "name": "newReputation",
+          "type": "uint8"
+        }
+      ],
+      "name": "slash",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "slashCount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
     }
   ],
-  "deployedAt": "2026-08-07T20:03:13.482Z"
+  "deployedAt": "2026-10-24T11:14:31.153Z"
 }

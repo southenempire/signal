@@ -40,12 +40,13 @@ async function main() {
 
   console.log('✅ Compilation successful!');
 
-  const rpcUrl = process.env.BOTCHAIN_RPC_URL || 'https://rpc.botchain.ai';
+  const rpcUrl = process.env.BOTCHAIN_RPC || process.env.BOTCHAIN_RPC_URL || 'https://rpc.botchain.ai';
   const provider = new ethers.JsonRpcProvider(rpcUrl, 677);
-  
-  const privateKey = process.env.YELLOW_USER_PRIVATE_KEY;
+
+  // The deployer becomes the contract owner — the only key allowed to write reports.
+  const privateKey = process.env.BOTCHAIN_PRIVATE_KEY || process.env.YELLOW_USER_PRIVATE_KEY;
   if (!privateKey) {
-    throw new Error('YELLOW_USER_PRIVATE_KEY missing in .env');
+    throw new Error('BOTCHAIN_PRIVATE_KEY (or YELLOW_USER_PRIVATE_KEY) missing in .env');
   }
 
   const wallet = new ethers.Wallet(privateKey, provider);

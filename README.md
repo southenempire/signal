@@ -56,7 +56,7 @@ Signal Protocol turns everyday shoppers into verified data nodes. Users photogra
 
 | Chain | Type | Address / Endpoint |
 |:------|:-----|:-------------------|
-| **BOTChain** (Mainnet, Chain ID 677) | Oracle Contract | [`0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243`](https://scan.botchain.ai/address/0x19ab0982C0ea2C4790Fcc0eA6b48e9F2dE017243) |
+| **BOTChain** (Mainnet, Chain ID 677) | Oracle Contract | [`0x9119b3D7e7DcC540F08D62CeBC5bC2f83e8793f2`](https://scan.botchain.ai/address/0x9119b3D7e7DcC540F08D62CeBC5bC2f83e8793f2) |
 | **Solana** (Devnet) | SPL USDC Payouts | `FVyGEtqSKPHkiKgeSa8imWW5gzWNN5A5txwJgs7zFQhb` |
 | **Yellow Network** | State Channel Settlement | Gasless micro-rewards via Nitrolite SDK |
 

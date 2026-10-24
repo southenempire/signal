@@ -33,9 +33,9 @@ export default function NetworkExplorer() {
       })
       .catch(() => {
         setStats({
-          activeNodes: 142,
-          totalReports: 8934,
-          totalVolume: '24,500.00'
+          activeNodes: 0,
+          totalReports: 0,
+          totalVolume: '0.00'
         });
         setLoading(false);
       });

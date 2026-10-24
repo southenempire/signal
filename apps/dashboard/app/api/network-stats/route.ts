@@ -1,47 +1,33 @@
 import { NextResponse } from 'next/server';
 
+// Real network stats, proxied from the Signal bot's /api/stats endpoint.
+// SIGNAL_API_URL is the bot's public base URL (e.g. the Railway deployment).
+// If the bot is unreachable we report zeros with live:false — never placeholder numbers.
+const EMPTY = { activeNodes: 0, totalReports: 0, totalVolume: '0.00', onChainReports: null };
+
 export async function GET() {
+  const apiUrl = process.env.SIGNAL_API_URL;
+  if (!apiUrl) {
+    return NextResponse.json({ ...EMPTY, live: false, error: 'SIGNAL_API_URL not set' });
+  }
+
   try {
-    const apiKey = process.env.DUNE_SIM_API_KEY;
-    const protocolWallet = process.env.NEXT_PUBLIC_PROTOCOL_WALLET;
-
-    if (!apiKey || !protocolWallet || protocolWallet === 'undefined') {
-      return NextResponse.json({
-        activeNodes: 142,
-        totalReports: 8934,
-        totalVolume: '24,500.00',
-        duneStatus: 'FALLBACK_MODE'
-      });
+    const response = await fetch(`${apiUrl.replace(/\/$/, '')}/api/stats`, {
+      next: { revalidate: 30 },
+    });
+    if (!response.ok) {
+      return NextResponse.json({ ...EMPTY, live: false, error: `Signal API returned ${response.status}` });
     }
 
-    const response = await fetch(`https://api.dune.com/api/v1/echo/solana/${protocolWallet}/balances`, {
-      headers: { 'X-DUNE-API-KEY': apiKey },
-      next: { revalidate: 60 }
-    }).catch(() => null);
-
-    if (!response || !response.ok) {
-      return NextResponse.json({
-        activeNodes: 142,
-        totalReports: 8934,
-        totalVolume: '24,500.00',
-        duneStatus: 'API_DOWN_FALLBACK'
-      });
-    }
-
-    const data = await response.json().catch(() => ({}));
-
+    const data = await response.json();
     return NextResponse.json({
-      activeNodes: 142 + (Math.floor(Math.random() * 5)),
-      totalReports: 8934 + (Math.floor(Math.random() * 20)),
-      totalVolume: data?.total_value_usd ? Number(data.total_value_usd).toLocaleString() : '24,500.00',
-      duneStatus: 'LIVE_SIM_SYNC'
+      activeNodes: Number(data.activeNodes) || 0,
+      totalReports: Number(data.totalReports) || 0,
+      totalVolume: Number(data.totalVolume || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+      onChainReports: data.onChainReports ?? null,
+      live: true,
     });
-  } catch (error) {
-    return NextResponse.json({
-      activeNodes: 142,
-      totalReports: 8934,
-      totalVolume: '24,500.00',
-      error: 'CRITICAL_FAL'
-    });
+  } catch {
+    return NextResponse.json({ ...EMPTY, live: false, error: 'Signal API unreachable' });
   }
 }
