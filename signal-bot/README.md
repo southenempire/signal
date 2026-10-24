@@ -12,7 +12,7 @@ Existing oracle networks (Chainlink, Pyth) capture exchange-level and institutio
 
 ## The Solution
 
-Signal Protocol turns everyday shoppers into verified data nodes. Users photograph real-world receipts and price tags via a Telegram bot. **Qwen-3.6 Vision AI** audits each submission in real-time — rejecting screenshots, digital fakes, and manipulated images — then extracts item names, prices, and currency. Verified contributors earn instant on-chain micro-rewards.
+Signal Protocol turns everyday shoppers into verified data nodes. Users photograph real-world receipts and price tags via a Telegram bot. **Qwen Vision AI** audits each submission in real-time — rejecting screenshots, digital fakes, and manipulated images — then extracts item names, prices, and currency. Verified contributors earn instant on-chain micro-rewards.
 
 ```
 📸 Snap a receipt   →   🧠 AI Vision verifies   →   ⛓️ Logged on-chain   →   💰 Earn USDC
@@ -34,7 +34,7 @@ Signal Protocol turns everyday shoppers into verified data nodes. Users photogra
                 └──┬──────┬──────┬────┘
                    │      │      │
         ┌──────────▼┐  ┌──▼───┐  ┌▼───────────┐
-        │ Qwen-3.6  │  │SQLite│  │  Express    │
+        │ Qwen 3.8  │  │SQLite│  │  Express    │
         │ Vision AI │  │  DB  │  │  REST API   │
         │  (Groq)   │  │      │  │  /api/stats │
         └───────────┘  └──────┘  └──────┬──────┘
@@ -65,7 +65,7 @@ Signal Protocol turns everyday shoppers into verified data nodes. Users photogra
 ## Features
 
 ### Oracle Engine
-- **AI Vision Verification** — Qwen-3.6 27B (via Groq Cloud) audits physical receipt photos in real-time
+- **AI Vision Verification** — Qwen 3.8 27B (via Groq Cloud) audits physical receipt photos in real-time
 - **Anti-Fraud System** — SHA-256 image fingerprinting, duplicate rejection, daily rate limits
 - **5 Reporting Categories** — Fuel, Grocery, Electricity, Rent, Global Physical Data
 - **Multi-Rail Settlement** — Solana SPL USDC + BOTChain on-chain logging + Yellow Network gasless payouts
@@ -96,7 +96,7 @@ Signal Protocol turns everyday shoppers into verified data nodes. Users photogra
 |:------|:-----------|
 | Runtime | Node.js 20+ (ESM) |
 | Bot Framework | Telegraf v4 |
-| AI Vision | Qwen-3.6 27B via Groq Cloud API |
+| AI Vision | Qwen 3.8 27B via Groq Cloud API (`GROQ_VISION_MODEL`) |
 | Blockchain (L1) | Solana (`@solana/web3.js`, `@solana/spl-token`) |
 | Blockchain (EVM) | BOTChain via Ethers.js v6 |
 | State Channels | Yellow Network Nitrolite SDK |

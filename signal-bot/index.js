@@ -63,6 +63,8 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const RPC_URL   = process.env.RPC_URL || 'https://api.devnet.solana.com';
 const USDC_MINT = process.env.USDC_MINT || '4zMMC9srvvSbhvWxREz676cgVT7n8uyT8D5KWW2EGQuD';
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+// Groq retires model names; override in Railway without a code change if this one goes away.
+const GROQ_VISION_MODEL = process.env.GROQ_VISION_MODEL || 'qwen/qwen3.8-27b';
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const SETTLE_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_ITEMS_PER_REPORT = 10;
@@ -294,12 +296,12 @@ async function runVisionAudit(imageBase64, category) {
   let lastError = null;
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
-      console.log(`[Vision] Groq Qwen-3.6-Vision audit for ${category} (attempt ${attempt})`);
+      console.log(`[Vision] Groq ${GROQ_VISION_MODEL} audit for ${category} (attempt ${attempt})`);
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${GROQ_API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'qwen/qwen3.6-27b',
+          model: GROQ_VISION_MODEL,
           messages: [{
             role: 'user',
             content: [
@@ -364,7 +366,7 @@ if (bot) {
     return ctx.replyWithHTML(`⚠️ <b>Policy Violation: Daily Limit Reached</b>\nYour agent is limited to ${DAILY_LIMIT} reports/day.`);
   }
 
-  await ctx.reply('🔍 Image received! Qwen-3.6-Vision is parsing and auditing your receipt...');
+  await ctx.reply('🔍 Image received! Qwen Vision is parsing and auditing your receipt...');
 
   const { filepath: imagePath, hash: imageHash, base64: imageBase64 } = await saveReportImage(ctx, selected, ctx.from.id);
 
