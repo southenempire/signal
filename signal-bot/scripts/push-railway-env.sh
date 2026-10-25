@@ -34,6 +34,7 @@ case "${1:-}" in
   secrets)
     echo "Pushing rotated secrets (no redeploy yet):"
     set_var TELEGRAM_BOT_TOKEN
+    set_var GROQ_API_KEY
     set_var SOLANA_KEYPAIR_JSON
     set_var REPORTER_SALT
     set_var BOTCHAIN_PRIVATE_KEY

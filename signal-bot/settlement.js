@@ -199,12 +199,17 @@ export async function penalize({ kind, telegramId, wallet, category, imagePath, 
   let newRep = null;
   if (oracle.isEnabled()) {
     try {
-      if (kind === 'duplicate' && feedKey) {
-        await oracle.flagDuplicate({ offenderWallet: wallet, feedKey, imageHashHex: imageHash });
+      if (kind === 'duplicate') {
+        // The on-chain penalty needs the original Report as proof; photos filed before the
+        // program existed have none, so those duplicates are only recorded locally.
+        if (feedKey) {
+          await oracle.flagDuplicate({ offenderWallet: wallet, feedKey, imageHashHex: imageHash });
+          newRep = (await oracle.getReporter(wallet))?.reputation ?? null;
+        }
       } else {
         await oracle.flagFake({ offenderWallet: wallet, imageHashHex: imageHash });
+        newRep = (await oracle.getReporter(wallet))?.reputation ?? null;
       }
-      newRep = (await oracle.getReporter(wallet))?.reputation ?? null;
     } catch (e) {
       console.error(`[Oracle] flag_${kind} failed:`, e.message);
     }

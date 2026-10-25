@@ -378,6 +378,15 @@ export function getFeedsSummary(days = 30) {
 /**
  * Check if an image hash has already been submitted globally
  */
+/** Who first filed this photo (ignoring slashed attempts), or null. */
+export function getImageOwner(imageHash) {
+  if (!imageHash) return null;
+  return db.prepare(`
+    SELECT id, telegram_id, status FROM reports
+    WHERE image_hash = ? AND status != 'slashed' ORDER BY id LIMIT 1
+  `).get(imageHash) || null;
+}
+
 export function isImageDuplicate(imageHash) {
   if (!imageHash) return false;
   const row = stmts.checkHash.get(imageHash);

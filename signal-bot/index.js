@@ -35,7 +35,7 @@ import {
   getOrCreateUser, savePendingReport, getUserPendingLocked, setUserRegion,
   getLeaderboard, getRecentReports, getNetworkStats, getFeedsSummary,
   getAcceptedFeedPrices, getUserTotalEarned, getDailyReportCount, isImageDuplicate,
-  getFeedKeyForImageHash, getAllFeedKeys, setReputation,
+  getFeedKeyForImageHash, getAllFeedKeys, setReputation, getImageOwner,
   saveYellowLink, getYellowLink
 } from './db.js';
 import { saveReportImage } from './images.js';
@@ -292,9 +292,29 @@ Respond with ONLY a JSON object:
   ]
 }`;
 
-async function runVisionAudit(imageBase64, category) {
+// Groq's free tier allows ~8k tokens/minute, about 2–3 receipts. Run audits one at a time and
+// wait out rate limits instead of failing the user, so a burst of reports just queues.
+let visionQueue = Promise.resolve();
+let visionWaiting = 0;
+const VISION_MAX_ATTEMPTS = 6;
+
+function runVisionAudit(imageBase64, category, onQueued) {
+  if (visionWaiting > 0) onQueued?.(visionWaiting);
+  visionWaiting++;
+  const run = visionQueue.then(() => runVisionAuditNow(imageBase64, category));
+  visionQueue = run.catch(() => {}).finally(() => { visionWaiting--; });
+  return run;
+}
+
+const retryAfterMs = (res, fallback) => {
+  const s = Number(res.headers.get('retry-after'));
+  return Number.isFinite(s) && s > 0 ? Math.min(s * 1000, 30_000) : fallback;
+};
+
+async function runVisionAuditNow(imageBase64, category) {
   let lastError = null;
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  let hardFailures = 0;
+  for (let attempt = 1; attempt <= VISION_MAX_ATTEMPTS; attempt++) {
     try {
       console.log(`[Vision] Groq ${GROQ_VISION_MODEL} audit for ${category} (attempt ${attempt})`);
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -315,8 +335,10 @@ async function runVisionAudit(imageBase64, category) {
       });
       const data = await res.json();
       if (data.error) {
-        if (data.error.code === 'rate_limit_exceeded' || /rate limit/i.test(data.error.message || '')) {
-          await new Promise(r => setTimeout(r, 3500));
+        if (res.status === 429 || data.error.code === 'rate_limit_exceeded' || /rate limit/i.test(data.error.message || '')) {
+          const wait = retryAfterMs(res, 5000 * attempt);
+          console.warn(`[Vision] rate limited, waiting ${Math.round(wait / 1000)}s`);
+          await new Promise(r => setTimeout(r, wait));
           lastError = new Error('Rate limit');
           continue;
         }
@@ -334,6 +356,7 @@ async function runVisionAudit(imageBase64, category) {
     } catch (e) {
       lastError = e;
       console.error(`[Vision] attempt ${attempt} failed: ${e.message}`);
+      if (++hardFailures >= 2) break; // only rate limits get the extra attempts
       await new Promise(r => setTimeout(r, 2000));
     }
   }
@@ -370,7 +393,15 @@ if (bot) {
 
   const { filepath: imagePath, hash: imageHash, base64: imageBase64 } = await saveReportImage(ctx, selected, ctx.from.id);
 
-  // Duplicate data is slashed, not just rejected.
+  // Resending your own photo (e.g. after a missed reply) is not fraud: just say where it stands.
+  // Someone else's photo is slashed, not just rejected.
+  const original = imageHash ? getImageOwner(imageHash) : null;
+  if (original && original.telegram_id === ctx.from.id) {
+    return ctx.replyWithHTML(
+      `📌 <b>You already submitted this photo</b> (report #${original.id}, ${escapeHtml(original.status)}).\n` +
+      `No need to send it again — you'll get a message when consensus settles it.`
+    );
+  }
   if (imageHash && isImageDuplicate(imageHash)) {
     const rep = await penalize({
       kind: 'duplicate', telegramId: ctx.from.id, wallet: user.keypair.publicKey, category: selected,
@@ -389,7 +420,8 @@ if (bot) {
     };
   } else {
     try {
-      audit = await runVisionAudit(imageBase64, selected);
+      audit = await runVisionAudit(imageBase64, selected, (ahead) =>
+        ctx.reply(`⏳ Busy right now — ${ahead} receipt${ahead === 1 ? '' : 's'} ahead of yours. Hang tight, it's queued.`).catch(() => {}));
     } catch (e) {
       console.error('Final Verification Error:', e);
       return ctx.replyWithHTML(`❌ <b>Verification Error:</b> The AI check could not complete. Please try again.`);
@@ -952,7 +984,8 @@ async function main() {
     return;
   }
   try {
-    await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+    // Keep messages that arrived while the bot was restarting (e.g. during a deploy).
+    await bot.telegram.deleteWebhook({ drop_pending_updates: false });
     console.log('✅ Webhook cleared');
     await bot.telegram.getMe().then(me => {
       console.log(`🚀 Signal Bot LIVE as @${me.username}`);
