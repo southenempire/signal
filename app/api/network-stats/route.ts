@@ -5,8 +5,12 @@ import { NextResponse } from 'next/server';
 // If the bot is unreachable we report zeros with live:false — never placeholder numbers.
 const EMPTY = { activeNodes: 0, totalReports: 0, totalVolume: '0.00', onChainReports: null };
 
+export const dynamic = 'force-dynamic';
+
+const DEFAULT_SIGNAL_API_URL = 'https://signal-production-d83e.up.railway.app';
+
 export async function GET() {
-  const apiUrl = process.env.SIGNAL_API_URL;
+  const apiUrl = process.env.SIGNAL_API_URL || DEFAULT_SIGNAL_API_URL;
   if (!apiUrl) {
     return NextResponse.json({ ...EMPTY, live: false, error: 'SIGNAL_API_URL not set' });
   }
