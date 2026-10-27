@@ -3,7 +3,8 @@
  *
  *   OLD_SECRET_KEY=... NEW_SECRET_KEY=... DB_PATH=./data/signal.db node scripts/rotate-secret-key.js
  *
- * Copies the database to <DB_PATH>.pre-rotation-<timestamp> first, then rewrites all rows in one
+ * Backs up the database to <DB_PATH>.pre-rotation-<timestamp> first (SQLite's online backup, so
+ * rows still in the WAL journal are included), then rewrites all rows in one
  * transaction: if any wallet fails to decrypt, nothing is changed. Matches db.js: AES-256-GCM,
  * key = scrypt(secret, 'signal-bot-salt', 32), auth tag appended to the ciphertext.
  *
@@ -12,7 +13,6 @@
  * to fresh wallets instead of re-encrypting the old ones.
  */
 import Database from 'better-sqlite3';
-import { copyFileSync } from 'fs';
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 
 const { OLD_SECRET_KEY, NEW_SECRET_KEY } = process.env;
@@ -44,11 +44,12 @@ function encrypt(plain) {
   return { encrypted: Buffer.concat([enc, cipher.getAuthTag()]).toString('base64'), iv: iv.toString('base64') };
 }
 
-const backup = `${DB_PATH}.pre-rotation-${Date.now()}`;
-copyFileSync(DB_PATH, backup);
-console.log(`Backup: ${backup}`);
-
 const db = new Database(DB_PATH);
+
+// A plain file copy would miss rows that live only in signal.db-wal; db.backup() captures them.
+const backup = `${DB_PATH}.pre-rotation-${Date.now()}`;
+await db.backup(backup);
+console.log(`Backup: ${backup}`);
 const users = db.prepare('SELECT telegram_id, encrypted_sk, iv FROM users').all();
 const update = db.prepare('UPDATE users SET encrypted_sk = ?, iv = ? WHERE telegram_id = ?');
 
