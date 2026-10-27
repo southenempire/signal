@@ -28,7 +28,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col pt-16 transition-colors duration-300">
+      {/* pt-20 clears the floating navbar (top-3 + h-14/h-16) so page headers aren't covered */}
+      <body className="min-h-full flex flex-col pt-20 transition-colors duration-300">
         <ThemeProvider>
           <ClientNavBar />
           <main className="flex-grow flex flex-col relative z-0">

@@ -30,7 +30,7 @@ export default function NavBar() {
         }`}
       >
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group shrink-0">
           <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-white/10 shadow-md">
             <Image src="/logo.png" alt="Signal" fill className="object-cover" />
           </div>
@@ -62,7 +62,7 @@ export default function NavBar() {
         </nav>
 
         {/* Right CTA + Controls */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Light/Dark Toggle */}
           <button
             onClick={toggle}
@@ -81,13 +81,14 @@ export default function NavBar() {
             href={BOT_URL}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold text-white transition-all shadow-lg hover:opacity-95 hover:scale-[1.02] active:scale-[0.98]"
+            className="inline-flex items-center gap-1.5 px-3.5 sm:px-5 py-2 rounded-full text-xs sm:text-sm font-bold text-white whitespace-nowrap transition-all shadow-lg hover:opacity-95 hover:scale-[1.02] active:scale-[0.98]"
             style={{
               background: "linear-gradient(135deg, #7C5CFC, #E040FB)",
               boxShadow: "0 0 24px rgba(124,92,252,0.4)",
             }}
           >
-            <span>Launch Signal Bot</span>
+            <span className="hidden sm:inline">Launch Signal Bot</span>
+            <span className="sm:hidden">Open Bot</span>
             <ExternalLink className="w-3 h-3" />
           </a>
 
@@ -97,6 +98,7 @@ export default function NavBar() {
               isLight ? "text-zinc-700 hover:bg-black/5" : "text-zinc-400 hover:bg-white/10"
             }`}
             onClick={() => setIsOpen(!isOpen)}
+            aria-label={isOpen ? "Close menu" : "Open menu"}
           >
             {isOpen ? <X size={20} /> : <Menu size={20} />}
           </button>

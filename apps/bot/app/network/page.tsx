@@ -32,11 +32,12 @@ export default function NetworkExplorer() {
       });
   }, []);
 
+  // Desktop: a fixed-height three-column console. Phones/tablets: one scrolling column.
   return (
-    <div className="h-screen w-full bg-[#0a0a0c] text-white flex flex-col overflow-hidden font-sans selection:bg-[#10B981]/30">
+    <div className="min-h-[calc(100dvh-5rem)] lg:h-[calc(100dvh-5rem)] w-full bg-[#0a0a0c] text-white flex flex-col lg:overflow-hidden font-sans selection:bg-[#10B981]/30">
       
       {/* ── HEADER / TOP NAV ─────────────────────────── */}
-      <header className="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-[#0a0a0c] relative z-40">
+      <header className="h-16 border-b border-white/5 flex items-center justify-between px-4 sm:px-8 bg-[#0a0a0c] relative z-40">
         <div className="flex items-center gap-4">
           <div className="w-8 h-8 rounded-lg bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center">
             <Network size={16} className="text-[#10B981]" />
@@ -47,7 +48,7 @@ export default function NetworkExplorer() {
           </div>
         </div>
 
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-4 sm:gap-8">
            <div className="hidden md:flex flex-col items-end">
               <span className="text-[10px] font-black uppercase tracking-widest text-zinc-500">Network Status</span>
               <span className="text-[10px] font-mono text-[#10B981] flex items-center gap-2">
@@ -71,7 +72,7 @@ export default function NetworkExplorer() {
       </header>
 
       {/* ── MAIN CONTENT AREA ────────────────────────── */}
-      <main className="flex-1 flex overflow-hidden relative">
+      <main className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden relative">
         
         {/* BACKGROUND MAP (Immersive Layer) */}
         <div className="absolute inset-x-0 inset-y-0 z-0 pointer-events-none opacity-20">
@@ -102,12 +103,12 @@ export default function NetworkExplorer() {
         </div>
 
         {/* LEFT SIDEBAR: METADATA CONSOLE */}
-        <aside className="w-80 border-r border-white/5 bg-[#0a0a0c]/80 backdrop-blur-xl relative z-10 flex flex-col p-8 overflow-y-auto">
-           <div className="mb-12">
+        <aside className="w-full lg:w-80 shrink-0 border-b lg:border-b-0 lg:border-r border-white/5 bg-[#0a0a0c]/80 backdrop-blur-xl relative z-10 flex flex-col p-4 sm:p-8 lg:overflow-y-auto">
+           <div className="mb-6 lg:mb-12">
               <div className="text-[10px] font-black uppercase tracking-widest text-[#10B981] mb-2">Platform Metadata</div>
-              <h2 className="text-lg font-display font-black text-white mb-6">Global Resilience</h2>
+              <h2 className="text-lg font-display font-black text-white mb-4 lg:mb-6">Global Resilience</h2>
               
-              <div className="space-y-6">
+              <div className="grid grid-cols-3 gap-2 sm:gap-4 lg:grid-cols-1 lg:gap-6">
                  <StatPanel 
                    label="Active Ground Nodes" 
                    val={loading ? '...' : stats?.activeNodes.toLocaleString()} 
@@ -129,7 +130,7 @@ export default function NetworkExplorer() {
               </div>
            </div>
 
-           <div className="mt-auto space-y-6">
+           <div className="lg:mt-auto space-y-4 lg:space-y-6">
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5">
                  <div className="flex items-center gap-3 mb-3">
                     <Shield size={14} className="text-[#10B981]" />
@@ -148,7 +149,7 @@ export default function NetworkExplorer() {
         </aside>
 
         {/* CENTER AREA: VIRTUAL NAVIGATION */}
-        <div className="flex-1 relative overflow-hidden flex flex-col items-center justify-center">
+        <div className="hidden lg:flex flex-1 relative overflow-hidden flex-col items-center justify-center">
            <div className="relative z-10 text-center pointer-events-none select-none">
               <h3 className="text-[10px] font-mono text-zinc-500 tracking-[0.5em] uppercase mb-4">Signal Spatial Layer</h3>
               <div className="relative inline-block">
@@ -167,8 +168,8 @@ export default function NetworkExplorer() {
         </div>
 
         {/* RIGHT SIDEBAR: TRANSPARENCY LEDGER */}
-        <aside className="w-[420px] border-l border-white/5 bg-[#0a0a0c]/80 backdrop-blur-xl relative z-10 flex flex-col overflow-hidden">
-           <div className="p-8 border-b border-white/5 flex justify-between items-center bg-white/[0.01]">
+        <aside className="w-full lg:w-[420px] shrink-0 lg:border-l border-white/5 bg-[#0a0a0c]/80 backdrop-blur-xl relative z-10 flex flex-col lg:overflow-hidden">
+           <div className="p-4 sm:p-8 border-b border-white/5 flex justify-between items-center gap-3 bg-white/[0.01]">
               <div>
                  <h2 className="text-[11px] font-black uppercase tracking-widest text-white">Truth Ledger</h2>
                  <p className="text-[9px] font-mono text-zinc-600">Sub-Second Finality</p>
@@ -176,11 +177,11 @@ export default function NetworkExplorer() {
               <div className="px-3 py-1 rounded-full bg-[#3B82F6]/10 border border-[#3B82F6]/20 text-[9px] font-black text-[#3B82F6] uppercase">Dune Enabled</div>
            </div>
            
-           <div className="flex-1 overflow-y-auto custom-scrollbar">
+           <div className="min-h-[200px] lg:flex-1 lg:overflow-y-auto custom-scrollbar">
               <TransparencyLedger />
            </div>
 
-           <div className="p-8 border-t border-white/5 bg-white/[0.01] flex items-center justify-between">
+           <div className="p-4 sm:p-8 border-t border-white/5 bg-white/[0.01] flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                  <div className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-[#10B981]">Devnet Verified</span>
@@ -192,18 +193,18 @@ export default function NetworkExplorer() {
       </main>
 
       {/* ── COMMAND BAR / BOTTOM FOOTER ────────────────── */}
-      <footer className="h-14 border-t border-white/5 bg-[#0a0a0c] relative z-40 flex items-center justify-between px-8">
-         <div className="flex items-center gap-6">
+      <footer className="border-t border-white/5 bg-[#0a0a0c] relative z-40 flex flex-col sm:flex-row sm:h-14 items-center justify-between gap-3 px-4 sm:px-8 py-4 sm:py-0">
+         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             <FooterLink label="Dashboard" href="/" />
             <FooterLink label="Documentation" href="/docs" />
              <FooterLink label="Network Status" href="#" active />
-            <div className="w-px h-4 bg-white/10" />
+            <div className="hidden sm:block w-px h-4 bg-white/10" />
             <a href="https://github.com/southenempire/signal" target="_blank" className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 hover:text-white transition-colors">
                <Code size={12} /> Source
             </a>
          </div>
 
-         <div className="flex items-center gap-6">
+         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
             <a 
               href="https://t.me/southen13" 
               target="_blank" 
@@ -212,7 +213,7 @@ export default function NetworkExplorer() {
                <MessageCircle size={14} className="group-hover:scale-110 transition-transform" />
                Direct Support: @southen13
             </a>
-            <div className="w-px h-4 bg-white/10" />
+            <div className="hidden sm:block w-px h-4 bg-white/10" />
             <span className="text-[10px] font-mono text-zinc-600">© 2026 SIGNAL NETWORK</span>
          </div>
       </footer>
@@ -222,12 +223,12 @@ export default function NetworkExplorer() {
 
 function StatPanel({ label, val, color, icon: Icon }: any) {
   return (
-    <div className="p-4 rounded-2xl bg-white/[0.01] border border-white/5 hover:bg-white/[0.04] transition-all group">
-       <div className="flex items-center gap-3 mb-2">
-          <Icon size={12} style={{ color }} />
-          <span className="text-[9px] font-black uppercase tracking-widest text-zinc-500 group-hover:text-zinc-400 transition-colors">{label}</span>
+    <div className="p-3 sm:p-4 rounded-2xl bg-white/[0.01] border border-white/5 hover:bg-white/[0.04] transition-all group min-w-0">
+       <div className="flex items-start gap-2 sm:gap-3 mb-2">
+          <Icon size={12} style={{ color }} className="shrink-0 mt-px" />
+          <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-wider sm:tracking-widest leading-tight text-zinc-500 group-hover:text-zinc-400 transition-colors">{label}</span>
        </div>
-       <div className="text-xl font-display font-black text-white">{val}</div>
+       <div className="text-lg sm:text-xl font-display font-black text-white truncate">{val}</div>
     </div>
   );
 }
@@ -269,6 +270,14 @@ function TransparencyLedger() {
       return (
           <div className="flex items-center justify-center h-40">
               <div className="w-5 h-5 border-2 border-[#10B981]/30 border-t-[#10B981] rounded-full animate-spin" />
+          </div>
+      );
+  }
+
+  if (logs.length === 0) {
+      return (
+          <div className="flex items-center justify-center h-40 px-6 text-center text-[10px] font-mono text-zinc-600">
+              No ledger entries yet. Accepted reports will appear here.
           </div>
       );
   }

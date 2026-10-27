@@ -73,21 +73,22 @@ function TelegramInspector({ isLight }: { isLight: boolean }) {
       }`}
     >
       {/* Header bar */}
-      <div className="flex items-center justify-between pb-4 mb-4 border-b border-current/10">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#7C5CFC] to-[#E040FB] flex items-center justify-center text-white font-bold text-xs shadow-md">
+      <div className="flex items-center justify-between gap-3 pb-4 mb-4 border-b border-current/10">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 shrink-0 rounded-full bg-gradient-to-tr from-[#7C5CFC] to-[#E040FB] flex items-center justify-center text-white font-bold text-xs shadow-md">
             S
           </div>
-          <div>
+          <div className="min-w-0">
             <div className={`text-xs font-bold ${isLight ? "text-zinc-900" : "text-white"}`}>
               Signal Oracle Bot
             </div>
-            <div className="text-[10px] text-[#00D4AA] flex items-center gap-1 font-mono">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00D4AA] animate-pulse" /> online · @OfficialSignalOracleBot
+            <div className="text-[10px] text-[#00D4AA] flex items-center gap-1 font-mono min-w-0">
+              <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-[#00D4AA] animate-pulse" />
+              <span className="truncate">online · @OfficialSignalOracleBot</span>
             </div>
           </div>
         </div>
-        <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider px-2 py-1 rounded bg-current/5">
+        <span className="hidden sm:inline shrink-0 whitespace-nowrap text-[10px] font-mono text-zinc-500 uppercase tracking-wider px-2 py-1 rounded bg-current/5">
           Live Verification
         </span>
       </div>
@@ -160,9 +161,9 @@ function TelegramInspector({ isLight }: { isLight: boolean }) {
                 <span className={isLight ? "text-zinc-800" : "text-zinc-200"}>Tayas Compound Chocolate</span>
                 <span className="font-bold">₦800</span>
               </div>
-              <div className="flex justify-between pt-1 border-t border-current/10 font-bold text-xs">
-                <span className={isLight ? "text-zinc-900" : "text-white"}>TOTAL BASKET:</span>
-                <span className="text-[#00D4AA]">₦5,300.00 (~$3.53 USD)</span>
+              <div className="flex justify-between items-baseline gap-3 pt-1 border-t border-current/10 font-bold text-xs">
+                <span className={`whitespace-nowrap ${isLight ? "text-zinc-900" : "text-white"}`}>TOTAL</span>
+                <span className="text-[#00D4AA] text-right">₦5,300.00 <span className="whitespace-nowrap">(~$3.53)</span></span>
               </div>
             </div>
 
@@ -261,7 +262,7 @@ export default function Home() {
       {/* ══ HERO SECTION ════════════════════════ */}
       <section
         ref={heroRef}
-        className="relative z-10 min-h-[92vh] flex items-center pt-24 sm:pt-28 pb-12 sm:pb-16"
+        className="relative z-10 min-h-[92vh] flex items-center pt-20 sm:pt-24 pb-12 sm:pb-16"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-8 lg:px-10 w-full">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 sm:gap-14 lg:gap-16 items-center">
@@ -303,9 +304,9 @@ export default function Home() {
                     $
                     <CountUp
                       to={volume >= 1000 ? volume / 1000 : volume}
-                      decimals={volume >= 1000 ? 1 : 0}
+                      decimals={volume >= 1000 ? 1 : volume >= 10 ? 0 : 2}
                     />
-                    {volume >= 1000 ? "k+" : "+"}
+                    {volume >= 1000 ? "k" : ""}
                   </div>
                   <div className={`text-[10px] sm:text-[11px] uppercase tracking-wider font-mono font-bold mt-1 ${
                     isLight ? "text-zinc-500" : "text-zinc-400"
@@ -322,7 +323,7 @@ export default function Home() {
 
                 <div>
                   <div className="text-3xl sm:text-4xl font-black tabular-nums tracking-tight">
-                    <CountUp to={nodeCount} />+
+                    <CountUp to={nodeCount} />
                   </div>
                   <div className={`text-[10px] sm:text-[11px] uppercase tracking-wider font-mono font-bold mt-1 ${
                     isLight ? "text-zinc-500" : "text-zinc-400"

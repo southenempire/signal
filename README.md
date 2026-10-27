@@ -2,7 +2,7 @@
 
 **A decentralized DePIN oracle verifying real-world retail price data on-chain via AI Vision.**
 
-[Website](https://signal-bot-chi.vercel.app) · [Telegram Bot](https://t.me/OfficialSignalOracleBot) · [Pitch Deck](https://signal-bot-chi.vercel.app/pitch.html) · [X (Twitter)](https://x.com/signalprotcol)
+[Website](https://signal-bot-chi.vercel.app) · [Telegram Bot](https://t.me/OfficialSignalOracleBot) · [X (Twitter)](https://x.com/signalprotcol)
 
 ---
 
