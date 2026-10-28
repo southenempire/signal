@@ -1,38 +1,43 @@
-# ☁️ Signal DePIN: Railway Cloud Deployment Guide
+# Deployment
 
-This guide ensures your **Signal Protocol** remains active 24/7 globally by deploying it to the Railway cloud.
+Signal runs as two deployments from this repository:
 
-## 🛠️ Step 1: Push to GitHub
-1. Create a **Private Repository** on GitHub (e.g., `signal-depin`).
-2. Push your current project code to this repository:
-   ```bash
-   git init
-   git add .
-   git commit -m "Grand Champion Deployment Ready"
-   git remote add origin YOUR_REPO_URL
-   git push -u origin main
-   ```
+| Part | Folder | Host |
+| --- | --- | --- |
+| Telegram bot + public API | `signal-bot/` | Railway |
+| Website | `apps/bot/` | Vercel |
 
-## 🚉 Step 2: Connect to Railway
-1. Go to [Railway.app](https://railway.app) and log in.
-2. Click **"+ New Project"** → **"Deploy from GitHub repo"**.
-3. Select your `signal-depin` repository.
-4. Railway will detect the `pnpm` workspace and the `railway.json` files.
+The Solana program (`signal-program/`) is deployed separately with Anchor; see its README.
 
-## 🔑 Step 3: Add Environment Variables
-Railway needs your production keys to run. For **each service** (Signal Agent and Signal Console), go to the **Variables** tab and add:
-- `TELEGRAM_BOT_TOKEN`: Your bot token.
-- `RPC_URL`: Your Helius Devnet RPC URL.
-- `ANTHROPIC_API_KEY`: For Claude Vision.
-- `JUPITER_API_KEY`: For real swaps.
-- `DUNE_SIM_API_KEY`: For real-time dashboard data.
-- `HELIUS_API_KEY`: For transaction history.
-- `NEXT_PUBLIC_PROTOCOL_WALLET`: `9U...` (Your protocol wallet address).
+## Bot on Railway
 
-## ✨ Step 4: Verify Deployment
-1. Once deployed, Railway will provide a public URL for the **Signal Console**.
-2. Your **Signal Agent** will automatically start monitoring Telegram.
-3. You can now close your laptop—the network is sustained by the cloud. 🚀
+1. Create a Railway service from this GitHub repository with **root directory `signal-bot`**. `signal-bot/railway.toml` sets Node 20 and `node index.js`.
+2. Add a **volume mounted at `/app/data`**. The bot's SQLite database (users' encrypted custodial wallets, reports) lives there.
+3. Set the variables below.
+4. Give the service a public domain targeting **port 8080** (the port Railway assigns the app). The website reads `https://<domain>/api/stats` and `/api/feeds`.
 
----
-*Fulfilling the Grand Champion 24/7 uptime requirement.*
+| Variable | What it is |
+| --- | --- |
+| `TELEGRAM_BOT_TOKEN` | From @BotFather |
+| `GROQ_API_KEY` | Vision model access (Groq) |
+| `SECRET_KEY` | Encrypts users' custodial wallets. Rotating it requires `scripts/rotate-secret-key.js` |
+| `SOLANA_KEYPAIR_JSON` | The bot's attester keypair (signs and pays for report submissions) |
+| `RPC_URL` | Solana RPC, e.g. `https://api.devnet.solana.com` |
+| `USDC_MINT` | Reward token mint |
+| `SIGNAL_PROGRAM` | `on` to use the Solana program for consensus |
+| `MAX_ONCHAIN_ITEMS` | Items per receipt filed on-chain (default 5) |
+| `REPORTER_SALT` | Hashes Telegram IDs into anonymous on-chain reporter IDs |
+| `BOTCHAIN_PRIVATE_KEY` | Owner key of the BOTChain mirror contract |
+| `BOTCHAIN_ORACLE_ADDRESS` | BOTChain mirror contract address |
+| `DEMO_MODE` | `false` in production |
+
+Optional: `GROQ_VISION_MODEL` (override the vision model), `SIGNAL_ATTESTER_KEYPAIR_JSON` (separate attester key), and the `PAYOUT_RAIL` / `MAGICBLOCK_*` / `JUPITER_*` settings described in `signal-bot/README.md`.
+
+`signal-bot/scripts/push-railway-env.sh` copies values from `signal-bot/.env` into Railway without printing them.
+
+The program's admin key never goes to Railway: only the attester key does.
+
+## Website on Vercel
+
+1. Import the repository with **root directory `apps/bot`** (Next.js).
+2. Optional: set `SIGNAL_API_URL` to the bot's Railway domain. The site falls back to the production bot if it isn't set.
