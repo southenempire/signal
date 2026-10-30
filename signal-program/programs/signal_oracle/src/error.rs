@@ -30,4 +30,6 @@ pub enum SignalError {
     AccountMismatch,
     #[msg("Arithmetic overflow")]
     Overflow,
+    #[msg("The original filer of a photo cannot be flagged for resubmitting it")]
+    OriginalReporter,
 }

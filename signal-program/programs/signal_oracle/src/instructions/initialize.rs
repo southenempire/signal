@@ -6,7 +6,7 @@ use anchor_spl::{
 
 use crate::{
     state::{Config, ConfigParams},
-    SignalError, ANCHOR_DISCRIMINATOR, BPS, CONFIG_SEED, REPUTATION_MAX,
+    SignalError, ANCHOR_DISCRIMINATOR, BPS, CONFIG_SEED, FEED_CAPACITY, REPUTATION_MAX,
 };
 
 #[derive(Accounts)]
@@ -39,6 +39,8 @@ impl<'info> Initialize<'info> {
     pub fn initialize(&mut self, p: ConfigParams, bumps: &InitializeBumps) -> Result<()> {
         require!(p.base_reward > 0, SignalError::InvalidParams);
         require!(p.min_bounds_samples > 0 && p.peer_quorum > 0, SignalError::InvalidParams);
+        // A feed never holds more than FEED_CAPACITY prices, so a larger minimum would switch bounds off.
+        require!((p.min_bounds_samples as usize) <= FEED_CAPACITY, SignalError::InvalidParams);
         require!(
             (p.bounds_tolerance_bps as u64) <= BPS && (p.peer_tolerance_bps as u64) <= BPS,
             SignalError::InvalidParams

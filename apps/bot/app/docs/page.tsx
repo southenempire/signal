@@ -350,10 +350,10 @@ export default function DocsPage() {
                   Every report starts as <span className="text-white">pending</span> with its reward locked. It settles as soon as there is enough evidence:
                 </p>
                 <div className="space-y-4">
-                  <Rule title="Local price bounds" desc="Once a feed has 3 or more accepted prices, a new price within ±40% of the feed's median is accepted immediately. Outside that range it needs peer support or it is slashed." />
+                  <Rule title="Local price bounds" desc="Once a feed has 3 or more accepted prices, a new price within ±40% of the feed's median is accepted immediately. Outside that range it needs 2 or more agreeing peers (more agreeing than disagreeing) or it is slashed or expires." />
                   <Rule title="Peer agreement" desc="Reports for the same item in the same city within 72 hours are compared pairwise. Prices within ±25% of each other confirm one another; each pair counts once, and a reporter can't confirm their own report." />
                   <Rule title="Contradiction" desc="A report is slashed when it is outside local bounds with no peer support, or (on a new feed) when 2 or more peers disagree and none agree." />
-                  <Rule title="Timeout" desc="With no evidence either way after 48 hours, reporters with reputation 40 or higher are accepted; others expire without a reward." />
+                  <Rule title="Timeout" desc="With no verdict after 48 hours, reporters with reputation 40 or higher are accepted, unless the price is outside local bounds; others expire without a reward." />
                 </div>
                 <p className="text-xs text-zinc-600 leading-relaxed mt-6">
                   In practice: in a city where people report the same items, payouts arrive within minutes. The first report of a new item waits for a peer or the 48-hour timeout.

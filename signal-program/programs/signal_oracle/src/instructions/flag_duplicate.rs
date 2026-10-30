@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::{
     state::{Config, Report, Reporter},
-    ANCHOR_DISCRIMINATOR, CONFIG_SEED, REPORTER_SEED, REPORT_SEED, REPUTATION_DUPLICATE,
+    SignalError, ANCHOR_DISCRIMINATOR, CONFIG_SEED, REPORTER_SEED, REPORT_SEED, REPUTATION_DUPLICATE,
     REPUTATION_START,
 };
 
@@ -21,7 +21,8 @@ pub struct FlagDuplicate<'info> {
         bump = existing_report.bump,
     )]
     pub existing_report: Account<'info, Report>,
-    /// CHECK: the wallet that tried to resubmit; only used as a seed.
+    /// CHECK: the wallet that tried to resubmit; only used as a seed. Never the original filer.
+    #[account(constraint = offender_wallet.key() != existing_report.reporter @ SignalError::OriginalReporter)]
     pub offender_wallet: UncheckedAccount<'info>,
     #[account(
         init_if_needed,

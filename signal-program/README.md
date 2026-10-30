@@ -49,10 +49,10 @@ Prices and rewards are 6-decimal micro-units, like USDC (`800_000` = $0.80).
 
 ### Decision rule (`settle`)
 
-- **confirmed** = local bounds agree, **or** ≥1 peer agrees and agreeing ≥ disagreeing
+- **confirmed** = local bounds agree, **or** (feed too new for bounds) ≥1 peer agrees and agreeing ≥ disagreeing, **or** (bounds disagree) ≥ `peer_quorum` peers agree and agreeing > disagreeing
 - **contradicted** = bounds disagree with no peer support, **or** (feed too new for bounds) ≥ `peer_quorum` peers disagree and none agree
 - confirmed → **accept**; contradicted → **slash**
-- neither, after `pending_timeout_secs` (48h) → accept if reputation ≥ 40, otherwise **expire**
+- neither, after `pending_timeout_secs` (48h) → **expire** if the price disagrees with the bounds, else accept if reputation ≥ 40, otherwise **expire**
 - neither, before the timeout → `StillPending`
 
 Reward = `base_reward × (50 + reputation) / 100`, so 0.5× at reputation 0 and 1.5× at 100.
@@ -92,7 +92,9 @@ photo, so closing it would reopen that hole. Reclaiming rent from old PeerLinks 
   any price for any wallet. Mitigations: keep the key in a KMS/HSM, rotate via an admin
   instruction (not built yet), and watch `ReportSubmitted` events for anomalies.
 - **Sybil peers.** One person with several Telegram accounts can confirm their own fake price.
-  `SameReporter` only stops the same wallet. Real defences are off-chain (phone/KYC-lite per
+  `SameReporter` only stops the same wallet. Overriding a feed's bounds takes `peer_quorum`
+  agreeing reporters and a report outside the bounds never passes on timeout, so a pair of
+  wallets can't move an established feed; a larger ring still can. Real defences are off-chain (phone/KYC-lite per
   wallet) or on-chain stake per reporter; today reputation is the only cost.
 - **Poisoning a new feed.** Before a feed has `min_bounds_samples` accepted prices there are no
   bounds, so the first few reports set them. Coordinated early reporters can anchor a feed. Higher

@@ -10,9 +10,11 @@
  *
  * A report is ACCEPTED (reward paid, recorded on-chain) when most of its items are
  * confirmed, SLASHED (reward forfeited, reputation cut, slash recorded on-chain)
- * when most are contradicted, and otherwise waits for peers. After
- * PENDING_TIMEOUT_HOURS with no verdict, reporters in good standing are accepted
- * (new feeds have to start somewhere); everyone else expires without a reward.
+ * when most are contradicted, and otherwise waits for peers. A price outside the
+ * local bounds needs PEER_QUORUM agreeing peers to override them, so two colluding
+ * reporters cannot vouch an off-market price into a feed. After PENDING_TIMEOUT_HOURS
+ * with no verdict, reporters in good standing are accepted (new feeds have to start
+ * somewhere) unless an item is disputed; everyone else expires without a reward.
  *
  * This file is pure logic — no DB, chain or Telegram — so it can be unit tested.
  */
@@ -23,7 +25,7 @@ export const RULES = {
   BOUNDS_TOLERANCE: 0.40,   // ±40% of the local median
   PEER_WINDOW_HOURS: 72,
   PEER_TOLERANCE: 0.25,     // two reporters "agree" within ±25%
-  PEER_QUORUM: 2,           // distinct contradicting peers needed to slash without bounds
+  PEER_QUORUM: 2,           // distinct peers needed to slash without bounds, or to override them
   PENDING_TIMEOUT_HOURS: 48,
   BOOTSTRAP_MIN_REPUTATION: 40,
 
@@ -53,7 +55,7 @@ const within = (price, reference, tolerance) =>
  * @param {number} price         observed unit price (USD)
  * @param {{price_usd:number}[]} history  accepted observations on the feed (other reporters)
  * @param {{price_usd:number, telegram_id:number}[]} peers  recent peer observations
- * @returns {{verdict:'confirmed'|'contradicted'|'undetermined', detail:string}}
+ * @returns {{verdict:'confirmed'|'contradicted'|'disputed'|'undetermined', detail:string}}
  */
 export function evaluateObservation(price, history, peers, rules = RULES) {
   let bounds = 'none';
@@ -78,11 +80,16 @@ export function evaluateObservation(price, history, peers, rules = RULES) {
   const detail = `bounds=${bounds}${boundsMedian ? `@${boundsMedian.toFixed(2)}` : ''} peers=+${peerAgree}/-${peerDisagree}`;
 
   if (bounds === 'agree') return { verdict: 'confirmed', detail };
-  if (peerAgree > 0 && peerAgree >= peerDisagree) return { verdict: 'confirmed', detail };
+  if (bounds === 'none' && peerAgree > 0 && peerAgree >= peerDisagree) return { verdict: 'confirmed', detail };
+  if (bounds === 'disagree' && peerAgree >= rules.PEER_QUORUM && peerAgree > peerDisagree) {
+    return { verdict: 'confirmed', detail };
+  }
   if (bounds === 'disagree' && peerAgree === 0) return { verdict: 'contradicted', detail };
   if (bounds === 'none' && peerAgree === 0 && peerDisagree >= rules.PEER_QUORUM) {
     return { verdict: 'contradicted', detail };
   }
+  // Outside the bounds with some, but not enough, peer support.
+  if (bounds === 'disagree') return { verdict: 'disputed', detail };
   return { verdict: 'undetermined', detail };
 }
 
@@ -100,6 +107,9 @@ export function decideReport(verdicts, ageHours, reputation, rules = RULES) {
   if (confirmed * 2 > n) return { decision: 'accept', reason: `${confirmed}/${n} items confirmed` };
 
   if (ageHours >= rules.PENDING_TIMEOUT_HOURS) {
+    if (verdicts.includes('disputed')) {
+      return { decision: 'expire', reason: 'an item stayed outside local bounds without a peer quorum' };
+    }
     return reputation >= rules.BOOTSTRAP_MIN_REPUTATION
       ? { decision: 'accept', reason: 'no contradicting data after timeout; reporter in good standing' }
       : { decision: 'expire', reason: 'no confirmation after timeout and low reputation' };

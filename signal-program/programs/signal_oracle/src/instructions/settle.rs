@@ -11,13 +11,19 @@ use crate::{
 
 /// Permissionless crank: decide a pending report from its evidence.
 ///
-///   confirmed    = local bounds agree, OR at least one peer agrees and agreeing ≥ disagreeing
+///   confirmed    = local bounds agree,
+///                  OR (no bounds yet) at least one peer agrees and agreeing ≥ disagreeing,
+///                  OR (bounds disagree) ≥ peer_quorum peers agree and agreeing > disagreeing
 ///   contradicted = bounds disagree with no peer support, OR (no bounds yet) ≥ peer_quorum
 ///                  contradicting peers and none agreeing
 ///
+/// Overriding the feed's bounds takes a quorum, so two colluding wallets cannot vouch an
+/// off-market price into the median; a real price move is accepted once enough peers see it.
+///
 /// confirmed → ACCEPT: reward paid from the vault, price joins the feed, reputation +3
 /// contradicted → SLASH: reward released back to the pool, reputation −20
-/// neither, after pending_timeout → ACCEPT if reputation ≥ bootstrap minimum, else EXPIRE
+/// neither, after pending_timeout → EXPIRE if it disagrees with the bounds, else ACCEPT if
+///                                   reputation ≥ bootstrap minimum, else EXPIRE
 /// neither, before the timeout → error StillPending (try again later)
 #[derive(Accounts)]
 pub struct Settle<'info> {
@@ -70,8 +76,11 @@ impl<'info> Settle<'info> {
         let r = &self.report;
         let c = &self.config;
 
-        let peer_support = r.confirmations > 0 && r.confirmations >= r.contradictions;
-        let confirmed = r.bounds == Bounds::Agree || peer_support;
+        let confirmed = match r.bounds {
+            Bounds::Agree => true,
+            Bounds::None => r.confirmations > 0 && r.confirmations >= r.contradictions,
+            Bounds::Disagree => r.confirmations >= c.peer_quorum && r.confirmations > r.contradictions,
+        };
         let contradicted = (r.bounds == Bounds::Disagree && r.confirmations == 0)
             || (r.bounds == Bounds::None && r.confirmations == 0 && r.contradictions >= c.peer_quorum);
 
@@ -84,7 +93,7 @@ impl<'info> Settle<'info> {
 
         let age = now.checked_sub(r.submitted_at).ok_or(SignalError::Overflow)?;
         require!(age >= c.pending_timeout_secs, SignalError::StillPending);
-        Ok(if self.reporter.reputation >= c.bootstrap_min_reputation {
+        Ok(if r.bounds != Bounds::Disagree && self.reporter.reputation >= c.bootstrap_min_reputation {
             Decision::Accept
         } else {
             Decision::Expire

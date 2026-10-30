@@ -339,18 +339,22 @@ describe("signal_oracle", () => {
 
     await expectError(submit(cheat, FEED, photo("bread-1"), 1_000_000), "AccountAlreadyInUse", "same photo, same item");
 
-    const ix = await program.methods
-      .flagDuplicate(photo("bread-1"))
-      .accountsPartial({
-        attester: attester.publicKey,
-        config,
-        existingReport: reportPda(feedPda(FEED), photo("bread-1")),
-        offenderWallet: cheat.publicKey,
-        offender: reporterPda(cheat.publicKey),
-        systemProgram: SystemProgram.programId,
-      })
-      .instruction();
-    await send([ix], [attester]);
+    const flag = (offender: Keypair) =>
+      program.methods
+        .flagDuplicate(photo("bread-1"))
+        .accountsPartial({
+          attester: attester.publicKey,
+          config,
+          existingReport: reportPda(feedPda(FEED), photo("bread-1")),
+          offenderWallet: offender.publicKey,
+          offender: reporterPda(offender.publicKey),
+          systemProgram: SystemProgram.programId,
+        })
+        .instruction()
+        .then((ix) => send([ix], [attester]));
+    await expectError(flag(a), "OriginalReporter", "the original filer is never the duplicate");
+    assert.strictEqual(await reputation(a), 50, "original filer untouched");
+    await flag(cheat);
     assert.strictEqual(await reputation(cheat), 40);
   });
 
@@ -410,6 +414,47 @@ describe("signal_oracle", () => {
     await peerCheck(rl, r2);
     await settle(rl);
     assert.strictEqual(await statusOf(rl), "slashed");
+  });
+
+  it("needs a peer quorum to override the bounds: two colluders expire unpaid, a real price move is accepted", async () => {
+    const FEED = "GROCERY:ng-ibadan:garri_kg";
+    const [a, b, c, x, y, p, q, r] = await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(newReporter));
+
+    // History: three accepted samples around 1_010_000.
+    await submit(a, FEED, photo("g-a"), 1_000_000);
+    await submit(b, FEED, photo("g-b"), 1_020_000);
+    await submit(c, FEED, photo("g-c"), 1_010_000);
+    const [ra, rb, rc] = ["g-a", "g-b", "g-c"].map((n) => reportPda(feedPda(FEED), photo(n)));
+    await peerCheck(ra, rb);
+    await peerCheck(ra, rc);
+    for (const rep of [ra, rb, rc]) await settle(rep);
+
+    // Two colluding wallets vouch for each other's off-market price: one peer is below quorum.
+    await submit(x, FEED, photo("g-x"), 3_000_000);
+    await submit(y, FEED, photo("g-y"), 3_000_000);
+    const [rx, ry] = ["g-x", "g-y"].map((n) => reportPda(feedPda(FEED), photo(n)));
+    await peerCheck(rx, ry);
+    await expectError(settle(rx), "StillPending", "one agreeing peer cannot override the bounds");
+
+    // At the timeout, a report that disagrees with the bounds expires instead of bootstrapping.
+    await advanceSeconds(48n * HOUR + 1n);
+    await settle(rx);
+    await settle(ry);
+    assert.strictEqual(await statusOf(rx), "expired");
+    assert.strictEqual(await statusOf(ry), "expired");
+    assert.strictEqual(await tokenBalance(getAssociatedTokenAddressSync(mint, x.publicKey)), 0n, "colluder not paid");
+    assert.strictEqual((await program.account.feed.fetch(feedPda(FEED))).len, 3, "feed untouched");
+
+    // A genuine price rise seen by a quorum of independent peers is accepted despite the bounds.
+    await submit(p, FEED, photo("g-p"), 2_000_000);
+    await submit(q, FEED, photo("g-q"), 2_050_000);
+    await submit(r, FEED, photo("g-r"), 1_980_000);
+    const [rp, rq, rr] = ["g-p", "g-q", "g-r"].map((n) => reportPda(feedPda(FEED), photo(n)));
+    await peerCheck(rp, rq);
+    await peerCheck(rp, rr);
+    await settle(rp);
+    assert.strictEqual(await statusOf(rp), "accepted");
+    assert.strictEqual((await program.account.feed.fetch(feedPda(FEED))).len, 4);
   });
 
   it("will not lock more rewards than the pool holds, or settle a report twice", async () => {

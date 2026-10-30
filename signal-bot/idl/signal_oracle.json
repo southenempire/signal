@@ -1406,6 +1406,11 @@
       "code": 6013,
       "name": "Overflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6014,
+      "name": "OriginalReporter",
+      "msg": "The original filer of a photo cannot be flagged for resubmitting it"
     }
   ],
   "types": [
