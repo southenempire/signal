@@ -44,7 +44,7 @@ or put on-chain — only their sha256.
 1. Open [signal-bot-chi.vercel.app/verify](https://signal-bot-chi.vercel.app/verify) → see NEAR AI's attestation verified live with a fresh nonce, the key registered in the contract, and the latest reports filed on NEAR.
 2. Send a receipt photo to [@OfficialSignalOracleBot](https://t.me/OfficialSignalOracleBot) → the reply links the NEAR transaction that filed it; the report appears on `/verify`.
 3. `near view oracle.signal-southen.testnet list_feeds '{}'` → read the feeds straight from NEAR.
-4. `cd signal-near && cargo test` → 22 tests pass, including real NEAR AI signatures and a one-byte forgery being rejected.
+4. `cd signal-near && cargo test` → 23 tests pass, including real NEAR AI signatures, a one-byte forgery being rejected, and the published answer holding no personal details.
 5. Reproduce a filing yourself: see [`signal-near/README.md`](signal-near/README.md#try-it).
 
 **Built with:** near-sdk 5.30 (Rust) and cargo-near, near-api-js 7.4, NEAR AI Cloud (`Qwen/Qwen3.8-27B`) and

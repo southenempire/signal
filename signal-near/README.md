@@ -20,6 +20,10 @@ photo ──► NEAR AI (Qwen3.8-27B in an Intel TDX + NVIDIA TEE)
 The photo never goes on-chain: only its hash, the prompt, and the model's signed answer. Change one
 byte of the answer — a price, a currency — and the signature no longer recovers to the model key.
 
+The signed answer is public forever, so the prompt asks the model for only what a price feed needs:
+city, country, date, items and prices. It never outputs store or people's names, street addresses,
+times of day, or card, account, meter or receipt numbers (a test checks the published answers).
+
 ## What the contract does
 
 | Method | Who | |
@@ -44,7 +48,7 @@ Requires Rust, `cargo-near`, Node 24+, a testnet account in `~/.near-credentials
 NEAR AI Cloud key.
 
 ```bash
-cargo test                                   # 22 unit tests, incl. real NEAR AI signatures
+cargo test                                   # 23 unit tests, incl. real NEAR AI signatures
 cargo near build non-reproducible-wasm       # → target/near/signal_near.wasm
 npm install
 node scripts/deploy.mjs                      # creates oracle.<owner>, deploys, allows the prompt

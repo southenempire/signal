@@ -56,18 +56,6 @@ export default function NetworkExplorer() {
                  SOLANA.DEVNET.ACTIVE
               </span>
            </div>
-           <div className="w-px h-8 bg-white/5" />
-           <div className="flex items-center gap-3">
-              <div 
-                className="w-8 h-8 rounded-full bg-[#10B981]/5 border border-[#10B981]/20 flex items-center justify-center text-[10px] font-mono text-[#10B981] cursor-help hover:bg-[#10B981]/10 transition-all group relative"
-                title="Sovereign Identity Key"
-              >
-                ?
-                <div className="absolute top-10 right-0 w-48 p-3 rounded-xl bg-[#0a0a0c] border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
-                    <p className="text-[9px] font-mono text-zinc-400">Your sovereign session is secured via RSA-4096. All telemetrics are end-to-end encrypted.</p>
-                </div>
-              </div>
-           </div>
         </div>
       </header>
 
