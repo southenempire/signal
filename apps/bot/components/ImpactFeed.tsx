@@ -71,7 +71,7 @@ export default function ImpactFeed() {
         </div>
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
           <Shield size={10} className="text-[#10B981]" />
-          <span className="text-[9px] text-zinc-300 font-bold uppercase tracking-widest">MagicBlock Secured</span>
+          <span className="text-[9px] text-zinc-300 font-bold uppercase tracking-widest">Solana devnet</span>
         </div>
       </div>
 

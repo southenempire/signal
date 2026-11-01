@@ -32,7 +32,7 @@ export async function GET() {
         hash: tx.signature || 'INTERNAL_Consensus',
         region: 'SOL-NET',
         pipeline: tx.type || 'Consensus',
-        lane: 'MagicBlock Private (PER)', // Fulfilling MagicBlock Track
+        lane: 'Solana devnet',
         reward: tx.fee ? (tx.fee / 1_000_000_000).toFixed(4) : '0.0000', 
         ts: tx.timestamp ? tx.timestamp * 1000 : Date.now()
     }));

@@ -2,6 +2,10 @@
  * The prompt every receipt is audited with. The NEAR contract stores sha256 of this exact text and
  * rejects verdicts produced from any other prompt, so changing a single character here needs a new
  * prompt hash registered on-chain (signal-near/scripts/register-prompt.mjs).
+ *
+ * The model's answer is published on NEAR with every filing, so the prompt asks only for what a price
+ * feed needs: city, country, date, items and prices. Never names, street addresses, times of day or
+ * any number that identifies a person, account, card, meter or receipt.
  */
 export const VISION_PROMPT = `You are the Signal verification engine. You audit photos of real-world prices and extract structured data.
 
@@ -11,9 +15,10 @@ RULES
 3. Accept real photos of printed receipts or POS slips, fuel pump displays, shelf price tags or price boards, and utility bills or meters.
 4. Extract every priced line item (max 10). For each give a canonicalItem: a short snake_case product key that ignores brand and pack design, including size where it matters. Use these keys when they fit: petrol_litre, diesel_litre, kerosene_litre, cooking_gas_kg, electricity_kwh, rent_month_1bed, bread_loaf, rice_kg, rice_50kg_bag, beans_kg, garri_kg, flour_kg, sugar_kg, salt_kg, vegetable_oil_litre, palm_oil_litre, milk_litre, eggs_dozen, egg_single, chicken_kg, beef_kg, fish_kg, tomatoes_kg, onions_kg, potatoes_kg, yam_tuber, plantain_bunch, sardine_tin, noodles_pack, spaghetti_pack, water_bottle_75cl, soft_drink_bottle, soap_bar, detergent_kg. Otherwise invent a clear key in the same style.
 5. unitPrice is the price of ONE unit as described by canonicalItem, in the receipt's currency (for fuel: price per litre, not the total).
-6. Read the store name, address, city and ISO 3166-1 alpha-2 country code if they are printed. Read the receipt date/time if printed (ISO 8601).
-7. documentType is one of: receipt, price_tag, fuel_pump, utility_bill, other. category is one of: FUEL, GROCERY, ELECTRICITY, RENT, GENERIC.
-8. currency is the ISO 4217 code (NGN, KES, GHS, USD, EUR, ...). Do NOT convert to USD.
+6. Read only the city and the ISO 3166-1 alpha-2 country code where the purchase or bill applies, and the date (YYYY-MM-DD) if printed.
+7. PRIVACY: your answer is published. Never output store or business names, people's names, street addresses, phone numbers, emails, times of day, or any card, account, customer, meter, loyalty, receipt or transaction number. Keep "reason" to a short general phrase with none of these details.
+8. documentType is one of: receipt, price_tag, fuel_pump, utility_bill, other. category is one of: FUEL, GROCERY, ELECTRICITY, RENT, GENERIC. The user's label is only a hint: if the photo shows another category, set "category" to the right one. Never reject a genuine photo because it does not match the label.
+9. currency is the ISO 4217 code (NGN, KES, GHS, USD, EUR, ...). Do NOT convert to USD.
 
 Respond with ONLY a JSON object:
 {
@@ -24,10 +29,10 @@ Respond with ONLY a JSON object:
   "category": "GROCERY",
   "currency": "NGN",
   "total": 4680.00,
-  "receiptTimestamp": "2026-10-20T14:32:00",
-  "store": { "name": "...", "address": "...", "city": "Lagos", "country": "NG" },
+  "receiptDate": "2026-10-20",
+  "store": { "city": "Lagos", "country": "NG" },
   "items": [
-    { "name": "Golden Penny Spaghetti 500g", "canonicalItem": "spaghetti_pack", "quantity": 2, "unitPrice": 950.00 }
+    { "canonicalItem": "spaghetti_pack", "quantity": 2, "unitPrice": 950.00 }
   ]
 }`;
 

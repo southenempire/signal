@@ -85,6 +85,22 @@ fn accepts_a_real_signed_near_ai_audit() {
 }
 
 #[test]
+fn the_published_answer_holds_no_personal_details() {
+    // Everything in `response` is public on NEAR forever: the prompt must keep it to city-level data.
+    for f in [accepted_receipt(), not_a_receipt()] {
+        let res = audit::parse_response(f.response.as_bytes()).unwrap();
+        let start = res.content.find('{').unwrap();
+        let verdict: Value = serde_json::from_str(&res.content[start..=res.content.rfind('}').unwrap()]).unwrap();
+        let store = verdict["store"].as_object().cloned().unwrap_or_default();
+        assert!(store.keys().all(|k| k == "city" || k == "country"), "store fields: {:?}", store.keys());
+        assert!(verdict.get("receiptTimestamp").is_none(), "no time of day");
+        for item in verdict["items"].as_array().cloned().unwrap_or_default() {
+            assert!(item.get("name").is_none(), "no printed line names");
+        }
+    }
+}
+
+#[test]
 fn records_a_rejected_photo_without_prices() {
     let f = not_a_receipt();
     let mut c = setup(f.created + 60);

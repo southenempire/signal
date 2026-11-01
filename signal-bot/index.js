@@ -142,7 +142,8 @@ const runSettlement = () => (oracle.isEnabled()
 
 // NEAR: NEAR AI audits the photo inside a TEE and signs its verdict; the NEAR contract checks that
 // signature itself before filing the prices. The model fetches the photo from a short-lived link
-// on this server, so the photo never goes on-chain. Without NEAR AI the bot falls back to Groq.
+// on this server, so the photo never goes on-chain. With NEAR AI on, photos never go to Groq;
+// without NEAR_VISION configured the bot uses Groq as before.
 initNearOracle();
 const PUBLIC_URL = process.env.PUBLIC_URL
   || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null);
@@ -368,7 +369,8 @@ const CATEGORIES = ['FUEL', 'GROCERY', 'ELECTRICITY', 'RENT', 'GENERIC'];
 if (bot) {
   bot.on('photo', async (ctx) => {
   const user     = getOrCreateUser(ctx.from.id);
-  const selected = pendingReport.get(ctx.from.id) || 'GROCERY';
+  // Without a chosen category the model decides it (a GROCERY label made it reject fuel and bills).
+  const selected = pendingReport.get(ctx.from.id) || 'GENERIC';
   pendingReport.delete(ctx.from.id);
 
   // Reputation lives on-chain when the program is enabled; the local copy is a cache.
@@ -426,16 +428,21 @@ if (bot) {
     };
   } else {
     try {
-      if (NEAR_VISION && imageBuffer && imageHash) {
+      if (NEAR_VISION) {
+        // Private path only: if the TEE audit fails the photo is NOT sent to a non-confidential
+        // provider instead — the user is asked to try again.
+        if (!imageBuffer || !imageHash) throw new Error('photo download failed');
         try {
           nearAudit = await runNearAudit(imageBuffer, imageHash, selected, user.region);
-          audit = nearAudit.verdict;
         } catch (e) {
-          console.error('[NEAR AI] audit failed, falling back to Groq:', e.message);
+          console.error('[NEAR AI] audit failed:', e.message);
+          return ctx.replyWithHTML(`❌ <b>Private audit unavailable.</b> NEAR AI's secure enclave could not check your photo right now, and Signal never sends it anywhere else. Please try again in a few minutes.`);
         }
+        audit = nearAudit.verdict;
+      } else {
+        audit = await runVisionAudit(imageBase64, selected, (ahead) =>
+          ctx.reply(`⏳ Busy right now — ${ahead} receipt${ahead === 1 ? '' : 's'} ahead of yours. Hang tight, it's queued.`).catch(() => {}));
       }
-      audit ??= await runVisionAudit(imageBase64, selected, (ahead) =>
-        ctx.reply(`⏳ Busy right now — ${ahead} receipt${ahead === 1 ? '' : 's'} ahead of yours. Hang tight, it's queued.`).catch(() => {}));
     } catch (e) {
       console.error('Final Verification Error:', e);
       return ctx.replyWithHTML(`❌ <b>Verification Error:</b> The AI check could not complete. Please try again.`);
@@ -531,7 +538,7 @@ if (bot) {
 
   const reportId = savePendingReport({
     telegramId: ctx.from.id, category, totalUsd, reward, imagePath, imageHash, region,
-    storeName: audit.store?.name || null, receiptTs: audit.receiptTimestamp || null,
+    storeName: null, receiptTs: audit.receiptDate || null,
     originalAmount: Number(audit.total) || null, originalCurrency: currency, observations,
   });
   const nearLine = await nearNote();
@@ -543,8 +550,8 @@ if (bot) {
     .join('\n');
   await ctx.replyWithHTML(
     `🧾 <b>Receipt parsed — report #${reportId}</b>\n` +
-    (audit.store?.name ? `🏪 ${escapeHtml(audit.store.name)}${audit.store.city ? `, ${escapeHtml(audit.store.city)}` : ''}\n` : '') +
-    (audit.receiptTimestamp ? `🕒 ${escapeHtml(audit.receiptTimestamp)}\n` : '') +
+    (audit.store?.city ? `🏙️ ${escapeHtml(audit.store.city)}\n` : '') +
+    (audit.receiptDate ? `📅 ${escapeHtml(audit.receiptDate)}\n` : '') +
     `🌍 Region: <code>${escapeHtml(region)}</code>\n` +
     `💲 Total: ${escapeHtml(currency)} ${escapeHtml(audit.total)} ≈ $${totalUsd.toFixed(2)}\n\n` +
     `${itemLines}${observations.length > 5 ? `\n…and ${observations.length - 5} more` : ''}\n\n` +
@@ -1003,8 +1010,13 @@ api.get('/api/leaderboard', (req, res) => {
   res.json(getLeaderboard(10).map(({ telegramId, ...row }) => row));
 });
 
+// Recent reports without who or exactly when: no wallet, and the day only, so one person's
+// reports can't be strung together into a trail of where they shopped and when.
 api.get('/api/reports', (req, res) => {
-  res.json(getRecentReports(20).map(({ imagePath, ...row }) => row));
+  res.json(getRecentReports(20).map(({ imagePath, wallet, ts, ...row }) => ({
+    ...row,
+    date: new Date(ts).toISOString().slice(0, 10),
+  })));
 });
 
 const PORT = process.env.PORT || 3001;
