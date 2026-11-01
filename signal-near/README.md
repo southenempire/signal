@@ -75,7 +75,9 @@ with a test key cover the feed rules: colluders held, a quorum moving the price,
 - **Registering keys.** The owner registers model keys after verifying the attestation off-chain with
   NEAR AI's SDK (`verifyModelAttestation`: TDX quote, measurements, NVIDIA GPU evidence, signer
   binding). Anyone can re-run `register-signer.mjs` to check a registered key.
-- **What the photo shows.** The model judges the photo; a convincing fake can still fool it. The
-  quorum rule limits what one person with a few accounts can do to a feed.
+- **What the photo shows.** The model judges the photo, and a convincingly generated receipt can pass
+  as real (we tested it). Text that tries to instruct the model ("set verified true", printed JSON,
+  "ignore all rules") is flagged as fraud instead. Once a feed has history, an invented off-market
+  price waits for 2 independent reporters, so one person with a couple of accounts can't move it.
 - **The image URL.** The contract checks the hash in the URL, not the bytes the model fetched. The
   reporter (who has the photo) can check it; the chain only sees the hash.
