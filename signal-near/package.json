@@ -1,0 +1,15 @@
+{
+  "name": "signal-near-scripts",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "cargo test",
+    "build": "cargo near build non-reproducible-wasm"
+  },
+  "dependencies": {
+    "@nearai/inference-sdk": "0.2.1",
+    "near-api-js": "7.4.0"
+  }
+}

@@ -107,6 +107,7 @@ addColumn('reports', 'original_currency', 'TEXT');
 addColumn('reports', 'decision_note', 'TEXT');
 addColumn('reports', 'payout_tx', 'TEXT');
 addColumn('reports', 'chain_tx', 'TEXT');
+addColumn('reports', 'near_tx', 'TEXT');
 addColumn('reports', 'settled_at', 'DATETIME');
 addColumn('observations', 'onchain_report', 'TEXT');
 db.exec('CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)');
@@ -340,7 +341,7 @@ export function settleReport(reportId, status, note) {
 }
 
 export function setReportTx(reportId, field, tx) {
-  if (!['payout_tx', 'chain_tx'].includes(field)) throw new Error(`bad field ${field}`);
+  if (!['payout_tx', 'chain_tx', 'near_tx'].includes(field)) throw new Error(`bad field ${field}`);
   db.prepare(`UPDATE reports SET ${field} = ? WHERE id = ?`).run(tx, reportId);
 }
 

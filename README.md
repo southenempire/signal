@@ -12,11 +12,43 @@ Existing oracle networks (Chainlink, Pyth) capture exchange-level and institutio
 
 ## The Solution
 
-Signal Protocol turns everyday shoppers into verified data nodes. Users photograph real-world receipts and price tags via a Telegram bot. **Qwen-3.6 Vision AI** audits each submission in real-time — rejecting screenshots, digital fakes, and manipulated images — then extracts item names, prices, and currency. Verified contributors earn instant on-chain micro-rewards.
+Signal Protocol turns everyday shoppers into verified data nodes. Users photograph real-world receipts and price tags via a Telegram bot. **Qwen3.8 Vision AI** (on NEAR AI Cloud, inside a TEE) audits each submission in real-time — rejecting screenshots, digital fakes, and manipulated images — then extracts item names, prices, and currency. Verified contributors earn instant on-chain micro-rewards.
 
 ```
 📸 Snap a receipt   →   🧠 AI Vision verifies   →   ⛓️ Logged on-chain   →   💰 Earn USDC
 ```
+
+---
+
+## NEAR Hackathon
+
+**Disclosure.** Signal existed before the hackathon: the Telegram bot, the Solana (Anchor) program and the
+BOTChain mirror are the baseline, tagged `pre-hackathon`. Only the NEAR integration, built on the
+`near-hackathon` branch during the event, is the entry:
+[diff `pre-hackathon…hackathon-submission`](https://github.com/southenempire/signal/compare/pre-hackathon...hackathon-submission).
+
+**What it adds.** Before, the bot was trusted to report what its vision model said. Now NEAR AI's
+vision model audits each receipt inside a TEE (Intel TDX + NVIDIA GPU) and signs what it saw, and a NEAR
+contract checks that signature on-chain before filing a single price. Receipt photos are never stored
+or put on-chain — only their sha256.
+
+| Part | Where |
+| --- | --- |
+| NEAR contract: on-chain TEE signature check, prompt check, replay/duplicate protection, price feeds with a peer quorum | [`signal-near/`](signal-near/) — deployed at `oracle.signal-southen.testnet` |
+| Verified vision through NEAR AI Cloud, keeping the exact signed bytes | [`signal-bot/nearai.js`](signal-bot/nearai.js) |
+| Bot files every verdict on NEAR as a relayer for anonymous reporter ids | [`signal-bot/near_oracle.js`](signal-bot/near_oracle.js) |
+| Live attestation check (fresh nonce, TDX, GPU, key registered on NEAR) and every NEAR report | [`/verify`](https://signal-bot-chi.vercel.app/verify) |
+
+**Try it**
+
+1. Open [signal-bot-chi.vercel.app/verify](https://signal-bot-chi.vercel.app/verify) → see NEAR AI's attestation verified live with a fresh nonce, the key registered in the contract, and the latest reports filed on NEAR.
+2. Send a receipt photo to [@OfficialSignalOracleBot](https://t.me/OfficialSignalOracleBot) → the reply links the NEAR transaction that filed it; the report appears on `/verify`.
+3. `near view oracle.signal-southen.testnet list_feeds '{}'` → read the feeds straight from NEAR.
+4. `cd signal-near && cargo test` → 22 tests pass, including real NEAR AI signatures and a one-byte forgery being rejected.
+5. Reproduce a filing yourself: see [`signal-near/README.md`](signal-near/README.md#try-it).
+
+**Built with:** near-sdk 5.30 (Rust) and cargo-near, near-api-js 7.4, NEAR AI Cloud (`Qwen/Qwen3.8-27B`) and
+`@nearai/inference-sdk` 0.2.1, serde_json, hex, k256 (tests). AI coding tools: Claude Code (Anthropic) wrote and tested much of the NEAR integration with the author; Devin reviewed the codebase for bugs.
 
 ---
 
@@ -34,7 +66,7 @@ Signal Protocol turns everyday shoppers into verified data nodes. Users photogra
                 └──┬──────┬──────┬────┘
                    │      │      │
         ┌──────────▼┐  ┌──▼───┐  ┌▼───────────┐
-        │ Qwen-3.6  │  │SQLite│  │  Express    │
+        │ Qwen-3.8  │  │SQLite│  │  Express    │
         │ Vision AI │  │  DB  │  │  REST API   │
         │  (Groq)   │  │      │  │  /api/stats │
         └───────────┘  └──────┘  └──────┬──────┘
@@ -65,7 +97,7 @@ Signal Protocol turns everyday shoppers into verified data nodes. Users photogra
 ## Features
 
 ### Oracle Engine
-- **AI Vision Verification** — Qwen-3.6 27B (via Groq Cloud) audits physical receipt photos in real-time
+- **AI Vision Verification** — Qwen3.8 27B (NEAR AI Cloud in a TEE; Groq as fallback) audits physical receipt photos in real-time
 - **Anti-Fraud System** — SHA-256 image fingerprinting, duplicate rejection, daily rate limits
 - **5 Reporting Categories** — Fuel, Grocery, Electricity, Rent, Global Physical Data
 - **Multi-Rail Settlement** — Solana SPL USDC + BOTChain on-chain logging + Yellow Network gasless payouts
@@ -96,7 +128,7 @@ Signal Protocol turns everyday shoppers into verified data nodes. Users photogra
 |:------|:-----------|
 | Runtime | Node.js 20+ (ESM) |
 | Bot Framework | Telegraf v4 |
-| AI Vision | Qwen-3.6 27B via Groq Cloud API |
+| AI Vision | Qwen3.8 27B on NEAR AI Cloud (TEE, signed verdicts); Groq fallback |
 | Blockchain (L1) | Solana (`@solana/web3.js`, `@solana/spl-token`) |
 | Blockchain (EVM) | BOTChain via Ethers.js v6 |
 | State Channels | Yellow Network Nitrolite SDK |

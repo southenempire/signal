@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import { Network, BookOpen, ExternalLink, Menu, X, Sun, Moon } from 'lucide-react';
+import { Network, BookOpen, ShieldCheck, ExternalLink, Menu, X, Sun, Moon } from 'lucide-react';
 import { useState } from 'react';
 import { useTheme } from './ThemeProvider';
 
@@ -12,6 +12,7 @@ const BOT_URL = "https://t.me/OfficialSignalOracleBot";
 const navItems = [
   { name: 'Live Network', path: '/network', icon: Network },
   { name: 'Developers', path: '/docs', icon: BookOpen },
+  { name: 'Verify', path: '/verify', icon: ShieldCheck },
 ];
 
 export default function NavBar() {

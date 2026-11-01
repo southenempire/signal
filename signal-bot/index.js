@@ -36,9 +36,11 @@ import {
   getLeaderboard, getRecentReports, getNetworkStats, getFeedsSummary,
   getAcceptedFeedPrices, getUserTotalEarned, getDailyReportCount, isImageDuplicate,
   getFeedKeyForImageHash, getAllFeedKeys, setReputation, getImageOwner,
-  saveYellowLink, getYellowLink
+  saveYellowLink, getYellowLink, setReportTx
 } from './db.js';
-import { saveReportImage } from './images.js';
+import { saveReportImage, shareImage, sharedImage, unshareImage } from './images.js';
+import { nearAiAudit } from './nearai.js';
+import { initNearOracle, isNearEnabled, fileVerdict, nearTxLink, listNearFeeds, nearStats } from './near_oracle.js';
 import bs58 from 'bs58';
 import fetch from 'node-fetch';
 import {
@@ -57,6 +59,7 @@ import {
   initPayments, payReward, getTokenBalance, sendToken, swapUsdcToJupUsd, isMainnet, JUP_USD_MINT,
 } from './payments.js';
 import { toUsd } from './fx.js';
+import { VISION_PROMPT } from './vision_prompt.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -136,6 +139,15 @@ const runSettlement = () => (oracle.isEnabled()
   ? crankChain(settlementDeps)
   : settlePending(settlementDeps)
 ).catch(e => console.error('[Consensus] settle error:', e.message));
+
+// NEAR: NEAR AI audits the photo inside a TEE and signs its verdict; the NEAR contract checks that
+// signature itself before filing the prices. The model fetches the photo from a short-lived link
+// on this server, so the photo never goes on-chain. Without NEAR AI the bot falls back to Groq.
+initNearOracle();
+const PUBLIC_URL = process.env.PUBLIC_URL
+  || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null);
+const NEAR_VISION = Boolean(process.env.NEARAI_API_KEY && PUBLIC_URL && process.env.NEAR_VISION !== 'off');
+console.log(`[NEAR AI] Verifiable vision ${NEAR_VISION ? `on (photos served from ${PUBLIC_URL})` : 'off — set NEARAI_API_KEY and PUBLIC_URL'}`);
 
 // ─── Pending actions (these are ephemeral — OK to be in-memory) ──────────────
 const pendingReport = new Map();
@@ -264,34 +276,6 @@ const settlementDeps = {
 };
 
 // Photo handler — Vision AI receipt parsing, then consensus
-const VISION_PROMPT = `You are the Signal verification engine. You audit photos of real-world prices and extract structured data.
-
-RULES
-1. Reject screenshots of apps, web pages, charts, trading screens, memes, selfies, stock photos and anything shown on a digital screen other than a physical fuel pump display. Set "verified": false.
-2. If the image looks edited, generated, composited, or the numbers look tampered with, set "verified": false AND "fraudSuspected": true. Only use fraudSuspected for deliberate fakes, never for blurry or unreadable photos.
-3. Accept real photos of printed receipts or POS slips, fuel pump displays, shelf price tags or price boards, and utility bills or meters.
-4. Extract every priced line item (max 10). For each give a canonicalItem: a short snake_case product key that ignores brand and pack design, including size where it matters. Use these keys when they fit: petrol_litre, diesel_litre, kerosene_litre, cooking_gas_kg, electricity_kwh, rent_month_1bed, bread_loaf, rice_kg, rice_50kg_bag, beans_kg, garri_kg, flour_kg, sugar_kg, salt_kg, vegetable_oil_litre, palm_oil_litre, milk_litre, eggs_dozen, egg_single, chicken_kg, beef_kg, fish_kg, tomatoes_kg, onions_kg, potatoes_kg, yam_tuber, plantain_bunch, sardine_tin, noodles_pack, spaghetti_pack, water_bottle_75cl, soft_drink_bottle, soap_bar, detergent_kg. Otherwise invent a clear key in the same style.
-5. unitPrice is the price of ONE unit as described by canonicalItem, in the receipt's currency (for fuel: price per litre, not the total).
-6. Read the store name, address, city and ISO 3166-1 alpha-2 country code if they are printed. Read the receipt date/time if printed (ISO 8601).
-7. documentType is one of: receipt, price_tag, fuel_pump, utility_bill, other. category is one of: FUEL, GROCERY, ELECTRICITY, RENT, GENERIC.
-8. currency is the ISO 4217 code (NGN, KES, GHS, USD, EUR, ...). Do NOT convert to USD.
-
-Respond with ONLY a JSON object:
-{
-  "verified": true,
-  "fraudSuspected": false,
-  "reason": "short explanation",
-  "documentType": "receipt",
-  "category": "GROCERY",
-  "currency": "NGN",
-  "total": 4680.00,
-  "receiptTimestamp": "2026-10-20T14:32:00",
-  "store": { "name": "...", "address": "...", "city": "Lagos", "country": "NG" },
-  "items": [
-    { "name": "Golden Penny Spaghetti 500g", "canonicalItem": "spaghetti_pack", "quantity": 2, "unitPrice": 950.00 }
-  ]
-}`;
-
 // Groq's free tier allows ~8k tokens/minute, about 2–3 receipts. Run audits one at a time and
 // wait out rate limits instead of failing the user, so a burst of reports just queues.
 let visionQueue = Promise.resolve();
@@ -363,6 +347,22 @@ async function runVisionAuditNow(imageBase64, category) {
   throw lastError;
 }
 
+async function runNearAudit(buffer, imageHash, category, region) {
+  const token = shareImage(buffer);
+  try {
+    console.log(`[NEAR AI] TEE audit for ${category}`);
+    return await nearAiAudit({
+      imageUrl: `${PUBLIC_URL}/api/img/${token}`,
+      imageSha256: imageHash,
+      category,
+      // The contract only accepts slug-style regions; anything else is left out of the prompt.
+      region: /^[a-z0-9_-]{1,40}$/.test(region || '') ? region : undefined,
+    });
+  } finally {
+    unshareImage(token);
+  }
+}
+
 const CATEGORIES = ['FUEL', 'GROCERY', 'ELECTRICITY', 'RENT', 'GENERIC'];
 
 if (bot) {
@@ -389,9 +389,14 @@ if (bot) {
     return ctx.replyWithHTML(`⚠️ <b>Policy Violation: Daily Limit Reached</b>\nYour agent is limited to ${DAILY_LIMIT} reports/day.`);
   }
 
-  await ctx.reply('🔍 Image received! Qwen Vision is parsing and auditing your receipt...');
+  await ctx.reply(NEAR_VISION
+    ? '🔍 Image received! NEAR AI is auditing your receipt inside a secure enclave...'
+    : '🔍 Image received! Qwen Vision is parsing and auditing your receipt...');
 
-  const { filepath: imagePath, hash: imageHash, base64: imageBase64 } = await saveReportImage(ctx, selected, ctx.from.id);
+  // With NEAR AI the photo is never written to disk: it lives in memory for the audit and only its
+  // sha256 is kept (for duplicate checks and the on-chain record).
+  const { filepath: imagePath, hash: imageHash, base64: imageBase64, buffer: imageBuffer } =
+    await saveReportImage(ctx, selected, ctx.from.id, { keep: !NEAR_VISION });
 
   // Resending your own photo (e.g. after a missed reply) is not fraud: just say where it stands.
   // Someone else's photo is slashed, not just rejected.
@@ -411,6 +416,7 @@ if (bot) {
   }
 
   let audit;
+  let nearAudit = null;
   if (process.env.DEMO_MODE === 'true') {
     console.log('[Vision] 🎥 DEMO MODE: skipping AI, using a fixed sample receipt');
     audit = {
@@ -420,7 +426,15 @@ if (bot) {
     };
   } else {
     try {
-      audit = await runVisionAudit(imageBase64, selected, (ahead) =>
+      if (NEAR_VISION && imageBuffer && imageHash) {
+        try {
+          nearAudit = await runNearAudit(imageBuffer, imageHash, selected, user.region);
+          audit = nearAudit.verdict;
+        } catch (e) {
+          console.error('[NEAR AI] audit failed, falling back to Groq:', e.message);
+        }
+      }
+      audit ??= await runVisionAudit(imageBase64, selected, (ahead) =>
         ctx.reply(`⏳ Busy right now — ${ahead} receipt${ahead === 1 ? '' : 's'} ahead of yours. Hang tight, it's queued.`).catch(() => {}));
     } catch (e) {
       console.error('Final Verification Error:', e);
@@ -428,15 +442,29 @@ if (bot) {
     }
   }
 
+  // File the signed verdict on NEAR while we reply; every outcome (fakes too) goes on record.
+  const nearFiling = nearAudit && isNearEnabled()
+    ? fileVerdict({
+      request: nearAudit.request, response: nearAudit.response,
+      signature: nearAudit.signature.signature, telegramId: ctx.from.id,
+    }).catch(e => { console.error('[NEAR] filing failed:', e.message); return null; })
+    : Promise.resolve(null);
+  const nearNote = async () => {
+    const filed = await nearFiling;
+    return filed
+      ? `🔏 Audited by NEAR AI in a TEE; NEAR checked its signature and filed it as <a href="${nearTxLink(filed.txHash)}">report #${filed.report.id}</a>.\n`
+      : '';
+  };
+
   if (!audit?.verified) {
     if (audit?.fraudSuspected) {
       const rep = await penalize({
         kind: 'fake', telegramId: ctx.from.id, wallet: user.keypair.publicKey, category: selected,
         imagePath, imageHash, reason: `fake image: ${String(audit.reason || '').slice(0, 120)}`,
       });
-      return ctx.replyWithHTML(`✂️ <b>Slashed: suspected fake.</b>\n${escapeHtml(audit.reason)}\n⭐ Reputation: ${rep}/100`);
+      return ctx.replyWithHTML(`✂️ <b>Slashed: suspected fake.</b>\n${escapeHtml(audit.reason)}\n⭐ Reputation: ${rep}/100\n${await nearNote()}`);
     }
-    return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${escapeHtml(audit?.reason || 'Invalid data format')}\nPlease submit a real physical data point.`);
+    return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${escapeHtml(audit?.reason || 'Invalid data format')}\nPlease submit a real physical data point.\n${await nearNote()}`);
   }
 
   // Convert every priced item to USD at the live FX rate.
@@ -506,6 +534,9 @@ if (bot) {
     storeName: audit.store?.name || null, receiptTs: audit.receiptTimestamp || null,
     originalAmount: Number(audit.total) || null, originalCurrency: currency, observations,
   });
+  const nearLine = await nearNote();
+  const nearFiled = await nearFiling;
+  if (nearFiled) setReportTx(reportId, 'near_tx', nearFiled.txHash);
 
   const itemLines = observations.slice(0, 5)
     .map(o => `• ${escapeHtml(o.itemName)} — $${o.priceUsd.toFixed(2)}`)
@@ -518,6 +549,7 @@ if (bot) {
     `💲 Total: ${escapeHtml(currency)} ${escapeHtml(audit.total)} ≈ $${totalUsd.toFixed(2)}\n\n` +
     `${itemLines}${observations.length > 5 ? `\n…and ${observations.length - 5} more` : ''}\n\n` +
     onchainNote +
+    nearLine +
     `⏳ <b>Pending consensus.</b> Checking against local price bounds and peer reports.\n` +
     `🔒 Reward locked: <b>$${reward.toFixed(2)} USDC</b> — released when accepted, forfeited if slashed.`,
     MAIN_MENU
@@ -945,6 +977,25 @@ api.get('/api/feeds', async (req, res) => {
     samples: f.samples,
     updatedAt: f.updated_at,
   })));
+});
+
+// Photos shared with NEAR AI for the length of an audit (see images.js). Unguessable, short-lived.
+api.get('/api/img/:token', (req, res) => {
+  const image = /^[0-9a-f]{48}$/.test(req.params.token) ? sharedImage(req.params.token) : null;
+  if (!image) return res.status(404).end();
+  res.set({ 'Content-Type': 'image/jpeg', 'Cache-Control': 'no-store' }).send(image);
+});
+
+// The NEAR contract: counts and every feed, priced in the receipts' own currencies (minor units).
+api.get('/api/near', async (req, res) => {
+  if (!isNearEnabled()) return res.json({ enabled: false });
+  try {
+    const [stats, feeds] = await Promise.all([nearStats(), listNearFeeds()]);
+    res.json({ enabled: true, ...stats, feeds });
+  } catch (e) {
+    console.error('[NEAR] read failed:', e.message);
+    res.status(502).json({ enabled: true, error: 'NEAR RPC unavailable' });
+  }
 });
 
 api.get('/api/leaderboard', (req, res) => {
