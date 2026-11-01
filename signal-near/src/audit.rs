@@ -22,6 +22,8 @@ pub struct Request {
     pub label: String,
     pub region: Option<String>,
     pub image_sha256: [u8; 32],
+    /// Lowercase hostname serving the image; empty when the URL's authority is unusual (userinfo).
+    pub image_host: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -71,6 +73,25 @@ fn parse_hash(hex_str: &str) -> Option<[u8; 32]> {
         return None;
     }
     hex::decode(hex_str).ok()?.try_into().ok()
+}
+
+/// A plain lowercase DNS hostname: letters, digits, dots and hyphens.
+pub fn valid_host(host: &str) -> bool {
+    !host.is_empty()
+        && host.len() <= 253
+        && host.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'.' || b == b'-')
+}
+
+/// Hostname of an https URL. Anything with userinfo (`user@host`) or odd characters yields "",
+/// which is never a trusted host.
+fn url_host(url: &str) -> String {
+    let rest = url.strip_prefix("https://").unwrap_or("");
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or("");
+    if authority.contains('@') {
+        return String::new();
+    }
+    let host = authority.split(':').next().unwrap_or("").to_ascii_lowercase();
+    if valid_host(&host) { host } else { String::new() }
 }
 
 fn valid_region(region: &str) -> bool {
@@ -150,7 +171,7 @@ pub fn parse_request(bytes: &[u8]) -> Result<Request, String> {
         .and_then(parse_hash)
         .ok_or("image URL needs sha256=<64 lowercase hex>")?;
 
-    Ok(Request { model, prompt_hash, label: label.to_string(), region, image_sha256 })
+    Ok(Request { model, prompt_hash, label: label.to_string(), region, image_sha256, image_host: url_host(url) })
 }
 
 pub fn parse_response(bytes: &[u8]) -> Result<Response, String> {
@@ -280,6 +301,16 @@ mod tests {
         assert_eq!(r.region.as_deref(), Some("ng-lagos"));
         assert_eq!(hex::encode(r.image_sha256), HASH);
         assert_eq!(r.prompt_hash, crate::verify::sha256(b"PROMPT"));
+        assert_eq!(r.image_host, "example.com");
+    }
+
+    #[test]
+    fn image_hosts_cannot_be_spoofed() {
+        assert_eq!(url_host("https://Bot.Example.app:443/img/x?sha256=1"), "bot.example.app");
+        assert_eq!(url_host("https://bot.example.app@evil.com/x?sha256=1"), "", "userinfo");
+        assert_eq!(url_host("https://evil.com\\@bot.example.app/x"), "", "backslash trick");
+        assert_eq!(url_host("https://evil.com?bot.example.app/"), "evil.com");
+        assert_eq!(url_host("http://bot.example.app/x"), "");
     }
 
     #[test]

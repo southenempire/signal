@@ -69,6 +69,7 @@ fn setup(now: u64) -> Contract {
 fn accepts_a_real_signed_near_ai_audit() {
     let f = accepted_receipt();
     let mut c = setup(f.created + 60);
+    c.set_trusted_host("raw.githubusercontent.com".into(), true);
     at(f.created + 60, accounts(1), one_near());
     let r = c.submit_verdict(f.request, f.response, f.signature, None);
 
@@ -82,6 +83,18 @@ fn accepts_a_real_signed_near_ai_audit() {
     assert_eq!(c.get_feed(r.items[0].feed.clone()).unwrap().samples, 1);
     assert_eq!(c.report_for_image(r.image_sha256.clone()), Some(0));
     assert_eq!(c.get_reporter(accounts(1).to_string()).unwrap().verified, 1);
+}
+
+#[test]
+fn an_untrusted_host_cannot_start_a_feed() {
+    // Same real audit, but its image host isn't trusted: filed, yet it can't seed a new feed.
+    let f = accepted_receipt();
+    let mut c = setup(f.created + 60);
+    at(f.created + 60, accounts(1), one_near());
+    let r = c.submit_verdict(f.request, f.response, f.signature, None);
+    assert_eq!(r.status, ReportStatus::Verified);
+    assert!(r.items.iter().all(|i| matches!(i.outcome, Outcome::Rejected { .. })));
+    assert_eq!(c.feeds_count(), 0);
 }
 
 #[test]
@@ -190,6 +203,10 @@ impl TestSigner {
 
     /// A request/response pair as NEAR AI would produce it, and its signature.
     fn audit(&mut self, now: u64, verdict: Value) -> (String, String, String) {
+        self.audit_from("bot.example", now, verdict)
+    }
+
+    fn audit_from(&mut self, host: &str, now: u64, verdict: Value) -> (String, String, String) {
         self.n += 1;
         let image = hex::encode(verify::sha256(format!("photo {}", self.n).as_bytes()));
         let request = serde_json::json!({
@@ -197,7 +214,7 @@ impl TestSigner {
             "chat_template_kwargs": { "enable_thinking": false },
             "messages": [{ "role": "user", "content": [
                 { "type": "text", "text": format!("{}\n\nThe user labelled this photo as: GROCERY. The user's region is: ng-lagos.", bot_prompt()) },
-                { "type": "image_url", "image_url": { "url": format!("https://bot.example/img/{}?sha256={image}", self.n) } },
+                { "type": "image_url", "image_url": { "url": format!("https://{host}/img/{}?sha256={image}", self.n) } },
             ] }],
         })
         .to_string();
@@ -231,7 +248,13 @@ fn with_test_signer() -> (Contract, TestSigner) {
     let s = TestSigner::new();
     c.register_signer(s.address(), MODEL.into(), "test".into());
     c.set_relayer(accounts(5), true);
+    c.set_trusted_host("bot.example".into(), true);
     (c, s)
+}
+
+/// The id a relayer's user gets on-chain: namespaced by the relayer account.
+fn relayed(id: &str) -> String {
+    format!("{}/{id}", accounts(5))
 }
 
 fn file(c: &mut Contract, s: &mut TestSigner, reporter: &str, verdict: Value) -> Report {
@@ -259,7 +282,7 @@ fn colluders_are_held_and_a_quorum_moves_the_feed() {
     let z = file(&mut c, &mut s, "tg:z", bread(5900.0));
     assert_eq!(z.items[0].outcome, Outcome::Accepted { promoted: vec![x.id, y.id] });
     assert_eq!(c.get_report(x.id).unwrap().items[0].outcome, Outcome::Accepted { promoted: vec![] });
-    assert_eq!(c.get_reporter("tg:x".into()).unwrap().items_accepted, 1);
+    assert_eq!(c.get_reporter(relayed("tg:x")).unwrap().items_accepted, 1);
     assert_eq!(c.get_feed(FEED_KEY.into()).unwrap().samples, 6);
 }
 
@@ -272,7 +295,50 @@ fn fraud_is_recorded_and_never_priced() {
     let r = file(&mut c, &mut s, "tg:f", v);
     assert_eq!(r.status, ReportStatus::Fraud);
     assert!(r.items.is_empty());
-    assert_eq!(c.get_reporter("tg:f".into()).unwrap().fraud, 1);
+    assert_eq!(c.get_reporter(relayed("tg:f")).unwrap().fraud, 1);
+}
+
+#[test]
+fn a_receipt_prices_each_feed_once() {
+    let (mut c, mut s) = with_test_signer();
+    let mut v = bread(99_000.0);
+    v["items"] = serde_json::json!([
+        { "canonicalItem": "bread_loaf", "quantity": 1, "unitPrice": 99000 },
+        { "canonicalItem": "bread_loaf", "quantity": 1, "unitPrice": 99000 },
+        { "canonicalItem": "Bread Loaf", "quantity": 1, "unitPrice": 99000 },
+    ]);
+    let r = file(&mut c, &mut s, "tg:stacker", v);
+    assert!(matches!(r.items[0].outcome, Outcome::Accepted { .. }));
+    assert_eq!(r.items[1].outcome, Outcome::Rejected { reason: "item already priced in this report".into() });
+    assert_eq!(r.items[2].outcome, Outcome::Rejected { reason: "item already priced in this report".into() });
+    assert_eq!(c.get_feed(FEED_KEY.into()).unwrap().samples, 1, "one photo, one price per feed");
+}
+
+#[test]
+fn relayer_ids_are_namespaced() {
+    let (mut c, mut s) = with_test_signer();
+    let r = file(&mut c, &mut s, "alice.testnet", bread(2000.0));
+    assert_eq!(r.reporter, format!("{}/alice.testnet", accounts(5)), "a relayer can't file as a real account");
+    assert!(c.get_reporter("alice.testnet".into()).is_none());
+}
+
+#[test]
+fn untrusted_photos_cannot_vouch_for_an_outlier() {
+    let (mut c, mut s) = with_test_signer();
+    for (who, price) in [("tg:a", 2000.0), ("tg:b", 2050.0), ("tg:c", 2020.0)] {
+        file(&mut c, &mut s, who, bread(price));
+    }
+    let x = file(&mut c, &mut s, "tg:x", bread(6000.0));
+    assert_eq!(x.items[0].outcome, Outcome::Held);
+    // Two copies of a photo re-hosted elsewhere under made-up hashes, filed by two accounts.
+    for who in [accounts(2), accounts(3)] {
+        at(NOW, who, one_near());
+        let (req, res, sig) = s.audit_from("my-own-host.example", NOW, bread(6000.0));
+        let r = c.submit_verdict(req, res, sig, None);
+        assert!(matches!(r.items[0].outcome, Outcome::Rejected { .. }));
+    }
+    assert_eq!(c.get_feed(FEED_KEY.into()).unwrap().samples, 3, "the outlier never joined");
+    assert_eq!(c.get_report(x.id).unwrap().items[0].outcome, Outcome::Held);
 }
 
 #[test]

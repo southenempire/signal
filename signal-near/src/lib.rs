@@ -8,6 +8,11 @@
 //!   - the response is fresh, finished, and was not submitted before,
 //!   - the photo was not submitted before.
 //!
+//! The photo's hash is only a claim in the image URL, so it is trusted only when the photo is served
+//! by a host the owner registered (the Signal bot hashes what it serves). Photos from other hosts
+//! are still filed, but can only add prices inside an established feed's bounds: they cannot start
+//! a feed, wait for peers, or vouch for anyone.
+//!
 //! Nobody — including the Signal bot — can put a price on-chain the model did not read.
 
 mod audit;
@@ -17,7 +22,8 @@ mod verify;
 pub use feed::{Outcome, Params, FEED_CAPACITY};
 
 use feed::{Feed, Held};
-use near_sdk::store::{IterableMap, IterableSet, LookupMap, Vector};
+use near_sdk::store::{IterableMap, IterableSet, LookupMap, LookupSet, Vector};
+use std::collections::HashSet;
 use near_sdk::{env, log, near, require, AccountId, BorshStorageKey, NearToken, PanicOnDefault, Promise};
 
 #[near(serializers = [borsh])]
@@ -31,6 +37,14 @@ enum StorageKey {
     Reporters,
     SeenImages,
     SeenResponses,
+    TrustedHosts,
+}
+
+/// Hosts whose image URLs carry a sha256 the host computed itself. Kept outside the contract
+/// struct (a LookupSet holds no inline state and writes straight to storage), so adding it needed
+/// no state migration.
+fn trusted_hosts() -> LookupSet<String> {
+    LookupSet::new(StorageKey::TrustedHosts)
 }
 
 #[near(serializers = [borsh, json])]
@@ -168,7 +182,9 @@ impl Contract {
             Some(r) => {
                 require!(self.relayers.contains(&submitter), "only a relayer can file for someone else");
                 require!(!r.is_empty() && r.len() <= 64, "reporter id must be 1-64 characters");
-                r
+                // Namespaced by the relayer: '/' never appears in an account id, so a relayer can
+                // neither impersonate a NEAR account nor another relayer's users.
+                format!("{submitter}/{r}")
             }
             None => submitter.to_string(),
         };
@@ -206,11 +222,16 @@ impl Contract {
             ReportStatus::Unverified
         };
 
+        let bound = trusted_hosts().contains(&req.image_host);
         let mut items = Vec::new();
+        let mut seen_feeds = HashSet::new();
         if status == ReportStatus::Verified {
             for item in &verdict.items {
                 let feed_key = audit::feed_key(&category, &region, &item.canonical_item);
+                let first = seen_feeds.insert(feed_key.clone());
                 let outcome = match (to_minor_units(item.unit_price), verdict.currency.as_ref()) {
+                    // One price per feed per photo, so a receipt can't stack a feed with repeats.
+                    _ if !first => Outcome::Rejected { reason: "item already priced in this report".into() },
                     (None, _) => Outcome::Rejected { reason: "price is not positive".into() },
                     (_, None) => Outcome::Rejected { reason: "no currency on the receipt".into() },
                     (Some(price), Some(currency)) => {
@@ -218,9 +239,12 @@ impl Contract {
                         let outcome = if &feed.currency != currency {
                             Outcome::Rejected { reason: format!("feed is priced in {}", feed.currency) }
                         } else {
-                            feed.offer(id, &reporter, price, now, &self.params)
+                            feed.offer(id, &reporter, price, bound, now, &self.params)
                         };
-                        self.feeds.insert(feed_key.clone(), feed);
+                        // A rejected first price must not leave an empty feed behind.
+                        if !feed.prices.is_empty() || !feed.held.is_empty() {
+                            self.feeds.insert(feed_key.clone(), feed);
+                        }
                         outcome
                     }
                 };
@@ -304,6 +328,20 @@ impl Contract {
         event("prompt_set", serde_json::json!({ "prompt_sha256": key, "allowed": allowed }));
     }
 
+    /// Trust (or stop trusting) an image host: one that serves photos at URLs carrying the sha256 it
+    /// computed itself, such as the Signal bot. Hostname only, lowercase (e.g. `bot.example.app`).
+    pub fn set_trusted_host(&mut self, host: String, trusted: bool) {
+        self.only_owner();
+        require!(audit::valid_host(&host), "host must be a lowercase hostname");
+        let mut hosts = trusted_hosts();
+        if trusted {
+            hosts.insert(host.clone());
+        } else {
+            hosts.remove(&host);
+        }
+        event("trusted_host_set", serde_json::json!({ "host": host, "trusted": trusted }));
+    }
+
     pub fn set_relayer(&mut self, account: AccountId, allowed: bool) {
         self.only_owner();
         if allowed {
@@ -340,6 +378,10 @@ impl Contract {
 
     pub fn get_prompts(&self) -> Vec<String> {
         self.prompts.iter().cloned().collect()
+    }
+
+    pub fn is_trusted_host(&self, host: String) -> bool {
+        trusted_hosts().contains(&host)
     }
 
     pub fn is_relayer(&self, account: AccountId) -> bool {

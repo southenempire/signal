@@ -369,9 +369,12 @@ const CATEGORIES = ['FUEL', 'GROCERY', 'ELECTRICITY', 'RENT', 'GENERIC'];
 if (bot) {
   bot.on('photo', async (ctx) => {
   const user     = getOrCreateUser(ctx.from.id);
-  // Without a chosen category the model decides it (a GROCERY label made it reject fuel and bills).
-  const selected = pendingReport.get(ctx.from.id) || 'GENERIC';
-  pendingReport.delete(ctx.from.id);
+  // Only a category the user picked is a label. pendingReport also holds other states (waiting for a
+  // withdrawal address or a city); those must never reach the prompt or a feed key. Without a chosen
+  // category the model decides it (a GROCERY label made it reject fuel and bills).
+  const pending = pendingReport.get(ctx.from.id);
+  const selected = CATEGORIES.includes(pending) ? pending : 'GENERIC';
+  if (CATEGORIES.includes(pending)) pendingReport.delete(ctx.from.id);
 
   // Reputation lives on-chain when the program is enabled; the local copy is a cache.
   if (oracle.isEnabled()) {
@@ -399,6 +402,9 @@ if (bot) {
   // sha256 is kept (for duplicate checks and the on-chain record).
   const { filepath: imagePath, hash: imageHash, base64: imageBase64, buffer: imageBuffer } =
     await saveReportImage(ctx, selected, ctx.from.id, { keep: !NEAR_VISION });
+  if (!imageHash) {
+    return ctx.replyWithHTML(`❌ <b>Couldn't download your photo from Telegram.</b> Please send it again.`);
+  }
 
   // Resending your own photo (e.g. after a missed reply) is not fraud: just say where it stands.
   // Someone else's photo is slashed, not just rejected.
