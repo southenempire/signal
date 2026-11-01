@@ -3,21 +3,37 @@ import { createHash } from 'node:crypto';
 import { AttestationClient, verifyModelAttestation } from '@nearai/inference-sdk/node';
 import { NEAR_CONTRACT, nearView } from '@/lib/near';
 
-// Live check of NEAR AI's model attestation, run on every request with a fresh random nonce:
-// the Intel TDX quote, the NVIDIA GPU evidence, the signing key bound to them, and whether that
-// key is the one registered in the Signal contract on NEAR. Nothing is cached or stored.
+// Live check of NEAR AI's model attestation with a fresh random nonce: the Intel TDX quote, the
+// NVIDIA GPU evidence, the signing key bound to them, and whether that key is the one registered
+// in the Signal contract on NEAR. A check costs NEAR AI and NVIDIA calls (~15 s), so one runs at a
+// time and its result is shared for a minute; the response says when it ran and with which nonce.
+// No user data is involved, and nothing is stored beyond that in-memory minute.
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MODEL = process.env.NEARAI_VISION_MODEL || 'Qwen/Qwen3.8-27B';
 
+const SHARE_MS = 60_000;
+
 type Check = { label: string; ok: boolean; detail: string };
+type Result = { status: number; body: Record<string, unknown> };
+
+let last: { at: number; result: Result } | null = null;
+let running: Promise<Result> | null = null;
 
 export async function GET() {
   if (!process.env.NEARAI_API_KEY) {
     return NextResponse.json({ ok: false, error: 'NEARAI_API_KEY is not configured on this deployment' }, { status: 503 });
   }
+  if (!last || Date.now() - last.at > SHARE_MS) {
+    running ??= runCheck().finally(() => { running = null; });
+    last = { at: Date.now(), result: await running };
+  }
+  return NextResponse.json(last.result.body, { status: last.result.status });
+}
+
+async function runCheck(): Promise<Result> {
   const checkedAt = new Date().toISOString();
   try {
     const client = new AttestationClient({ apiKey: process.env.NEARAI_API_KEY });
@@ -68,8 +84,8 @@ export async function GET() {
     }
 
     const ok = results.every((r) => r.checks.every((c) => c.ok));
-    return NextResponse.json({ ok, model: MODEL, contract: NEAR_CONTRACT, checkedAt, attestations: results });
+    return { status: 200, body: { ok, model: MODEL, contract: NEAR_CONTRACT, checkedAt, attestations: results } };
   } catch (e) {
-    return NextResponse.json({ ok: false, model: MODEL, checkedAt, error: (e as Error).message.slice(0, 300) }, { status: 502 });
+    return { status: 502, body: { ok: false, model: MODEL, checkedAt, error: (e as Error).message.slice(0, 300) } };
   }
 }

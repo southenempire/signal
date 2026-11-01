@@ -113,36 +113,56 @@ impl Feed {
         self.updated_at_secs = now_secs;
     }
 
-    pub fn offer(&mut self, report_id: u64, reporter: &str, price: u64, now_secs: u64, p: &Params) -> Outcome {
+    /// Offer a price. `bound` says the photo's hash is trustworthy (served by a trusted host); an
+    /// unbound photo may only add a price inside an established feed's bounds.
+    pub fn offer(&mut self, report_id: u64, reporter: &str, price: u64, bound: bool, now_secs: u64, p: &Params) -> Outcome {
+        let established = self.prices.len() >= p.min_bounds_samples as usize;
         let in_bounds = match self.median() {
-            Some(median) if self.prices.len() >= p.min_bounds_samples as usize => {
-                within_bps(price, median, p.bounds_tolerance_bps)
-            }
+            Some(median) if established => within_bps(price, median, p.bounds_tolerance_bps),
             // A young feed has no bounds yet: the attested model's reading is the evidence.
             _ => true,
         };
+        if !bound {
+            if established && in_bounds {
+                self.push(price, now_secs);
+                return Outcome::Accepted { promoted: vec![] };
+            }
+            let reason = if established {
+                "outside the feed's bounds, and photos from untrusted hosts can't wait for peers"
+            } else {
+                "photos from untrusted hosts can't start a feed"
+            };
+            return Outcome::Rejected { reason: reason.into() };
+        }
         if in_bounds {
             self.push(price, now_secs);
             return Outcome::Accepted { promoted: vec![] };
         }
 
         self.held.retain(|h| now_secs.saturating_sub(h.at_secs) <= p.peer_window_secs);
-        let agreeing: Vec<&Held> = self
+        let tol = p.peer_tolerance_bps;
+        let mut near: Vec<&Held> = self
             .held
             .iter()
-            .filter(|h| {
-                h.reporter != reporter
-                    && within_bps(price, h.price, p.peer_tolerance_bps)
-                    && within_bps(h.price, price, p.peer_tolerance_bps)
-            })
+            .filter(|h| h.reporter != reporter && within_bps(price, h.price, tol) && within_bps(h.price, price, tol))
             .collect();
-        let mut peers: Vec<&str> = agreeing.iter().map(|h| h.reporter.as_str()).collect();
-        peers.sort_unstable();
-        peers.dedup();
+        near.sort_by_key(|h| h.price.abs_diff(price));
 
-        if peers.len() >= p.peer_quorum as usize {
-            let promoted: Vec<u64> = agreeing.iter().map(|h| h.report_id).collect();
-            let prices: Vec<u64> = agreeing.iter().map(|h| h.price).collect();
+        // The quorum is the tightest group around this price whose prices all agree with each other
+        // (max within tolerance of min), one price per reporter.
+        let (mut lo, mut hi) = (price, price);
+        let mut cluster: Vec<&Held> = Vec::new();
+        for h in near {
+            let (l, u) = (lo.min(h.price), hi.max(h.price));
+            if cluster.iter().all(|c| c.reporter != h.reporter) && within_bps(u, l, tol) {
+                (lo, hi) = (l, u);
+                cluster.push(h);
+            }
+        }
+
+        if cluster.len() >= p.peer_quorum as usize {
+            let promoted: Vec<u64> = cluster.iter().map(|h| h.report_id).collect();
+            let prices: Vec<u64> = cluster.iter().map(|h| h.price).collect();
             self.held.retain(|h| !promoted.contains(&h.report_id));
             for held_price in prices {
                 self.push(held_price, now_secs);
@@ -167,7 +187,7 @@ mod tests {
         let mut f = Feed::new("NGN".into());
         let p = Params::default();
         for (i, price) in [100_000, 102_000, 101_000].into_iter().enumerate() {
-            assert_eq!(f.offer(i as u64, &format!("r{i}"), price, 0, &p), Outcome::Accepted { promoted: vec![] });
+            assert_eq!(f.offer(i as u64, &format!("r{i}"), price, true, 0, &p), Outcome::Accepted { promoted: vec![] });
         }
         f
     }
@@ -177,22 +197,22 @@ mod tests {
         let p = Params::default();
         let mut f = seeded();
         assert_eq!(f.median(), Some(101_000));
-        assert_eq!(f.offer(10, "a", 141_400, 1, &p), Outcome::Accepted { promoted: vec![] });
-        assert_eq!(f.offer(11, "b", 141_500, 1, &p), Outcome::Held);
+        assert_eq!(f.offer(10, "a", 141_400, true, 1, &p), Outcome::Accepted { promoted: vec![] });
+        assert_eq!(f.offer(11, "b", 141_500, true, 1, &p), Outcome::Held);
     }
 
     #[test]
     fn two_colluders_are_held_but_a_quorum_moves_the_price() {
         let p = Params::default();
         let mut f = seeded();
-        assert_eq!(f.offer(20, "x", 300_000, 10, &p), Outcome::Held);
-        assert_eq!(f.offer(21, "y", 300_000, 11, &p), Outcome::Held, "one agreeing peer is below quorum");
+        assert_eq!(f.offer(20, "x", 300_000, true, 10, &p), Outcome::Held);
+        assert_eq!(f.offer(21, "y", 300_000, true, 11, &p), Outcome::Held, "one agreeing peer is below quorum");
         assert_eq!(f.prices.len(), 3, "colluders never reach the feed");
 
         let mut g = seeded();
-        assert_eq!(g.offer(30, "p", 200_000, 10, &p), Outcome::Held);
-        assert_eq!(g.offer(31, "q", 205_000, 11, &p), Outcome::Held);
-        assert_eq!(g.offer(32, "r", 198_000, 12, &p), Outcome::Accepted { promoted: vec![30, 31] });
+        assert_eq!(g.offer(30, "p", 200_000, true, 10, &p), Outcome::Held);
+        assert_eq!(g.offer(31, "q", 205_000, true, 11, &p), Outcome::Held);
+        assert_eq!(g.offer(32, "r", 198_000, true, 12, &p), Outcome::Accepted { promoted: vec![30, 31] });
         assert_eq!(g.prices.len(), 6);
         assert!(g.held.is_empty());
     }
@@ -201,11 +221,35 @@ mod tests {
     fn a_reporter_cannot_be_their_own_quorum_and_old_holds_expire() {
         let p = Params::default();
         let mut f = seeded();
-        f.offer(40, "x", 300_000, 0, &p);
-        f.offer(41, "x", 300_000, 1, &p);
-        assert_eq!(f.offer(42, "x", 300_000, 2, &p), Outcome::Held);
-        f.offer(43, "y", 300_000, 3, &p);
-        assert_eq!(f.offer(44, "z", 300_000, 3 + p.peer_window_secs + 10, &p), Outcome::Held, "x and y expired");
+        f.offer(40, "x", 300_000, true, 0, &p);
+        f.offer(41, "x", 300_000, true, 1, &p);
+        assert_eq!(f.offer(42, "x", 300_000, true, 2, &p), Outcome::Held);
+        f.offer(43, "y", 300_000, true, 3, &p);
+        assert_eq!(f.offer(44, "z", 300_000, true, 3 + p.peer_window_secs + 10, &p), Outcome::Held, "x and y expired");
+    }
+
+    #[test]
+    fn a_quorum_must_agree_with_itself() {
+        let p = Params::default();
+        let mut f = seeded();
+        // 240k and 375k are each within 25% of 300k, but 56% apart from each other.
+        assert_eq!(f.offer(50, "a", 240_000, true, 1, &p), Outcome::Held);
+        assert_eq!(f.offer(51, "b", 375_000, true, 2, &p), Outcome::Held);
+        assert_eq!(f.offer(52, "c", 300_000, true, 3, &p), Outcome::Held, "a spread of outliers is not a quorum");
+        assert_eq!(f.prices.len(), 3);
+    }
+
+    #[test]
+    fn untrusted_hosts_only_add_inside_established_bounds() {
+        let p = Params::default();
+        let mut young = Feed::new("NGN".into());
+        assert!(matches!(young.offer(1, "u", 100_000, false, 0, &p), Outcome::Rejected { .. }), "can't start a feed");
+        assert!(young.prices.is_empty());
+
+        let mut f = seeded();
+        assert_eq!(f.offer(60, "u", 105_000, false, 1, &p), Outcome::Accepted { promoted: vec![] }, "inside bounds");
+        assert!(matches!(f.offer(61, "u", 300_000, false, 2, &p), Outcome::Rejected { .. }), "outside: not held");
+        assert!(f.held.is_empty(), "never waits for peers, so it can't vouch for anyone");
     }
 
     #[test]
@@ -213,7 +257,7 @@ mod tests {
         let p = Params::default();
         let mut f = Feed::new("NGN".into());
         for i in 0..20u64 {
-            f.offer(i, "r", 100_000, i, &p);
+            f.offer(i, "r", 100_000, true, i, &p);
         }
         assert_eq!(f.prices.len(), FEED_CAPACITY);
         assert_eq!(f.accepted_total, 20);

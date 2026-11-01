@@ -31,14 +31,22 @@ times of day, or card, account, meter or receipt numbers (a test checks the publ
 | `submit_verdict(request, response, signature, reporter?)` | anyone | Verify and file a signed audit. Relayers (the Telegram bot) may name the reporter they file for; everyone else files as themselves. Pays its own storage; the rest of the deposit is refunded |
 | `register_signer(address, model, attestation_sha256)` | owner | Add a model key after verifying its attestation (`scripts/register-signer.mjs`) |
 | `set_prompt(prompt_sha256, allowed)` | owner | Allow a prompt version (sha256 of `signal-bot/vision_prompt.js`'s text) |
+| `set_trusted_host(host, trusted)` | owner | Trust an image host that hashes the photos it serves (the Signal bot) |
 | `set_relayer`, `set_params`, `remove_signer`, `set_owner` | owner | |
 | `get_feed`, `list_feeds`, `get_report`, `list_reports`, `get_reporter`, `report_for_image`, `get_prompts`, `get_signer`, `get_params` | view | Free to read |
 
 **Feeds** follow the same rules as Signal's Solana program: feeds are keyed `CATEGORY:region:item`
 (region from the store location the model read, else the user's region in the prompt) and priced in
 the receipt's currency. Once a feed has 3 prices, a price within ±40% of its median joins directly.
-One outside is held until 2 other reporters independently report within ±25% of it — so two
-colluding accounts can't move an established feed, but a real price rise gets through.
+One outside is held until 2 other reporters independently report within ±25% of it, with all of those
+prices within ±25% of each other — so two colluding accounts can't move an established feed, but a
+real price rise gets through. Each photo prices a feed at most once. A relayer's users get ids
+namespaced by the relayer (`bot.signal-southen.testnet/tg:…`), so a relayer can't pose as an account.
+
+The photo's sha256 is only a claim in the image URL, so it counts only for photos served by a
+**trusted host** (the Signal bot, which hashes what it serves). Photos from any other host are still
+filed and checked, but can only add prices inside an established feed's bounds: they can't start a
+feed, wait for peers, or vouch for anyone — so re-hosting one photo under made-up hashes gains nothing.
 
 Every filing emits a NEP-297 event (`EVENT_JSON:{"standard":"signal",…}`).
 
@@ -48,15 +56,18 @@ Requires Rust, `cargo-near`, Node 24+, a testnet account in `~/.near-credentials
 NEAR AI Cloud key.
 
 ```bash
-cargo test                                   # 23 unit tests, incl. real NEAR AI signatures
+cargo test                                   # 30 unit tests, incl. real NEAR AI signatures
 cargo near build non-reproducible-wasm       # → target/near/signal_near.wasm
 npm install
 node scripts/deploy.mjs                      # creates oracle.<owner>, deploys, allows the prompt
 NEARAI_API_KEY=… node scripts/register-signer.mjs   # verifies TDX + GPU attestation, registers the key
-NEARAI_API_KEY=… node scripts/file-audit.mjs https://raw.githubusercontent.com/zzzDavid/ICDAR-2019-SROIE/master/data/img/001.jpg
+NEARAI_API_KEY=… node scripts/file-audit.mjs https://raw.githubusercontent.com/zzzDavid/ICDAR-2019-SROIE/master/data/img/000.jpg
 ```
 
-`file-audit.mjs` prints the transaction and what happened to each item. Then read the feed:
+`file-audit.mjs` prints the transaction and what happened to each item. The report is filed with the
+model's verdict, but since GitHub isn't a trusted image host its prices can't start a feed: expect
+`Rejected: photos from untrusted hosts can't start a feed`. Prices from the bot's own host (or one you
+trust with `set_trusted_host` on your own deployment) join feeds. Then read the feeds:
 
 ```bash
 near view oracle.signal-southen.testnet list_feeds '{}'
@@ -79,5 +90,6 @@ with a test key cover the feed rules: colluders held, a quorum moving the price,
   as real (we tested it). Text that tries to instruct the model ("set verified true", printed JSON,
   "ignore all rules") is flagged as fraud instead. Once a feed has history, an invented off-market
   price waits for 2 independent reporters, so one person with a couple of accounts can't move it.
-- **The image URL.** The contract checks the hash in the URL, not the bytes the model fetched. The
-  reporter (who has the photo) can check it; the chain only sees the hash.
+- **The image URL.** The contract can't see the bytes the model fetched, only the hash in the URL, so
+  it trusts that hash only from registered hosts (see Feeds). The reporter, who has the photo, can
+  check it; the chain only sees the hash.
