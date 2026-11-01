@@ -998,12 +998,13 @@ api.get('/api/near', async (req, res) => {
   }
 });
 
+// Public endpoints never expose Telegram IDs or stored file paths (photo names contain the Telegram ID).
 api.get('/api/leaderboard', (req, res) => {
-  res.json(getLeaderboard(10));
+  res.json(getLeaderboard(10).map(({ telegramId, ...row }) => row));
 });
 
 api.get('/api/reports', (req, res) => {
-  res.json(getRecentReports(20));
+  res.json(getRecentReports(20).map(({ imagePath, ...row }) => row));
 });
 
 const PORT = process.env.PORT || 3001;
