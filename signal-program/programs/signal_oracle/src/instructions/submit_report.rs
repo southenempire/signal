@@ -57,11 +57,14 @@ pub struct SubmitReport<'info> {
 }
 
 impl<'info> SubmitReport<'info> {
+    /// `verified`: the attester already checked the photo and accepted the price itself (the NEAR
+    /// contract does this with its own bounds and quorum), so no local bounds check is run.
     pub fn submit_report(
         &mut self,
         feed_id: [u8; 32],
         image_hash: [u8; 32],
         price: u64,
+        verified: bool,
         bumps: &SubmitReportBumps,
     ) -> Result<()> {
         require!(price > 0, SignalError::InvalidPrice);
@@ -109,7 +112,9 @@ impl<'info> SubmitReport<'info> {
         self.reporter.locked = self.reporter.locked.checked_add(reward).ok_or(SignalError::Overflow)?;
 
         // Local price bounds: compare against the feed's median once it has enough history.
-        let bounds = if self.feed.len >= self.config.min_bounds_samples {
+        let bounds = if verified {
+            Bounds::Verified
+        } else if self.feed.len >= self.config.min_bounds_samples {
             let median = self.feed.median().ok_or(SignalError::Overflow)?;
             if within_bps(price, median, self.config.bounds_tolerance_bps) {
                 Bounds::Agree

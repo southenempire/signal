@@ -17,14 +17,16 @@
 
 mod audit;
 mod feed;
+mod solana;
 mod verify;
 
 pub use feed::{Outcome, Params, FEED_CAPACITY};
 
 use feed::{Feed, Held};
+use near_sdk::json_types::Base64VecU8;
 use near_sdk::store::{IterableMap, IterableSet, LookupMap, LookupSet, Vector};
 use std::collections::HashSet;
-use near_sdk::{env, log, near, require, AccountId, BorshStorageKey, NearToken, PanicOnDefault, Promise};
+use near_sdk::{env, log, near, require, AccountId, BorshStorageKey, Gas, NearToken, PanicOnDefault, Promise, PromiseError};
 
 #[near(serializers = [borsh])]
 #[derive(BorshStorageKey)]
@@ -38,6 +40,60 @@ enum StorageKey {
     SeenImages,
     SeenResponses,
     TrustedHosts,
+    SolanaWallets,
+    SolanaFraudFiled,
+}
+
+/// Chain Signatures settings for filing on Solana (see `solana.rs`).
+#[near(serializers = [json])]
+#[derive(Clone, Debug)]
+pub struct SolanaSettings {
+    /// The MPC signer contract (`v1.signer-prod.testnet` on testnet).
+    pub mpc_signer: AccountId,
+    /// Derivation path of this contract's Solana key.
+    pub path: String,
+    /// That key's Solana address (the MPC contract's `derived_public_key` for this account and
+    /// path), which the Signal Solana program has as its attester. Fee payer of every filing.
+    pub attester: String,
+}
+
+/// Addresses for a Solana filing. The Solana program re-derives each PDA from its seeds and rejects
+/// the filing if any is wrong, so these can't redirect anything.
+#[near(serializers = [json])]
+pub struct ReportAccounts {
+    pub config: String,
+    pub reporter: String,
+    pub feed: String,
+    pub report: String,
+    pub vault: String,
+}
+
+#[near(serializers = [json])]
+pub struct FraudAccounts {
+    pub config: String,
+    pub offender: String,
+}
+
+const SOLANA_SETTINGS_KEY: &[u8] = b"solana";
+const MPC_SIGN_GAS: Gas = Gas::from_tgas(50);
+const ON_SIGNED_GAS: Gas = Gas::from_tgas(10);
+
+fn solana_settings() -> Option<SolanaSettings> {
+    env::storage_read(SOLANA_SETTINGS_KEY).and_then(|b| serde_json::from_slice(&b).ok())
+}
+
+/// Each reporter's Solana wallet, where their rewards and reputation live on Solana.
+fn solana_wallets() -> LookupMap<String, String> {
+    LookupMap::new(StorageKey::SolanaWallets)
+}
+
+/// Fraud reports already sent for signing: a fake must be penalised on Solana once, not per retry.
+fn solana_fraud_filed() -> LookupSet<u64> {
+    LookupSet::new(StorageKey::SolanaFraudFiled)
+}
+
+fn solana_key(b58: &str) -> solana::Pubkey {
+    solana::pubkey(b58).unwrap_or_else(|e| env::panic_str(&e))
 }
 
 // Small flags kept in their own storage keys rather than the contract struct, so adding them needed
@@ -305,7 +361,121 @@ impl Contract {
         report
     }
 
+    // ── Filing on Solana (Chain Signatures) ─────────────────────────────────
+
+    /// Register the Solana wallet a reporter's rewards and reputation go to. A relayer registers its
+    /// users' wallets (`reporter` = the id it files them under); anyone else registers their own.
+    pub fn register_solana_wallet(&mut self, wallet: String, reporter: Option<String>) {
+        let caller = env::predecessor_account_id();
+        let reporter = match reporter {
+            Some(r) => {
+                require!(self.relayers.contains(&caller), "only a relayer can register for someone else");
+                format!("{caller}/{r}")
+            }
+            None => caller.to_string(),
+        };
+        solana_key(&wallet);
+        let mut wallets = solana_wallets();
+        wallets.insert(reporter.clone(), wallet.clone());
+        wallets.flush();
+        event("solana_wallet_registered", serde_json::json!({ "reporter": reporter, "wallet": wallet }));
+    }
+
+    /// Have the MPC network sign the Solana filing of one accepted price from a report. Anyone may
+    /// call it: the price, photo hash and reporter come from the report, and a second filing of the
+    /// same photo and item is refused by the Solana program itself, so retries are harmless.
+    /// Returns the transaction (base64) with this contract's signature; the reporter adds theirs.
+    pub fn sign_solana_report(&mut self, report_id: u64, item_index: u32, accounts: ReportAccounts, recent_blockhash: String) -> Promise {
+        require!(!paused_flag(), "filing is paused by the owner");
+        let settings = solana_settings().unwrap_or_else(|| env::panic_str("Solana filing is not configured"));
+        let report = self.reports.get(report_id as u32).unwrap_or_else(|| env::panic_str("no such report"));
+        require!(report.status == ReportStatus::Verified, "only verified reports are filed on Solana");
+        let item = report.items.get(item_index as usize).unwrap_or_else(|| env::panic_str("no such item"));
+        require!(matches!(item.outcome, Outcome::Accepted { .. }), "only accepted prices are filed on Solana");
+        let wallet = solana_wallets().get(&report.reporter).cloned().unwrap_or_else(|| env::panic_str("the reporter has no Solana wallet registered"));
+        let image_hash: [u8; 32] = hex::decode(&report.image_sha256).ok().and_then(|b| b.try_into().ok()).unwrap_or_else(|| env::panic_str("bad photo hash"));
+
+        let message = solana::submit_verified_report(
+            &solana::VerifiedReport {
+                attester: solana_key(&settings.attester),
+                reporter_wallet: solana_key(&wallet),
+                config: solana_key(&accounts.config),
+                reporter: solana_key(&accounts.reporter),
+                feed: solana_key(&accounts.feed),
+                report: solana_key(&accounts.report),
+                vault: solana_key(&accounts.vault),
+                feed_id: verify::sha256(item.feed.as_bytes()),
+                image_hash,
+                price: item.price,
+            },
+            &solana_key(solana::SIGNAL_PROGRAM),
+            &solana_key(&recent_blockhash),
+        );
+        Self::request_mpc_signature(&settings, message, 2, None)
+    }
+
+    /// Have the MPC network sign the Solana penalty for a photo NEAR AI judged a fake. Relayers and
+    /// the owner only, and once per report: unlike a filing, a penalty would repeat if re-sent.
+    pub fn sign_solana_fraud(&mut self, report_id: u64, accounts: FraudAccounts, recent_blockhash: String) -> Promise {
+        require!(!paused_flag(), "filing is paused by the owner");
+        let caller = env::predecessor_account_id();
+        require!(caller == self.owner || self.relayers.contains(&caller), "only a relayer or the owner can file penalties");
+        let settings = solana_settings().unwrap_or_else(|| env::panic_str("Solana filing is not configured"));
+        let report = self.reports.get(report_id as u32).unwrap_or_else(|| env::panic_str("no such report"));
+        require!(report.status == ReportStatus::Fraud, "only fraud reports are penalised");
+        let wallet = solana_wallets().get(&report.reporter).cloned().unwrap_or_else(|| env::panic_str("the reporter has no Solana wallet registered"));
+        let image_hash: [u8; 32] = hex::decode(&report.image_sha256).ok().and_then(|b| b.try_into().ok()).unwrap_or_else(|| env::panic_str("bad photo hash"));
+        require!(solana_fraud_filed().insert(report_id), "this penalty was already sent for signing");
+
+        let message = solana::flag_fake(
+            &solana::FakeFlag {
+                attester: solana_key(&settings.attester),
+                config: solana_key(&accounts.config),
+                offender_wallet: solana_key(&wallet),
+                offender: solana_key(&accounts.offender),
+                image_hash,
+            },
+            &solana_key(solana::SIGNAL_PROGRAM),
+            &solana_key(&recent_blockhash),
+        );
+        Self::request_mpc_signature(&settings, message, 1, Some(report_id))
+    }
+
+    /// The MPC network's answer: assemble the signed transaction.
+    #[private]
+    pub fn on_solana_signed(
+        &mut self,
+        #[callback_result] signed: Result<serde_json::Value, PromiseError>,
+        message: Base64VecU8,
+        signers: u8,
+        fraud_report: Option<u64>,
+    ) -> Option<Base64VecU8> {
+        let signature: Option<[u8; 64]> = signed.ok().and_then(|v| {
+            (v.get("scheme")?.as_str()? == "Ed25519").then_some(())?;
+            let bytes: Vec<u8> = v.get("signature")?.as_array()?.iter().map(|b| b.as_u64().map(|b| b as u8)).collect::<Option<_>>()?;
+            bytes.try_into().ok()
+        });
+        let Some(signature) = signature else {
+            // Let a failed penalty be retried.
+            if let Some(id) = fraud_report {
+                solana_fraud_filed().remove(&id);
+            }
+            log!("MPC signing failed");
+            return None;
+        };
+        event("solana_signed", serde_json::json!({ "fraud_report": fraud_report, "signers": signers }));
+        Some(solana::transaction(&message.0, signers as usize, &signature).into())
+    }
+
     // ── Owner ───────────────────────────────────────────────────────────────
+
+    pub fn set_solana_settings(&mut self, settings: SolanaSettings) {
+        self.only_owner();
+        solana_key(&settings.attester);
+        require!(!settings.path.is_empty(), "path is required");
+        env::storage_write(SOLANA_SETTINGS_KEY, &serde_json::to_vec(&settings).unwrap_or_default());
+        event("solana_settings_set", serde_json::json!({ "mpc_signer": settings.mpc_signer, "path": settings.path, "attester": settings.attester }));
+    }
 
     /// Register a NEAR AI model signing key, after verifying the model's attestation report off-chain
     /// (TDX quote, NVIDIA GPU evidence, and that the report binds this signing address).
@@ -408,6 +578,14 @@ impl Contract {
         paused_flag()
     }
 
+    pub fn get_solana_settings(&self) -> Option<SolanaSettings> {
+        solana_settings()
+    }
+
+    pub fn get_solana_wallet(&self, reporter: String) -> Option<String> {
+        solana_wallets().get(&reporter).cloned()
+    }
+
     pub fn get_params(&self) -> Params {
         self.params.clone()
     }
@@ -470,6 +648,15 @@ impl Contract {
     }
 
     // ── Internal ────────────────────────────────────────────────────────────
+
+    fn request_mpc_signature(settings: &SolanaSettings, message: Vec<u8>, signers: u8, fraud_report: Option<u64>) -> Promise {
+        let args = serde_json::json!({
+            "request": { "path": settings.path, "payload_v2": { "Eddsa": hex::encode(&message) }, "domain_id": 1 }
+        });
+        Promise::new(settings.mpc_signer.clone())
+            .function_call("sign", args.to_string().into_bytes(), NearToken::from_yoctonear(1), MPC_SIGN_GAS)
+            .then(Self::ext(env::current_account_id()).with_static_gas(ON_SIGNED_GAS).on_solana_signed(message.into(), signers, fraud_report))
+    }
 
     fn only_owner(&self) {
         require!(env::predecessor_account_id() == self.owner, "only the owner can do this");

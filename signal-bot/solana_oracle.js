@@ -3,8 +3,12 @@
  *
  * The program is the source of truth for consensus: it locks rewards, checks local
  * price bounds and peer agreement, pays from its vault, slashes, and keeps reputation
- * and feed medians. The bot is the attester (it vouches for the vision-AI parse and pays
- * rent) and a crank (it calls peer_check and settle; anyone else could too).
+ * and feed medians. The bot is a crank (it calls peer_check and settle; anyone else could too)
+ * and, unless NEAR attests, the attester that vouches for the vision-AI parse and pays rent.
+ *
+ * When the Signal contract on NEAR is the attester (NEAR_ATTESTS_SOLANA=on), the bot no longer
+ * files with its own key: NEAR's MPC network signs each filing for prices the NEAR contract
+ * verified and accepted, and the bot only adds the reporter's signature and sends it.
  */
 import anchor from '@coral-xyz/anchor';
 import { PublicKey, SystemProgram, VersionedTransaction } from '@solana/web3.js';
@@ -91,6 +95,47 @@ export async function getReporter(wallet) {
     const r = await program.account.reporter.fetch(reporterPda(wallet));
     return { reputation: r.reputation, accepted: r.accepted, slashed: r.slashed, lockedUsd: fromMicro(r.locked) };
   } catch { return null; }
+}
+
+/** The accounts a NEAR-attested filing of `feedKey`/`imageHashHex` by `wallet` uses (re-derived on-chain). */
+export function filingAccounts(wallet, feedKey, imageHashHex) {
+  const feed = feedPda(feedKey);
+  return {
+    config: configPda().toBase58(),
+    reporter: reporterPda(wallet).toBase58(),
+    feed: feed.toBase58(),
+    report: reportPda(feed, imageHashHex).toBase58(),
+    vault: vaultAta().toBase58(),
+  };
+}
+
+/** The accounts a NEAR-attested fraud penalty for `wallet` uses. */
+export function fraudAccounts(wallet) {
+  return { config: configPda().toBase58(), offender: reporterPda(wallet).toBase58() };
+}
+
+export async function recentBlockhash() {
+  return (await program.provider.connection.getLatestBlockhash('confirmed')).blockhash;
+}
+
+/**
+ * Send a transaction the NEAR contract had NEAR's MPC network sign as attester, after adding the
+ * other required signatures (the reporter's). The message is used exactly as signed.
+ */
+export async function sendNearSigned(txBase64, signers = []) {
+  const tx = VersionedTransaction.deserialize(Buffer.from(txBase64, 'base64'));
+  if (signers.length) tx.sign(signers);
+  const connection = program.provider.connection;
+  const signature = await connection.sendRawTransaction(tx.serialize());
+  const result = await connection.confirmTransaction(signature, 'confirmed');
+  if (result.value.err) throw new Error(`Solana rejected the filing: ${JSON.stringify(result.value.err)}`);
+  return signature;
+}
+
+/** Locked reward of a filed report, in USD. */
+export async function reportRewardUsd(reportAddress) {
+  const r = await program.account.report.fetch(new PublicKey(reportAddress));
+  return fromMicro(r.reward);
 }
 
 export async function reportExists(feedKey, imageHashHex) {

@@ -110,6 +110,16 @@ addColumn('reports', 'chain_tx', 'TEXT');
 addColumn('reports', 'near_tx', 'TEXT');
 addColumn('reports', 'settled_at', 'DATETIME');
 addColumn('observations', 'onchain_report', 'TEXT');
+// Which Telegram user each NEAR report belongs to, so a price held on NEAR and accepted later
+// (when peers confirm it) can be filed on Solana for the right person.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS near_links (
+    near_report  INTEGER PRIMARY KEY,
+    telegram_id  INTEGER NOT NULL,
+    report_id    INTEGER,
+    image_hash   TEXT NOT NULL
+  )
+`);
 db.exec('CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status)');
 db.exec('CREATE INDEX IF NOT EXISTS idx_obs_onchain ON observations(onchain_report)');
 
@@ -248,6 +258,21 @@ export function savePendingReport(r) {
     return Number(reportId);
   });
   return save();
+}
+
+export function saveNearLink(nearReport, telegramId, reportId, imageHash) {
+  db.prepare('INSERT OR REPLACE INTO near_links (near_report, telegram_id, report_id, image_hash) VALUES (?, ?, ?, ?)')
+    .run(nearReport, telegramId, reportId ?? null, imageHash);
+}
+
+export function getNearLink(nearReport) {
+  return db.prepare('SELECT * FROM near_links WHERE near_report = ?').get(nearReport) || null;
+}
+
+/** Add an item to an existing report (a price NEAR accepted after it was first held). */
+export function addObservation(reportId, telegramId, o) {
+  db.prepare('INSERT INTO observations (report_id, telegram_id, feed_key, item_name, price_usd, onchain_report) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(reportId, telegramId, o.feedKey, o.itemName, o.priceUsd, o.onchainReport || null);
 }
 
 /** Record a slashed submission that never became a full report (duplicate or fake photo). */

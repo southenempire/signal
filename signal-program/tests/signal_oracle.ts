@@ -143,6 +143,31 @@ describe("signal_oracle", () => {
       .then((ix) => send([ix], [signer, wallet]));
   };
 
+  const submitVerified = (wallet: Keypair, feedKey: string, hash: number[], price: number, signer: Keypair = attester) => {
+    const feed = feedPda(feedKey);
+    return program.methods
+      .submitVerifiedReport(feedId(feedKey), hash, new BN(price))
+      .accountsPartial({
+        attester: signer.publicKey,
+        reporterWallet: wallet.publicKey,
+        config,
+        reporter: reporterPda(wallet.publicKey),
+        feed,
+        report: reportPda(feed, hash),
+        vault,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction()
+      .then((ix) => send([ix], [signer, wallet]));
+  };
+
+  const updateAttester = (newAttester: PublicKey, signer: Keypair = payer) =>
+    program.methods
+      .updateAttester(newAttester)
+      .accountsPartial({ admin: signer.publicKey, config })
+      .instruction()
+      .then((ix) => send([ix], [signer]));
+
   const peerCheck = async (r1: PublicKey, r2: PublicKey) => {
     const [a, b] = Buffer.compare(r1.toBuffer(), r2.toBuffer()) < 0 ? [r1, r2] : [r2, r1];
     const ix = await program.methods
@@ -455,6 +480,50 @@ describe("signal_oracle", () => {
     await settle(rp);
     assert.strictEqual(await statusOf(rp), "accepted");
     assert.strictEqual((await program.account.feed.fetch(feedPda(FEED))).len, 4);
+  });
+
+  // ── NEAR as the attester ───────────────────────────────────────────────────
+
+  it("settles a report the attester already verified straight away, even off the feed's median", async () => {
+    const FEED = "GROCERY:ng-lagos:bread_loaf:NGN";
+    const [a, b, c, v] = await Promise.all([1, 2, 3, 4].map(newReporter));
+    for (const [w, n, price] of [[a, "v-a", 200_000], [b, "v-b", 205_000], [c, "v-c", 202_000]] as const) {
+      await submit(w, FEED, photo(n), price);
+    }
+    const [ra, rb, rc] = ["v-a", "v-b", "v-c"].map((n) => reportPda(feedPda(FEED), photo(n)));
+    await peerCheck(ra, rb);
+    await peerCheck(ra, rc);
+    for (const r of [ra, rb, rc]) await settle(r);
+
+    // 3x the median, no peers: a plain filing would be slashed, a verified one is accepted and paid.
+    await submitVerified(v, FEED, photo("v-v"), 600_000);
+    const rv = reportPda(feedPda(FEED), photo("v-v"));
+    assert.deepStrictEqual(Object.keys((await program.account.report.fetch(rv)).bounds), ["verified"]);
+    await settle(rv);
+    assert.strictEqual(await statusOf(rv), "accepted");
+    assert.strictEqual(await tokenBalance(getAssociatedTokenAddressSync(mint, v.publicKey)), 200_000n);
+    assert.strictEqual((await program.account.feed.fetch(feedPda(FEED))).len, 4);
+  });
+
+  it("lets only the attester file a verified report", async () => {
+    const outsider = Keypair.generate();
+    await send([SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: outsider.publicKey, lamports: 1_000_000_000 })]);
+    const w = await newReporter();
+    await expectError(submitVerified(w, "FUEL:ng-lagos:petrol_litre:NGN", photo("o-v"), 90_000, outsider), "ConstraintHasOne", "not the attester");
+  });
+
+  it("lets only the admin hand filing to a new attester, and locks the old one out", async () => {
+    const near = Keypair.generate(); // stands in for the NEAR contract's Chain Signatures key
+    await send([SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: near.publicKey, lamports: 2_000_000_000 })]);
+    await expectError(updateAttester(near.publicKey, attester), "ConstraintHasOne", "the attester can't rotate itself");
+
+    await updateAttester(near.publicKey);
+    assert.ok((await program.account.config.fetch(config)).attester.equals(near.publicKey));
+    const w = await newReporter();
+    await expectError(submitVerified(w, "FUEL:ng-abuja:diesel_litre:NGN", photo("rot-1"), 95_000), "ConstraintHasOne", "old attester locked out");
+    await submitVerified(w, "FUEL:ng-abuja:diesel_litre:NGN", photo("rot-2"), 95_000, near);
+
+    await updateAttester(attester.publicKey); // hand back for the remaining tests
   });
 
   it("will not lock more rewards than the pool holds, or settle a report twice", async () => {

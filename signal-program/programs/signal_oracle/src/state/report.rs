@@ -14,6 +14,9 @@ pub enum Bounds {
     None,
     Agree,
     Disagree,
+    /// Filed through `submit_verified_report`: the attester (the Signal contract on NEAR) already
+    /// verified the photo and accepted the price under its own rules, so it settles straight away.
+    Verified,
 }
 
 /// One per priced item on a photo, PDA ["report", feed, image_hash].

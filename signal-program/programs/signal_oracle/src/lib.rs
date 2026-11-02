@@ -30,7 +30,18 @@ pub mod signal_oracle {
         image_hash: [u8; 32],
         price: u64,
     ) -> Result<()> {
-        ctx.accounts.submit_report(feed_id, image_hash, price, &ctx.bumps)
+        ctx.accounts.submit_report(feed_id, image_hash, price, false, &ctx.bumps)
+    }
+
+    /// Same accounts as `submit_report`, for prices the attester has already verified and accepted
+    /// (the Signal contract on NEAR). Settles without waiting for bounds or peers.
+    pub fn submit_verified_report(
+        ctx: Context<SubmitReport>,
+        feed_id: [u8; 32],
+        image_hash: [u8; 32],
+        price: u64,
+    ) -> Result<()> {
+        ctx.accounts.submit_report(feed_id, image_hash, price, true, &ctx.bumps)
     }
 
     pub fn peer_check(ctx: Context<PeerCheck>) -> Result<()> {
@@ -47,5 +58,9 @@ pub mod signal_oracle {
 
     pub fn flag_fake(ctx: Context<FlagFake>, image_hash: [u8; 32]) -> Result<()> {
         ctx.accounts.flag_fake(image_hash, &ctx.bumps)
+    }
+
+    pub fn update_attester(ctx: Context<UpdateAttester>, attester: Pubkey) -> Result<()> {
+        ctx.accounts.update_attester(attester)
     }
 }

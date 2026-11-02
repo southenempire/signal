@@ -36,11 +36,14 @@ import {
   getLeaderboard, getRecentReports, getNetworkStats, getFeedsSummary,
   getAcceptedFeedPrices, getUserTotalEarned, getDailyReportCount, isImageDuplicate,
   getFeedKeyForImageHash, getAllFeedKeys, setReputation, getImageOwner,
-  saveYellowLink, getYellowLink, setReportTx
+  saveYellowLink, getYellowLink, setReportTx, saveNearLink, getNearLink, addObservation
 } from './db.js';
 import { saveReportImage, shareImage, sharedImage, unshareImage } from './images.js';
 import { nearAiAudit } from './nearai.js';
-import { initNearOracle, isNearEnabled, fileVerdict, nearTxLink, listNearFeeds, nearStats } from './near_oracle.js';
+import {
+  initNearOracle, isNearEnabled, fileVerdict, nearTxLink, listNearFeeds, nearStats,
+  ensureSolanaWallet, signSolanaReport, signSolanaFraud, getNearReport,
+} from './near_oracle.js';
 import bs58 from 'bs58';
 import fetch from 'node-fetch';
 import {
@@ -149,6 +152,55 @@ const PUBLIC_URL = process.env.PUBLIC_URL
   || (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : null);
 const NEAR_VISION = Boolean(process.env.NEARAI_API_KEY && PUBLIC_URL && process.env.NEAR_VISION !== 'off');
 console.log(`[NEAR AI] Verifiable vision ${NEAR_VISION ? `on (photos served from ${PUBLIC_URL})` : 'off — set NEARAI_API_KEY and PUBLIC_URL'}`);
+// NEAR decides, Solana pays: the Signal contract on NEAR is the Solana program's attester (through
+// Chain Signatures), so only prices NEAR verified and accepted are filed, and the bot's own key
+// can't file anything. Turn on only once the program's attester is the NEAR contract's key.
+const NEAR_ATTESTS = process.env.NEAR_ATTESTS_SOLANA === 'on';
+if (NEAR_ATTESTS) console.log('[NEAR→Solana] Filing on Solana through the NEAR contract (Chain Signatures)');
+
+const itemLabel = (feedKey) => (feedKey.split(':')[2] || feedKey).replace(/_/g, ' ');
+
+/** File on Solana, signed by the NEAR contract's MPC key, every price NEAR accepted in a report. */
+async function fileNearReportOnSolana(nearReport, telegramId, keypair) {
+  await ensureSolanaWallet(telegramId, keypair.publicKey);
+  const filed = [];
+  for (const [index, item] of nearReport.items.entries()) {
+    if (!item.outcome?.Accepted) continue;
+    if (await oracle.reportExists(item.feed, nearReport.image_sha256)) continue; // already on Solana
+    const accounts = oracle.filingAccounts(keypair.publicKey, item.feed, nearReport.image_sha256);
+    const tx = await signSolanaReport(nearReport.id, index, accounts, await oracle.recentBlockhash());
+    const signature = await oracle.sendNearSigned(tx, [keypair]);
+    filed.push({
+      feedKey: item.feed,
+      itemName: itemLabel(item.feed),
+      priceUsd: Number((await toUsd(item.price / 100, nearReport.currency)).toFixed(4)),
+      onchainReport: accounts.report,
+      rewardUsd: await oracle.reportRewardUsd(accounts.report),
+      signature,
+    });
+  }
+  return filed;
+}
+
+/** Prices held on NEAR that this report's price confirmed: file them on Solana for their owners. */
+async function fileNearPromotions(nearReport) {
+  const ids = new Set(nearReport.items.flatMap((it) => it.outcome?.Accepted?.promoted || []));
+  for (const id of ids) {
+    const link = getNearLink(id);
+    if (!link) continue; // not one of this bot's users
+    try {
+      const filed = await fileNearReportOnSolana(await getNearReport(id), link.telegram_id, getOrCreateUser(link.telegram_id).keypair);
+      for (const f of filed) if (link.report_id) addObservation(link.report_id, link.telegram_id, f);
+      if (filed.length) {
+        await settlementDeps.notify(link.telegram_id,
+          `🤝 <b>Confirmed by other reporters on NEAR</b>\n` +
+          filed.map((f) => `• ${escapeHtml(f.itemName)} — now filed on Solana`).join('\n'));
+      }
+    } catch (e) {
+      console.error(`[NEAR→Solana] filing promoted report ${id} failed:`, e.message);
+    }
+  }
+}
 
 // ─── Pending actions (these are ephemeral — OK to be in-memory) ──────────────
 const pendingReport = new Map();
@@ -437,6 +489,7 @@ if (bot) {
     const rep = await penalize({
       kind: 'duplicate', telegramId: ctx.from.id, wallet: user.keypair.publicKey, category: selected,
       imagePath, imageHash, feedKey: getFeedKeyForImageHash(imageHash), reason: 'duplicate image',
+      ...(NEAR_ATTESTS ? { chainPenalty: null } : {}),
     });
     return ctx.replyWithHTML(`✂️ <b>Slashed: duplicate data.</b>\nThis exact photo was already submitted.\n⭐ Reputation: ${rep}/100`);
   }
@@ -492,6 +545,16 @@ if (bot) {
       const rep = await penalize({
         kind: 'fake', telegramId: ctx.from.id, wallet: user.keypair.publicKey, category: selected,
         imagePath, imageHash, reason: `fake image: ${String(audit.reason || '').slice(0, 120)}`,
+        ...(NEAR_ATTESTS ? {
+          // The NEAR contract files the penalty on Solana for the fraud verdict it recorded.
+          chainPenalty: async () => {
+            const filed = await nearFiling;
+            if (!filed) throw new Error('the fraud verdict was not filed on NEAR');
+            await ensureSolanaWallet(ctx.from.id, user.keypair.publicKey);
+            const tx = await signSolanaFraud(filed.report.id, oracle.fraudAccounts(user.keypair.publicKey), await oracle.recentBlockhash());
+            await oracle.sendNearSigned(tx);
+          },
+        } : {}),
       });
       return ctx.replyWithHTML(`✂️ <b>Slashed: suspected fake.</b>\n${escapeHtml(audit.reason)}\n⭐ Reputation: ${rep}/100\n${await nearNote()}`);
     }
@@ -532,7 +595,31 @@ if (bot) {
   // File each item with the Solana program: it locks the reward and runs the bounds check.
   let reward = Math.min(rewardFor(user.reputation), AGENT_POLICIES.SPEND_LIMIT_USDC);
   let onchainNote = '';
-  if (oracle.isEnabled()) {
+  let nearReportForLink = null;
+  if (NEAR_ATTESTS && oracle.isEnabled()) {
+    // NEAR decided; file what it accepted on Solana with NEAR's key.
+    const filedNear = await nearFiling;
+    if (!filedNear) {
+      return ctx.replyWithHTML(`❌ <b>Not filed:</b> NEAR could not record the verified verdict. Please try again.`);
+    }
+    nearReportForLink = filedNear.report;
+    let filed = [];
+    try {
+      filed = await fileNearReportOnSolana(filedNear.report, ctx.from.id, user.keypair);
+    } catch (e) {
+      console.error('[NEAR→Solana] filing failed:', e.message);
+    }
+    const held = filedNear.report.items.filter((it) => it.outcome === 'Held').length;
+    if (!filed.length && !held) {
+      return ctx.replyWithHTML(`❌ <b>Not filed on Solana.</b> NEAR verified the receipt but none of its prices could be filed right now. Please try again later.`);
+    }
+    observations.splice(0, observations.length, ...filed);
+    reward = filed.reduce((sum, o) => sum + o.rewardUsd, 0);
+    onchainNote =
+      (filed.length ? `⛓️ Verified on NEAR → filed on Solana with NEAR's key: ${filed.length} item${filed.length === 1 ? '' : 's'}.\n` : '') +
+      (held ? `⏸️ ${held} price${held === 1 ? ' is' : 's are'} far from the local median and held on NEAR until other reporters confirm.\n` : '');
+    fileNearPromotions(filedNear.report).catch((e) => console.error('[NEAR→Solana] promotions:', e.message));
+  } else if (oracle.isEnabled()) {
     const filed = [];
     let failure = null;
     for (const o of observations.slice(0, MAX_ONCHAIN_ITEMS)) {
@@ -568,6 +655,7 @@ if (bot) {
   const nearLine = await nearNote();
   const nearFiled = await nearFiling;
   if (nearFiled) setReportTx(reportId, 'near_tx', nearFiled.txHash);
+  if (nearReportForLink) saveNearLink(nearReportForLink.id, ctx.from.id, reportId, imageHash);
 
   const itemLines = observations.slice(0, 5)
     .map(o => `• ${escapeHtml(o.itemName)} — $${o.priceUsd.toFixed(2)}`)
@@ -581,8 +669,10 @@ if (bot) {
     `${itemLines}${observations.length > 5 ? `\n…and ${observations.length - 5} more` : ''}\n\n` +
     onchainNote +
     nearLine +
-    `⏳ <b>Pending consensus.</b> Checking against local price bounds and peer reports.\n` +
-    `🔒 Reward locked: <b>$${reward.toFixed(2)} USDC</b> — released when accepted, forfeited if slashed.`,
+    (nearReportForLink
+      ? (observations.length ? `✅ <b>Accepted on NEAR.</b> Paying <b>$${reward.toFixed(2)} USDC</b> from the Solana reward vault now.` : '')
+      : `⏳ <b>Pending consensus.</b> Checking against local price bounds and peer reports.\n` +
+        `🔒 Reward locked: <b>$${reward.toFixed(2)} USDC</b> — released when accepted, forfeited if slashed.`),
     MAIN_MENU
   );
 
