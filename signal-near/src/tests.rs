@@ -241,7 +241,7 @@ fn bread(price: f64) -> Value {
 }
 
 const NOW: u64 = 1_800_000_000;
-const FEED_KEY: &str = "GROCERY:ng-lagos:bread_loaf";
+const FEED_KEY: &str = "GROCERY:ng-lagos:bread_loaf:NGN";
 
 fn with_test_signer() -> (Contract, TestSigner) {
     let mut c = setup(NOW);
@@ -342,13 +342,65 @@ fn untrusted_photos_cannot_vouch_for_an_outlier() {
 }
 
 #[test]
-fn a_feed_keeps_one_currency() {
+fn each_currency_gets_its_own_feed() {
+    // A misread currency lands in its own feed instead of locking the real one out.
     let (mut c, mut s) = with_test_signer();
-    file(&mut c, &mut s, "tg:a", bread(2000.0));
     let mut v = bread(20.0);
     v["currency"] = "KES".into();
-    let r = file(&mut c, &mut s, "tg:b", v);
-    assert_eq!(r.items[0].outcome, Outcome::Rejected { reason: "feed is priced in NGN".into() });
+    let misread = file(&mut c, &mut s, "tg:a", v);
+    assert_eq!(misread.items[0].feed, "GROCERY:ng-lagos:bread_loaf:KES");
+    let r = file(&mut c, &mut s, "tg:b", bread(2000.0));
+    assert_eq!(r.items[0].feed, FEED_KEY);
+    assert!(matches!(r.items[0].outcome, Outcome::Accepted { .. }));
+    assert_eq!(c.get_feed(FEED_KEY.into()).unwrap().currency, "NGN");
+}
+
+#[test]
+fn the_owner_can_pause_and_resume_filing() {
+    let (mut c, mut s) = with_test_signer();
+    at(NOW, accounts(0), NearToken::from_yoctonear(0));
+    c.set_paused(true);
+    assert!(c.is_paused());
+    let attempt = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        at(NOW, accounts(5), one_near());
+        let (req, res, sig) = s.audit(NOW, bread(2000.0));
+        c.submit_verdict(req, res, sig, Some("tg:a".into()))
+    }));
+    assert!(attempt.is_err(), "filing is refused while paused");
+    at(NOW, accounts(0), NearToken::from_yoctonear(0));
+    c.set_paused(false);
+    assert!(matches!(file(&mut c, &mut s, "tg:a", bread(2000.0)).items[0].outcome, Outcome::Accepted { .. }));
+}
+
+#[test]
+#[should_panic(expected = "only the owner")]
+fn only_the_owner_pauses() {
+    let (mut c, _) = with_test_signer();
+    at(NOW, accounts(3), NearToken::from_yoctonear(0));
+    c.set_paused(true);
+}
+
+#[test]
+fn ownership_moves_only_when_the_new_owner_accepts() {
+    let (mut c, _) = with_test_signer();
+    at(NOW, accounts(0), NearToken::from_yoctonear(0));
+    c.propose_owner(accounts(4));
+    assert_eq!(c.get_owner(), accounts(0), "nothing changes on a proposal");
+    assert_eq!(c.get_pending_owner(), Some(accounts(4)));
+    at(NOW, accounts(4), NearToken::from_yoctonear(0));
+    c.accept_owner();
+    assert_eq!(c.get_owner(), accounts(4));
+    assert_eq!(c.get_pending_owner(), None);
+}
+
+#[test]
+#[should_panic(expected = "only the proposed owner")]
+fn nobody_else_can_accept_ownership() {
+    let (mut c, _) = with_test_signer();
+    at(NOW, accounts(0), NearToken::from_yoctonear(0));
+    c.propose_owner(accounts(4));
+    at(NOW, accounts(3), NearToken::from_yoctonear(0));
+    c.accept_owner();
 }
 
 #[test]

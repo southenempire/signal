@@ -275,9 +275,12 @@ pub fn region_for(verdict: &Verdict, request_region: Option<&str>) -> String {
     }
 }
 
-pub fn feed_key(category: &str, region: &str, canonical_item: &str) -> String {
+/// `CATEGORY:region:item:CURRENCY`. The currency is part of the key, so a misread currency lands in
+/// its own feed instead of locking the real one out (`XXX`, ISO's "no currency", when unknown).
+pub fn feed_key(category: &str, region: &str, canonical_item: &str, currency: Option<&str>) -> String {
     let item = slug(canonical_item);
-    format!("{category}:{region}:{}", if item.is_empty() { "unknown" } else { &item })
+    let item = if item.is_empty() { "unknown" } else { &item };
+    format!("{category}:{region}:{item}:{}", currency.unwrap_or("XXX"))
 }
 
 #[cfg(test)]
@@ -337,7 +340,8 @@ mod tests {
         assert_eq!(v.currency.as_deref(), Some("NGN"));
         assert_eq!(v.items, vec![Item { canonical_item: "Bread Loaf".into(), unit_price: 2000.0 }]);
         assert_eq!(region_for(&v, Some("ke-nairobi")), "ng-lagos");
-        assert_eq!(feed_key("GROCERY", "ng-lagos", "Bread Loaf"), "GROCERY:ng-lagos:bread_loaf");
+        assert_eq!(feed_key("GROCERY", "ng-lagos", "Bread Loaf", Some("NGN")), "GROCERY:ng-lagos:bread_loaf:NGN");
+        assert_eq!(feed_key("GROCERY", "ng-lagos", "", None), "GROCERY:ng-lagos:unknown:XXX");
     }
 
     #[test]

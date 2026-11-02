@@ -32,12 +32,14 @@ times of day, or card, account, meter or receipt numbers (a test checks the publ
 | `register_signer(address, model, attestation_sha256)` | owner | Add a model key after verifying its attestation (`scripts/register-signer.mjs`) |
 | `set_prompt(prompt_sha256, allowed)` | owner | Allow a prompt version (sha256 of `signal-bot/vision_prompt.js`'s text) |
 | `set_trusted_host(host, trusted)` | owner | Trust an image host that hashes the photos it serves (the Signal bot) |
-| `set_relayer`, `set_params`, `remove_signer`, `set_owner` | owner | |
+| `set_paused(paused)` | owner | Stop or resume all filings at once (e.g. if a key leaks) |
+| `propose_owner(owner)` → `accept_owner()` | owner → new owner | Two-step transfer: nothing changes until the new owner accepts, so a typo can't brick admin |
+| `set_relayer`, `set_params`, `remove_signer` | owner | |
 | `get_feed`, `list_feeds`, `get_report`, `list_reports`, `get_reporter`, `report_for_image`, `get_prompts`, `get_signer`, `get_params` | view | Free to read |
 
-**Feeds** follow the same rules as Signal's Solana program: feeds are keyed `CATEGORY:region:item`
-(region from the store location the model read, else the user's region in the prompt) and priced in
-the receipt's currency. Once a feed has 3 prices, a price within ±40% of its median joins directly.
+**Feeds** follow the same rules as Signal's Solana program: feeds are keyed
+`CATEGORY:region:item:CURRENCY` (region from the city the model read, else the user's region in the
+prompt), so a misread currency lands in its own feed instead of locking out the real one. Once a feed has 3 prices, a price within ±40% of its median joins directly.
 One outside is held until 2 other reporters independently report within ±25% of it, with all of those
 prices within ±25% of each other — so two colluding accounts can't move an established feed, but a
 real price rise gets through. Each photo prices a feed at most once. A relayer's users get ids
@@ -56,7 +58,7 @@ Requires Rust, `cargo-near`, Node 24+, a testnet account in `~/.near-credentials
 NEAR AI Cloud key.
 
 ```bash
-cargo test                                   # 30 unit tests, incl. real NEAR AI signatures
+cargo test                                   # 34 unit tests, incl. real NEAR AI signatures
 cargo near build non-reproducible-wasm       # → target/near/signal_near.wasm
 npm install
 node scripts/deploy.mjs                      # creates oracle.<owner>, deploys, allows the prompt
