@@ -46,11 +46,14 @@ Prices and rewards are 6-decimal micro-units, like USDC (`800_000` = $0.80).
 | `settle` | anyone (crank) | Accept → pay from vault, push price to feed, +3 rep. Slash → release lock, −20 rep. Expire → release lock | Report still pending; evidence or timeout reached |
 | `flag_duplicate` | attester | −10 reputation for a wallet that resubmitted a photo | The existing Report PDA is the proof |
 | `flag_fake` | attester | −15 reputation for a photo the vision check caught as faked | `has_one = attester`; image hash goes in the event as evidence |
+| `submit_verified_report` | attester + reporter | Same as `submit_report`, but the attester already verified the photo and accepted the price, so the report is marked `Verified` and settles at once | `has_one = attester` (the Signal contract on NEAR, through Chain Signatures); same pool, ban and duplicate guards |
+| `update_attester` | admin | Replaces the attester: hands filing to the NEAR contract's key, rotates a leaked key, or, pointed at a key nobody holds, stops all filing | `has_one = admin` |
 
 ### Decision rule (`settle`)
 
 - **confirmed** = local bounds agree, **or** (feed too new for bounds) ≥1 peer agrees and agreeing ≥ disagreeing, **or** (bounds disagree) ≥ `peer_quorum` peers agree and agreeing > disagreeing
 - **contradicted** = bounds disagree with no peer support, **or** (feed too new for bounds) ≥ `peer_quorum` peers disagree and none agree
+- **Verified** (filed with `submit_verified_report`) → **accept** straight away: NEAR already ran the bounds and quorum, so the two chains can't disagree
 - confirmed → **accept**; contradicted → **slash**
 - neither, after `pending_timeout_secs` (48h) → **expire** if the price disagrees with the bounds, else accept if reputation ≥ 40, otherwise **expire**
 - neither, before the timeout → `StillPending`
@@ -79,18 +82,22 @@ the cranker pays.
 
 Compute units, measured in the test suite (max per instruction):
 
-| initialize | fund_pool | submit_report | peer_check | settle | flag_duplicate / flag_fake |
-|---|---|---|---|---|---|
-| 40,854 | 22,387 | 40,351 | 21,685 | 78,112 (incl. creating the reporter's ATA) | ~10,500 |
+| initialize | fund_pool | submit_report | submit_verified_report | peer_check | settle | flag_duplicate / flag_fake | update_attester |
+|---|---|---|---|---|---|---|---|
+| 40,854 | 22,387 | 40,351 | 38,858 | 21,685 | 78,112 (incl. creating the reporter's ATA) | ~10,500 | 5,300 |
 
 Reports and PeerLinks are never closed, on purpose: the Report PDA is what blocks a duplicate
 photo, so closing it would reopen that hole. Reclaiming rent from old PeerLinks is a safe follow-up.
 
 ## How you would attack it
 
-- **The attester is trusted.** The program cannot see a photo. A compromised attester key can file
-  any price for any wallet. Mitigations: keep the key in a KMS/HSM, rotate via an admin
-  instruction (not built yet), and watch `ReportSubmitted` events for anomalies.
+- **The attester is trusted.** The program cannot see a photo, so whoever holds the attester key can
+  file any price. On devnet the attester is the Signal contract on NEAR
+  (`DGEeJJStYHWoM5ALGE4tMDQ9mrktA5W5o98CsBEq5s2V`), a key only NEAR's MPC network can sign for and
+  only when that contract asks — and it only asks for prices NEAR AI signed in a TEE and its rules
+  accepted (see `signal-near/`). That moves the trust to two keys: the **admin**, who can point
+  `update_attester` anywhere, and the **NEAR contract's owner**, who can upgrade that contract. Both
+  belong in multisigs before mainnet. If the attester misbehaves, `update_attester` rotates it.
 - **Sybil peers.** One person with several Telegram accounts can confirm their own fake price.
   `SameReporter` only stops the same wallet. Overriding a feed's bounds takes `peer_quorum`
   agreeing reporters and a report outside the bounds never passes on timeout, so a pair of
