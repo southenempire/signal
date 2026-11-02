@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 /**
  * Signal Protocol Bot — Physical Truth Oracle
- * Integrated: Yellow Network (Nitrolite state channel settlement)
+ * NEAR AI audits receipts in a TEE, NEAR files them, Solana pays; BOTChain keeps a public mirror.
  */
 import dns from 'dns';
 try {
@@ -47,12 +47,6 @@ import {
 import bs58 from 'bs58';
 import fetch from 'node-fetch';
 import {
-  initYellow,
-  payReporterYellow,
-  getPendingYellowBalance,
-  getYellowStatus,
-} from './yellow.js';
-import {
   RULES, rewardFor, isBanned, regionFor, feedKey, slug, median,
 } from './consensus.js';
 import { settlePending, crankChain, penalize } from './settlement.js';
@@ -77,7 +71,7 @@ const MAX_ITEMS_PER_REPORT = 10;
 // Each item filed on-chain locks its own reward, so cap how many items one receipt can file.
 const MAX_ONCHAIN_ITEMS = parseInt(process.env.MAX_ONCHAIN_ITEMS || '5', 10);
 
-// ─── Zerion Agent Policies ────────────────────────────────────────────────────
+// ─── Payout limits ────────────────────────────────────────────────────────────
 const AGENT_POLICIES = {
     SPEND_LIMIT_USDC: 50.00, // Policy: Max $50 payout per node session
     CHAIN_LOCK: 'solana-devnet',
@@ -307,19 +301,7 @@ if (bot) {
 const settlementDeps = {
   payReward: async (telegramId, amount) => {
     const u = getOrCreateUser(telegramId);
-    const result = await payReward(u.keypair.publicKey, amount);
-    // Bonus rail: Yellow Network credit for users who linked an EVM wallet
-    const evmAddress = getYellowLink(telegramId);
-    if (evmAddress) {
-      payReporterYellow(evmAddress, amount).catch(e => console.warn('[Yellow] Bonus payout error (non-critical):', e.message));
-    }
-    return result;
-  },
-  onAccepted: (telegramId, amount) => {
-    const evmAddress = getYellowLink(telegramId);
-    if (evmAddress) {
-      payReporterYellow(evmAddress, amount).catch(e => console.warn('[Yellow] Bonus payout error (non-critical):', e.message));
-    }
+    return payReward(u.keypair.publicKey, amount);
   },
   notify: async (telegramId, html) => {
     if (!bot) return;
@@ -455,7 +437,7 @@ if (bot) {
     return ctx.replyWithHTML(`⛔ <b>Reporting suspended</b>\nYour reputation (${user.reputation}/100) is below the network minimum after repeated slashes.`);
   }
 
-  // Zerion Agent Policy Check: Daily Limit
+  // Daily report limit
   const DAILY_LIMIT = 10;
   if (getDailyReportCount(ctx.from.id) >= DAILY_LIMIT) {
     return ctx.replyWithHTML(`⚠️ <b>Policy Violation: Daily Limit Reached</b>\nYour agent is limited to ${DAILY_LIMIT} reports/day.`);
@@ -716,7 +698,7 @@ if (bot) {
       [Markup.button.callback('🪐 Auto-stake USDC → jupUSD', 'stake_jupusd')],
       [Markup.button.callback('💸 Withdraw (USDC)', 'withdraw_init'), Markup.button.callback('🏧 Withdraw (jupUSD)', 'withdraw_jup_init')],
       [Markup.button.callback('🏦 Cash Out to Bank', 'cashout_bank')],
-      [Markup.button.callback('🚀 Link BOTChain Wallet', 'yellow_link'), Markup.button.callback('🟡 Yellow Wallet', 'yellow_link')],
+      [Markup.button.callback('🚀 Link BOTChain Wallet', 'botchain_link')],
       [Markup.button.callback('🔑 Export Private Key', 'export_key')]
     ])
   );
@@ -848,45 +830,6 @@ if (bot) {
 });
 }
 
-// ── Yellow Channel Handler ───────────────────────────────────────────────────
-if (bot) {
-  bot.hears('🟡 Yellow Channel', async (ctx) => {
-    const userId = ctx.from.id;
-    const evmAddress = getYellowLink(userId);
-    const status = getYellowStatus();
-
-    if (!status.online) {
-      return ctx.replyWithHTML(
-        `🟡 <b>Yellow Network</b>\n\n` +
-        `⚠️ Yellow settlement rail is <b>offline</b>.\n` +
-        `The protocol owner needs to configure Yellow private keys.\n\n` +
-        `<i>Network: ${status.network} · Node: ${status.nitronodeURL}</i>`
-      );
-    }
-
-    const pending = evmAddress ? getPendingYellowBalance(evmAddress) : 0;
-
-    await ctx.replyWithHTML(
-      `🟡 <b>Yellow Network Channel</b>\n\n` +
-      `Status: <b>🟢 Online</b>\n` +
-      `Network: <b>${status.network}</b>\n` +
-      `Asset: <b>${status.asset.toUpperCase()}</b>\n\n` +
-      (evmAddress
-        ? `🔗 <b>Linked EVM Wallet:</b>\n<code>${evmAddress}</code>\n\n` +
-          `💰 <b>Pending Credits:</b> $${pending.toFixed(4)} USDC\n` +
-          `<i>(settled off-chain via state channels)</i>`
-        : `🔗 <b>No EVM wallet linked yet.</b>\n` +
-          `Link your EVM address to receive rewards via Yellow state channels!`
-      ),
-      Markup.inlineKeyboard([
-        evmAddress
-          ? [Markup.button.callback('🔄 Change EVM Wallet', 'yellow_link')]
-          : [Markup.button.callback('🔗 Link EVM Wallet', 'yellow_link')],
-      ])
-    );
-  });
-}
-
 if (bot) {
   bot.hears('🚀 BOTChain Hub', async (ctx) => {
     const evmAddress = getYellowLink(ctx.from.id);
@@ -899,11 +842,11 @@ if (bot) {
       `<code>${ORACLE_ADDRESS}</code>\n\n` +
       (evmAddress
         ? `🔗 <b>Linked Wallet:</b>\n<code>${evmAddress}</code>`
-        : `💡 <i>Link your EVM wallet address to receive multi-rail BOTChain micro-settlements!</i>`
+        : `💡 <i>Optional: link an EVM wallet to have it recorded next to your reports in the public BOTChain log.</i>`
       ),
       Markup.inlineKeyboard([
         [Markup.button.url('🔍 View Explorer Contract', `https://scan.botchain.ai/address/${ORACLE_ADDRESS}`)],
-        [Markup.button.callback(evmAddress ? '🔄 Change EVM Wallet' : '🔗 Link BOTChain / EVM Wallet', 'yellow_link')]
+        [Markup.button.callback(evmAddress ? '🔄 Change EVM Wallet' : '🔗 Link BOTChain Wallet', 'botchain_link')]
       ])
     );
   });
@@ -942,15 +885,15 @@ if (bot) {
   });
 }
 
-// Yellow: Link EVM wallet action
+// Link an EVM wallet for the BOTChain mirror
 if (bot) {
-  bot.action('yellow_link', async (ctx) => {
+  bot.action('botchain_link', async (ctx) => {
     await ctx.answerCbQuery();
     pendingReport.set(ctx.from.id, 'AWAITING_EVM_ADDRESS');
     await ctx.replyWithHTML(
-      `🟡 <b>Link Your EVM Wallet</b>\n\n` +
-      `Paste your EVM wallet address (e.g. from MetaMask, Rainbow, or any Ethereum wallet).\n\n` +
-      `<i>Your Signal oracle rewards will be credited to this address via Yellow state channels — instantly and gaslessly.</i>`
+      `🚀 <b>Link Your BOTChain Wallet</b>\n\n` +
+      `Paste an EVM wallet address (e.g. from MetaMask or Rainbow).\n\n` +
+      `<i>It is written publicly on BOTChain next to each report you make. Rewards are still paid in USDC on Solana. Skip this if you prefer your reports unlinked.</i>`
     );
   });
 }
@@ -960,7 +903,7 @@ if (bot) {
   bot.on('text', async (ctx) => {
   const text = ctx.message.text.trim();
 
-  // Yellow EVM address linking flow
+  // BOTChain wallet linking flow
   if (pendingReport.get(ctx.from.id) === 'AWAITING_EVM_ADDRESS') {
     pendingReport.delete(ctx.from.id);
     // Basic EVM address validation (0x + 40 hex chars)
@@ -968,9 +911,8 @@ if (bot) {
       saveYellowLink(ctx.from.id, text);
       await ctx.replyWithHTML(
         `✅ <b>EVM Wallet Linked!</b>\n\n` +
-        `🟡 Address: <code>${text}</code>\n\n` +
-        `Your next verified report will be credited via <b>Yellow state channels</b> as a bonus settlement option.\n\n` +
-        `<i>Powered by Nitrolite · Yellow Network</i>`,
+        `Address: <code>${text}</code>\n\n` +
+        `Your next verified reports will show this address in the public BOTChain log.`,
         MAIN_MENU
       );
     } else {
@@ -1144,22 +1086,8 @@ api.listen(PORT, '0.0.0.0', () => {
   console.log(`📡 Signal API is ONLINE and listening on port ${PORT}`);
 });
 
-// ── Yellow Network stats API endpoint ─────────────────────────────────────────
-api.get('/api/yellow-status', (req, res) => {
-  res.json(getYellowStatus());
-});
-
 // ─── Launch ───────────────────────────────────────────────────────────────────
 async function main() {
-  // Boot Yellow Network in parallel — non-blocking, graceful degradation
-  initYellow().then(online => {
-    if (online) {
-      console.log('🟡 [Yellow] State channel settlement rail ACTIVE');
-    } else {
-      console.log('🟡 [Yellow] Rail offline — set YELLOW_USER_PRIVATE_KEY to enable');
-    }
-  });
-
   // Consensus: settle pending reports as peer data arrives and timeouts pass
   setInterval(runSettlement, SETTLE_INTERVAL_MS);
 

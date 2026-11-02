@@ -59,28 +59,32 @@ their SHA-256 hash.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                     USER (Telegram)                              │
-│       Photographs receipt / price tag / fuel display             │
+│  USER (Telegram)  photographs a receipt / price tag / fuel pump  │
 └─────────────────────────────────┬────────────────────────────────┘
-                                  │ Photo upload
+                                  │ photo (held in memory only)
                                   ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                   NEAR AI CLOUD (TEE ENCLAVE)                    │
-│      Audits image, extracts line items, signs with Ed25519       │
+│  SIGNAL BOT (relayer)  sends the photo to NEAR AI, files the     │
+│  signed verdict on NEAR, relays the MPC-signed tx to Solana      │
 └─────────────────────────────────┬────────────────────────────────┘
-                                  │ Signed Audit Payload
+                                  │
                                   ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                  NEAR SMART CONTRACT (Testnet)                   │
-│   `oracle.signal-southen.testnet` checks signature & prompt      │
-│   Records city-level feed · Requests Chain Signatures MPC signature│
+│  NEAR AI CLOUD (TEE: Intel TDX + NVIDIA GPU)                     │
+│  Audits the image, extracts prices, signs (ECDSA secp256k1)      │
 └─────────────────────────────────┬────────────────────────────────┘
-                                  │ MPC Signature (ed25519)
+                                  │ signed request + response
                                   ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│                  SOLANA ANCHOR PROGRAM (Devnet)                  │
-│    `HmCLsXYjktA3EaSmipee7qzDNTefJASUWaXeiafwmquS`                 │
-│    Verifies NEAR attester signature · Pays USDC from Vault       │
+│  NEAR CONTRACT  oracle.signal-southen.testnet                    │
+│  ecrecover on the TEE signature · prompt hash · price rules      │
+│  Builds the Solana filing · Chain Signatures MPC signs (Ed25519) │
+└─────────────────────────────────┬────────────────────────────────┘
+                                  │ Solana tx signed by NEAR's key
+                                  ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  SOLANA PROGRAM (Devnet)  HmCLsXYj…mquS                          │
+│  Accepts filings only from the NEAR attester · pays USDC         │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
@@ -101,13 +105,13 @@ their SHA-256 hash.
 ### Oracle Engine
 - **Verifiable AI Vision** — Qwen3.8 27B inside a Confidential TEE on NEAR AI Cloud audits physical receipt photos in real-time.
 - **Anti-Fraud & Slashing** — SHA-256 image fingerprinting, duplicate race-condition locking, visual prompt injection defense, and automated reputation slashing.
-- **Privacy by Design** — Only city-level geographic macro data is published on-chain; private individual identifiers and street locations are never stored on-chain.
+- **Privacy by Design** — Receipt photos are held in memory only and never go on-chain (only their SHA-256 hash). Telegram IDs never touch a chain: reporters appear only as pseudonymous Solana wallets and salted ids, and locations only at city level.
 - **Dual-Chain Consensus** — NEAR smart contract enforces peer quorums and local median bounds, while Solana Anchor program enforces vault payouts and non-custodial reputation PDAs.
 
 ### Smart Contracts
 - **NEAR Contract (`signal-near/src/lib.rs`):**
-  - Verifies Ed25519 cryptographic signatures from NEAR AI TEE enclaves.
-  - Hashed prompt verification against registered governance prompt.
+  - Verifies NEAR AI's TEE signature on-chain (ECDSA secp256k1 via `ecrecover`) against the registered, attested signer.
+  - Checks the prompt hash against the owner-registered prompt.
   - Generates cross-chain Solana filing payloads for NEAR Chain Signatures MPC.
   - Two-step ownership transfer (`nominate_owner` / `accept_ownership`) and emergency circuit breaker.
 - **Solana Program (`signal-program/programs/signal_oracle/src/lib.rs`):**
@@ -118,7 +122,7 @@ their SHA-256 hash.
   - `recordPrice(feedKey, usdcPrice, imageHash, reporterId, wallet, feedMedian, feedSamples, newReputation)` logs verified data to BOTChain L1.
 
 ### Telegram Bot
-- Embedded non-custodial Solana keypair generated per user on `/start`.
+- Custodial Solana wallet created per user on `/start`; the user can export its key at any time.
 - 60-second ephemeral self-deleting private key export for user security.
 - In-flight photo concurrency locks to prevent double-spending or duplicate submission races.
 - Direct links to NEAR transaction proofs and Solana payout accounts.
@@ -147,7 +151,7 @@ colosseum-frontier/
 
 | Layer | Technology |
 |:------|:-----------|
-| Runtime | Node.js 20+ (ESM) |
+| Runtime | Node.js 22 (bot), Node.js 24 (website) |
 | Web Explorer | Next.js 14 (App Router), Tailwind CSS, Framer Motion |
 | Bot Framework | Telegraf v4 |
 | Confidential AI | Qwen3.8 27B on NEAR AI Cloud (TEE Enclave, signed verdicts) |
@@ -161,7 +165,7 @@ colosseum-frontier/
 ## Getting Started
 
 ### Prerequisites
-- Node.js 20+
+- Node.js 22+ for the bot, Node.js 24 for the website
 - Rust & Cargo (with `wasm32-unknown-unknown` target for NEAR contract)
 - A Telegram Bot Token ([create via @BotFather](https://t.me/BotFather))
 - A NEAR AI API Key ([create via NEAR AI Cloud](https://cloud.near.ai))
@@ -173,6 +177,7 @@ Configure `signal-bot/.env`:
 ```env
 TELEGRAM_BOT_TOKEN=your_bot_token
 NEARAI_API_KEY=your_nearai_api_key
+PUBLIC_URL=https://your-bot-host   # NEAR AI fetches photos from here
 RPC_URL=https://api.devnet.solana.com
 USDC_MINT=4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU
 SOLANA_KEYPAIR_JSON=[your_wallet_keypair_array]
@@ -182,6 +187,7 @@ NEAR_NETWORK=testnet
 NEAR_ACCOUNT_ID=bot.signal-southen.testnet
 SIGNAL_NEAR_CONTRACT=oracle.signal-southen.testnet
 NEAR_PRIVATE_KEY=ed25519:...
+NEAR_ATTESTS_SOLANA=on          # NEAR files on Solana via Chain Signatures
 
 # BOTChain (Optional)
 BOTCHAIN_RPC=https://rpc.botchain.ai
