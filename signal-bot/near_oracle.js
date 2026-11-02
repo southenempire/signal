@@ -55,6 +55,43 @@ export async function fileVerdict({ request, response, signature, telegramId }) 
   return { report, txHash: tx.transaction.hash };
 }
 
+/** The id a relayed Telegram user has on-chain: namespaced by this relayer account. */
+const relayedReporter = (telegramId) => `${ACCOUNT_ID}/${nearReporterId(telegramId)}`;
+
+/** Make sure the NEAR contract knows which Solana wallet this user's rewards and reputation go to. */
+export async function ensureSolanaWallet(telegramId, wallet) {
+  const registered = await provider.callFunction({ contractId: CONTRACT, method: 'get_solana_wallet', args: { reporter: relayedReporter(telegramId) } });
+  if (registered === wallet.toBase58()) return;
+  const tx = await account.callFunctionRaw({
+    contractId: CONTRACT,
+    methodName: 'register_solana_wallet',
+    args: { wallet: wallet.toBase58(), reporter: nearReporterId(telegramId) },
+    gas: teraToGas('30'),
+  });
+  if (tx.status?.Failure) throw new Error(`register_solana_wallet refused: ${JSON.stringify(tx.status.Failure).slice(0, 200)}`);
+}
+
+/** Run a contract call that ends in an MPC-signed Solana transaction; returns it as base64. */
+async function mpcSigned(methodName, args) {
+  const tx = await account.callFunctionRaw({ contractId: CONTRACT, methodName, args, gas: teraToGas('150') });
+  if (tx.status?.Failure) throw new Error(`${methodName} refused: ${JSON.stringify(tx.status.Failure).slice(0, 300)}`);
+  const value = JSON.parse(Buffer.from(tx.status.SuccessValue, 'base64').toString());
+  if (!value) throw new Error(`${methodName}: the MPC network did not sign`);
+  return value;
+}
+
+/** MPC-signed Solana filing of one accepted price from a NEAR report. */
+export const signSolanaReport = (reportId, itemIndex, accounts, recentBlockhash) =>
+  mpcSigned('sign_solana_report', { report_id: reportId, item_index: itemIndex, accounts, recent_blockhash: recentBlockhash });
+
+/** MPC-signed Solana penalty for a NEAR report the model judged a fake. */
+export const signSolanaFraud = (reportId, accounts, recentBlockhash) =>
+  mpcSigned('sign_solana_fraud', { report_id: reportId, accounts, recent_blockhash: recentBlockhash });
+
+export async function getNearReport(id) {
+  return provider.callFunction({ contractId: CONTRACT, method: 'get_report', args: { id } });
+}
+
 /** All feeds on NEAR, for the API and website. */
 export async function listNearFeeds() {
   if (!provider) return [];

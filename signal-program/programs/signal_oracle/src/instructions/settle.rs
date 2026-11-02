@@ -77,7 +77,7 @@ impl<'info> Settle<'info> {
         let c = &self.config;
 
         let confirmed = match r.bounds {
-            Bounds::Agree => true,
+            Bounds::Agree | Bounds::Verified => true,
             Bounds::None => r.confirmations > 0 && r.confirmations >= r.contradictions,
             Bounds::Disagree => r.confirmations >= c.peer_quorum && r.confirmations > r.contradictions,
         };

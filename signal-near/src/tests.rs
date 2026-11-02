@@ -429,3 +429,124 @@ fn only_the_owner_registers_keys() {
     at(NOW, accounts(3), NearToken::from_yoctonear(0));
     c.register_signer("0x0000000000000000000000000000000000000001".into(), MODEL.into(), "x".into());
 }
+
+// ── Filing on Solana through Chain Signatures ──────────────────────────────────
+
+const SOL_ATTESTER: &str = "GMbjUbhAQERHMjRKPirmEGs5fZn6oWCFRS6x8CaRkLgv";
+const SOL_WALLET: &str = "2nk5gWSpKEViCqJL6vp1SmFfWr4dVUXJLnhzTxR8VPUW";
+
+fn solana_ready() -> (Contract, TestSigner) {
+    let (mut c, s) = with_test_signer();
+    at(NOW, accounts(0), NearToken::from_yoctonear(0));
+    c.set_solana_settings(SolanaSettings {
+        mpc_signer: "v1.signer-prod.testnet".parse().unwrap(),
+        path: "signal-solana".into(),
+        attester: SOL_ATTESTER.into(),
+    });
+    at(NOW, accounts(5), NearToken::from_yoctonear(0));
+    c.register_solana_wallet(SOL_WALLET.into(), Some("tg:a".into()));
+    (c, s)
+}
+
+fn pdas() -> ReportAccounts {
+    let a = SOL_WALLET.to_string();
+    ReportAccounts { config: a.clone(), reporter: a.clone(), feed: a.clone(), report: a.clone(), vault: a }
+}
+
+#[test]
+fn relayers_register_their_users_solana_wallets() {
+    let (c, _) = solana_ready();
+    assert_eq!(c.get_solana_wallet(relayed("tg:a")), Some(SOL_WALLET.into()));
+    assert_eq!(c.get_solana_wallet("tg:a".into()), None, "namespaced like reporter ids");
+}
+
+#[test]
+fn an_accepted_price_can_be_sent_for_signing() {
+    let (mut c, mut s) = solana_ready();
+    let r = file(&mut c, &mut s, "tg:a", bread(2000.0));
+    at(NOW, accounts(3), NearToken::from_yoctonear(0)); // anyone may crank it
+    let _promise = c.sign_solana_report(r.id, 0, pdas(), SOL_WALLET.into());
+}
+
+#[test]
+#[should_panic(expected = "only accepted prices")]
+fn held_prices_are_not_filed_on_solana() {
+    let (mut c, mut s) = solana_ready();
+    for (who, price) in [("tg:a", 2000.0), ("tg:b", 2050.0), ("tg:c", 2020.0)] {
+        file(&mut c, &mut s, who, bread(price));
+    }
+    let x = file(&mut c, &mut s, "tg:a", bread(6000.0));
+    assert_eq!(x.items[0].outcome, Outcome::Held);
+    let _ = c.sign_solana_report(x.id, 0, pdas(), SOL_WALLET.into());
+}
+
+#[test]
+#[should_panic(expected = "no Solana wallet registered")]
+fn reporters_need_a_registered_wallet() {
+    let (mut c, mut s) = solana_ready();
+    let r = file(&mut c, &mut s, "tg:nobody", bread(2000.0));
+    let _ = c.sign_solana_report(r.id, 0, pdas(), SOL_WALLET.into());
+}
+
+#[test]
+#[should_panic(expected = "filing is paused")]
+fn pausing_also_stops_solana_filing() {
+    let (mut c, mut s) = solana_ready();
+    let r = file(&mut c, &mut s, "tg:a", bread(2000.0));
+    at(NOW, accounts(0), NearToken::from_yoctonear(0));
+    c.set_paused(true);
+    let _ = c.sign_solana_report(r.id, 0, pdas(), SOL_WALLET.into());
+}
+
+fn fraud_report(c: &mut Contract, s: &mut TestSigner) -> Report {
+    let mut v = bread(100.0);
+    v["verified"] = false.into();
+    v["fraudSuspected"] = true.into();
+    file(c, s, "tg:a", v)
+}
+
+fn fraud_pdas() -> FraudAccounts {
+    FraudAccounts { config: SOL_WALLET.into(), offender: SOL_WALLET.into() }
+}
+
+#[test]
+#[should_panic(expected = "already sent for signing")]
+fn a_fake_is_penalised_on_solana_once() {
+    let (mut c, mut s) = solana_ready();
+    let r = fraud_report(&mut c, &mut s);
+    at(NOW, accounts(5), NearToken::from_yoctonear(0));
+    let _ = c.sign_solana_fraud(r.id, fraud_pdas(), SOL_WALLET.into());
+    let _ = c.sign_solana_fraud(r.id, fraud_pdas(), SOL_WALLET.into());
+}
+
+#[test]
+#[should_panic(expected = "only a relayer or the owner")]
+fn strangers_cannot_file_penalties() {
+    let (mut c, mut s) = solana_ready();
+    let r = fraud_report(&mut c, &mut s);
+    at(NOW, accounts(3), NearToken::from_yoctonear(0));
+    let _ = c.sign_solana_fraud(r.id, fraud_pdas(), SOL_WALLET.into());
+}
+
+#[test]
+fn the_signed_transaction_carries_the_mpc_signature_first() {
+    let (mut c, _) = solana_ready();
+    let message = vec![7u8; 100];
+    let sig: Vec<u64> = (0..64).collect();
+    let ok = serde_json::json!({ "scheme": "Ed25519", "signature": sig });
+    let tx = c.on_solana_signed(Ok(ok), message.clone().into(), 2, None).unwrap().0;
+    assert_eq!(tx[0], 2, "two signature slots");
+    assert_eq!(tx[1..65].to_vec(), (0..64u8).collect::<Vec<_>>(), "the MPC signature");
+    assert!(tx[65..129].iter().all(|&b| b == 0), "the reporter's slot, left for them");
+    assert_eq!(&tx[129..], &message[..]);
+}
+
+#[test]
+fn a_failed_penalty_signature_can_be_retried() {
+    let (mut c, mut s) = solana_ready();
+    let r = fraud_report(&mut c, &mut s);
+    at(NOW, accounts(5), NearToken::from_yoctonear(0));
+    let _ = c.sign_solana_fraud(r.id, fraud_pdas(), SOL_WALLET.into());
+    assert!(c.on_solana_signed(Err(PromiseError::Failed), vec![1u8; 10].into(), 1, Some(r.id)).is_none());
+    let _ = c.sign_solana_fraud(r.id, fraud_pdas(), SOL_WALLET.into()); // allowed again
+}

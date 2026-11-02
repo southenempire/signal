@@ -157,7 +157,8 @@ export async function crankChain(deps) {
       // Mirror to BOTChain for the incubator's public log.
       const mirror = await recordObservation({
         feedKey: obs.feed_key,
-        priceUsd: s.priceUsd,
+        // The local USD price: NEAR-attested filings are priced on-chain in the receipt's currency.
+        priceUsd: obs.price_usd,
         imageHash: obs.image_hash,
         telegramId: obs.telegram_id,
         wallet: getYellowLink(obs.telegram_id),
@@ -195,9 +196,20 @@ export async function crankChain(deps) {
  * program enforces the reputation cut), always recorded locally and mirrored to BOTChain.
  * @returns {Promise<number>} the reporter's new reputation
  */
-export async function penalize({ kind, telegramId, wallet, category, imagePath, imageHash, feedKey, reason }) {
+export async function penalize({ kind, telegramId, wallet, category, imagePath, imageHash, feedKey, reason, chainPenalty }) {
   let newRep = null;
-  if (oracle.isEnabled()) {
+  // When NEAR attests on Solana the bot can't file penalties itself: `chainPenalty` files it through
+  // NEAR (fakes), or is null when there's no on-chain penalty to file (duplicates, caught by NEAR).
+  if (chainPenalty !== undefined) {
+    if (chainPenalty && oracle.isEnabled()) {
+      try {
+        await chainPenalty();
+        newRep = (await oracle.getReporter(wallet))?.reputation ?? null;
+      } catch (e) {
+        console.error(`[NEAR→Solana] ${kind} penalty failed:`, e.message);
+      }
+    }
+  } else if (oracle.isEnabled()) {
     try {
       if (kind === 'duplicate') {
         // The on-chain penalty needs the original Report as proof; photos filed before the
