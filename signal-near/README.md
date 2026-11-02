@@ -52,13 +52,34 @@ feed, wait for peers, or vouch for anyone — so re-hosting one photo under made
 
 Every filing emits a NEP-297 event (`EVENT_JSON:{"standard":"signal",…}`).
 
+## NEAR decides, Solana pays (Chain Signatures)
+
+Signal's reward vault, reputation and slashing live in its Solana program. That program only accepts
+filings from its **attester**, and the attester is this contract's own Solana key
+(`DGEeJJStYHWoM5ALGE4tMDQ9mrktA5W5o98CsBEq5s2V`, path `signal-solana`), which only NEAR's MPC network
+can sign for, and only when this contract asks.
+
+| Method | Who | |
+| --- | --- | --- |
+| `register_solana_wallet(wallet, reporter?)` | relayer / anyone | Where a reporter's rewards go on Solana (relayers register their users, namespaced) |
+| `sign_solana_report(report_id, item_index, accounts, recent_blockhash)` | anyone | For a price this contract accepted: build `submit_verified_report` byte by byte and have the MPC network sign it. Retries are harmless — Solana refuses a second filing of the same photo and item |
+| `sign_solana_fraud(report_id, accounts, recent_blockhash)` | relayer / owner, once | For a fraud verdict: the Solana `flag_fake` penalty |
+| `set_solana_settings` | owner | MPC signer, path, and the derived key |
+
+The message is built in `src/solana.rs` with the program id, instruction and argument layout fixed in
+code; callers only pass a blockhash and PDAs, which the Solana program re-derives and rejects if wrong.
+A test checks every message means exactly what `@solana/web3.js` + Anchor build from the program's IDL.
+On Solana, `submit_verified_report` (attester only) settles at once — NEAR already ran the bounds and
+quorum — so the two chains can't disagree. Tested end to end on devnet: NEAR-accepted price → MPC
+signature (~7–17 s) → filed on Solana → settled → 0.20 USDC paid; a second filing is refused.
+
 ## Try it
 
 Requires Rust, `cargo-near`, Node 24+, a testnet account in `~/.near-credentials/testnet/`, and a
 NEAR AI Cloud key.
 
 ```bash
-cargo test                                   # 34 unit tests, incl. real NEAR AI signatures
+cargo test                                   # 46 unit tests, incl. real NEAR AI signatures
 cargo near build non-reproducible-wasm       # → target/near/signal_near.wasm
 npm install
 node scripts/deploy.mjs                      # creates oracle.<owner>, deploys, allows the prompt

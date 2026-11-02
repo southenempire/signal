@@ -29,22 +29,25 @@ BOTChain mirror are the baseline, tagged `pre-hackathon`. Only the NEAR integrat
 
 **What it adds.** Before, the bot was trusted to report what its vision model said. Now NEAR AI's
 vision model audits each receipt inside a TEE (Intel TDX + NVIDIA GPU) and signs what it saw, and a NEAR
-contract checks that signature on-chain before filing a single price. Receipt photos are never stored
-or put on-chain — only their sha256.
+contract checks that signature on-chain before filing a single price. Rewards are still paid on Solana,
+but only for prices NEAR accepted: the NEAR contract is the Solana program's attester through Chain
+Signatures, so no bot or server key can file. Receipt photos are never stored or put on-chain — only
+their sha256.
 
 | Part | Where |
 | --- | --- |
 | NEAR contract: on-chain TEE signature check, prompt check, replay/duplicate protection, price feeds with a peer quorum | [`signal-near/`](signal-near/) — deployed at `oracle.signal-southen.testnet` |
 | Verified vision through NEAR AI Cloud, keeping the exact signed bytes | [`signal-bot/nearai.js`](signal-bot/nearai.js) |
 | Bot files every verdict on NEAR as a relayer for anonymous reporter ids | [`signal-bot/near_oracle.js`](signal-bot/near_oracle.js) |
-| Live attestation check (fresh nonce, TDX, GPU, key registered on NEAR) and every NEAR report | [`/verify`](https://signal-bot-chi.vercel.app/verify) |
+| **NEAR decides, Solana pays**: the NEAR contract is the Solana program's attester through Chain Signatures. For each price it accepts, it builds the Solana filing itself and NEAR's MPC network signs it; the Solana program pays the reward from its vault. No bot or server key can file | [`signal-near/src/solana.rs`](signal-near/src/solana.rs), `update_attester` + `submit_verified_report` in [`signal-program/`](signal-program/) |
+| Live attestation check (fresh nonce, TDX, GPU, key registered on NEAR), the Solana attester check, and every NEAR report with its Solana payout | [`/verify`](https://signal-bot-chi.vercel.app/verify) |
 
 **Try it**
 
 1. Open [signal-bot-chi.vercel.app/verify](https://signal-bot-chi.vercel.app/verify) → see NEAR AI's attestation verified live with a fresh nonce, the key registered in the contract, and the latest reports filed on NEAR.
-2. Send a receipt photo to [@OfficialSignalOracleBot](https://t.me/OfficialSignalOracleBot) → the reply links the NEAR transaction that filed it; the report appears on `/verify`.
+2. Send a receipt photo to [@OfficialSignalOracleBot](https://t.me/OfficialSignalOracleBot) → the reply links the NEAR transaction that filed it and says the accepted prices are being paid on Solana; on `/verify` each accepted price shows "→ Solana: accepted, 0.20 USDC paid" with a link to its Solana account.
 3. `near view oracle.signal-southen.testnet list_feeds '{}'` → read the feeds straight from NEAR.
-4. `cd signal-near && cargo test` → 34 tests pass, including real NEAR AI signatures, a one-byte forgery being rejected, the published answer holding no personal details, and feed-stuffing attempts being refused.
+4. `cd signal-near && cargo test` → 46 tests pass, including real NEAR AI signatures, a one-byte forgery being rejected, the published answer holding no personal details, and feed-stuffing attempts being refused.
 5. Reproduce a filing yourself: see [`signal-near/README.md`](signal-near/README.md#try-it).
 
 **Built with:** near-sdk 5.30 (Rust) and cargo-near, near-api-js 7.4, NEAR AI Cloud (`Qwen/Qwen3.8-27B`) and

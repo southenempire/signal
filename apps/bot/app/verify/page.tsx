@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { ShieldCheck, CheckCircle2, XCircle, RefreshCw, ExternalLink, Lock, FileCheck2, Cpu } from 'lucide-react';
+import { ShieldCheck, CheckCircle2, XCircle, RefreshCw, ExternalLink, Lock, FileCheck2, Cpu, Coins } from 'lucide-react';
 
 type Check = { label: string; ok: boolean; detail: string };
 type Attestation = {
@@ -21,7 +21,7 @@ type Report = {
   category: string;
   currency: string | null;
   region: string;
-  items: { feed: string; price: number; outcome: Outcome }[];
+  items: { feed: string; price: number; outcome: Outcome; solana: SolanaFiling | null }[];
   model: string;
   signer: string;
   completion_id: string;
@@ -30,6 +30,7 @@ type Report = {
   image_sha256: string;
   submitted_at_secs: number;
 };
+type SolanaFiling = { report: string; url: string; status: 'pending' | 'accepted' | 'slashed' | 'expired'; rewardUsdc: number };
 type Reports = {
   live: boolean;
   contract: string;
@@ -37,6 +38,7 @@ type Reports = {
   reportsCount?: number;
   feedsCount?: number;
   prompts?: string[];
+  solana?: { program: string; programUrl: string; nearKey: string | null; programAttester: string | null; nearIsAttester: boolean };
   reports: Report[];
   error?: string;
 };
@@ -163,6 +165,31 @@ export default function VerifyPage() {
           )}
         </section>
 
+        {/* NEAR decides, Solana pays */}
+        {data?.solana && (
+          <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6 space-y-3">
+            <div className="flex items-center gap-2">
+              <Coins size={18} className="text-[#10B981]" />
+              <h2 className="font-bold">NEAR decides, Solana pays</h2>
+            </div>
+            <p className="text-sm text-zinc-400">
+              Rewards are paid from the Signal program&apos;s vault on Solana. The program only accepts filings signed by this
+              contract&apos;s own Solana key, which NEAR&apos;s MPC network controls through Chain Signatures — so only prices
+              verified and accepted on NEAR can be paid, and no bot or server key can file.
+            </p>
+            <ul>
+              <CheckRow c={{
+                label: 'Solana program attester is the NEAR contract’s key',
+                ok: data.solana.nearIsAttester,
+                detail: `program attester ${data.solana.programAttester ?? 'unreadable'} · NEAR contract key ${data.solana.nearKey ?? 'not configured'}`,
+              }} />
+            </ul>
+            <a href={data.solana.programUrl} target="_blank" rel="noreferrer" className="text-xs text-zinc-400 hover:text-white inline-flex items-center gap-1 font-mono">
+              Signal program {short(data.solana.program, 8)} on Solana devnet <ExternalLink size={12} />
+            </a>
+          </section>
+        )}
+
         {/* Reports */}
         <section className="space-y-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -189,13 +216,18 @@ export default function VerifyPage() {
               {r.reason && <p className="text-sm text-zinc-400">“{r.reason}”</p>}
               {r.items.length > 0 && (
                 <ul className="text-sm space-y-1">
-                  {r.items.map((it) => {
+                  {r.items.map((it, i) => {
                     const o = outcomeLabel(it.outcome);
                     return (
-                      <li key={it.feed} className="flex flex-wrap gap-x-3 font-mono text-xs">
+                      <li key={`${it.feed}-${i}`} className="flex flex-wrap gap-x-3 font-mono text-xs">
                         <span className="text-zinc-300 break-all">{it.feed}</span>
                         <span className="text-white">{(it.price / 100).toFixed(2)} {r.currency}</span>
                         <span className={o.tone}>{o.text}</span>
+                        {it.solana && (
+                          <a href={it.solana.url} target="_blank" rel="noreferrer" className="text-[#10B981] hover:underline inline-flex items-center gap-1">
+                            → Solana: {it.solana.status}{it.solana.status === 'accepted' ? `, ${it.solana.rewardUsdc.toFixed(2)} USDC paid` : ''} <ExternalLink size={10} />
+                          </a>
+                        )}
                       </li>
                     );
                   })}
