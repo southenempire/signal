@@ -21,7 +21,8 @@ function CountUp({ to, decimals = 0 }: { to: number; decimals?: number }) {
     const startTime = performance.now();
     const tick = (now: number) => {
       const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
+      // The first frame's timestamp can precede startTime; clamp so the count never dips below 0.
+      const progress = Math.max(0, Math.min(elapsed / duration, 1));
       const eased = 1 - Math.pow(1 - progress, 3);
       const current = to * eased;
       setDisplay(
@@ -137,7 +138,7 @@ function TelegramInspector({ isLight }: { isLight: boolean }) {
             }`}
           >
             <div className="flex items-center gap-1.5 text-[#00D4AA] font-bold text-[11px] mb-2.5">
-              <ShieldCheck size={14} /> AI Verification Passed · Confidence 99.8%
+              <ShieldCheck size={14} /> Verified by NEAR AI in a TEE · signature checked on NEAR
             </div>
             
             <div className="space-y-1.5 text-[11px] text-zinc-400 font-mono mb-3 bg-black/5 dark:bg-black/30 p-2.5 rounded-xl border border-current/5">
@@ -172,11 +173,11 @@ function TelegramInspector({ isLight }: { isLight: boolean }) {
                 isLight ? "bg-[#00D4AA]/10 text-[#008f73]" : "bg-[#00D4AA]/10 text-[#00D4AA]"
               }`}
             >
-              <span>Settled on Solana:</span>
-              <span className="font-bold">+0.25 USDC (SPL)</span>
+              <span>Paid on Solana:</span>
+              <span className="font-bold">+0.20 USDC</span>
             </div>
           </div>
-          <span className="text-[9px] text-zinc-500 mt-1 font-mono">14:02 · Instant Settlement</span>
+          <span className="text-[9px] text-zinc-500 mt-1 font-mono">14:02 · verified on NEAR → paid on Solana</span>
         </div>
       </div>
     </div>
@@ -293,8 +294,9 @@ export default function Home() {
                   isLight ? "text-zinc-600" : "text-zinc-400"
                 }`}
               >
-                The world&apos;s first decentralized Physical Oracle Network on
-                Solana. Capturing ground truth, verified by AI, settled in real-time.
+                <span className={isLight ? "text-zinc-900 font-semibold" : "text-white font-semibold"}>Prices go public. You don&apos;t.</span>{" "}
+                Snap a receipt in Telegram: an attested AI reads it inside a secure enclave, NEAR verifies it
+                on-chain, and Solana pays you in USDC.
               </p>
 
               {/* Stats Row with Horizontal Bar Divider (Matches Mockup) */}
@@ -407,7 +409,7 @@ export default function Home() {
                 Proof of Ground Truth
               </span>
               <h2 className="text-3xl sm:text-4xl font-black tracking-tight leading-tight">
-                From a phone camera to a Solana smart contract.
+                From a phone camera to on-chain proof.
               </h2>
               <p className={`text-base leading-relaxed ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
                 Traditional oracles only know what is already digital. Signal turns anyone with Telegram and a camera into an active data node — capturing real prices from neighbourhood markets, supermarkets, and gas stations.
@@ -422,13 +424,13 @@ export default function Home() {
                   },
                   {
                     step: "2",
-                    title: "Groq & Vision AI Pipeline",
-                    desc: "Extracts vendor data, item line items, and totals while filtering forged photos or duplicate submissions.",
+                    title: "Attested AI in a secure enclave",
+                    desc: "NEAR AI's vision model reads the receipt inside an Intel TDX + NVIDIA TEE and signs what it saw. Screenshots, edited photos and hidden instructions are flagged as fakes.",
                   },
                   {
                     step: "3",
-                    title: "Immutable Inscription",
-                    desc: "Every record is published to the BOTChain ledger and paid instantly via Solana SPL USDC.",
+                    title: "Verified on NEAR, paid on Solana",
+                    desc: "A NEAR contract checks the AI's signature on-chain, then files the price on Solana through Chain Signatures, where the reward is paid in USDC. Only city, date and prices are published.",
                   },
                 ].map((item) => (
                   <div key={item.step} className="flex gap-3.5 items-start">
@@ -625,7 +627,7 @@ export default function Home() {
             Start contributing ground truth.
           </h2>
           <p className={`text-base sm:text-lg mb-7 ${isLight ? "text-zinc-600" : "text-zinc-400"}`}>
-            Open Telegram and submit verified real-world data points in seconds. Earn USDC directly on Solana.
+            Open Telegram and send a receipt. Earn USDC on Solana while your photo and identity stay private.
           </p>
           <motion.a
             href={BOT_URL}
@@ -667,7 +669,7 @@ export default function Home() {
                 </span>
               </div>
               <p className={`text-xs sm:text-sm leading-relaxed max-w-xs ${isLight ? "text-zinc-500" : "text-zinc-600"}`}>
-                A permissionless Physical Oracle Layer. Community-powered. AI-verified. Settled on Solana.
+                Real-world prices, read by an attested AI, verified on NEAR, paid on Solana.
               </p>
             </div>
             <div>

@@ -47,17 +47,17 @@ const short = (h: string, n = 10) => (h.length > 2 * n ? `${h.slice(0, n)}…${h
 
 function outcomeLabel(o: Outcome) {
   if (o === 'Held') return { text: 'held for peers', tone: 'text-amber-400' };
-  if ('Accepted' in o) return { text: o.Accepted.promoted.length ? `accepted (+${o.Accepted.promoted.length} held)` : 'accepted', tone: 'text-[#10B981]' };
-  return { text: `rejected: ${o.Rejected.reason}`, tone: 'text-red-400' };
+  if ('Accepted' in o) return { text: o.Accepted.promoted.length ? `accepted (+${o.Accepted.promoted.length} held)` : 'accepted', tone: 'text-accent' };
+  return { text: `rejected: ${o.Rejected.reason}`, tone: 'text-red-500' };
 }
 
 function CheckRow({ c }: { c: Check }) {
   return (
-    <li className="flex gap-3 py-2.5 border-b border-white/5 last:border-0">
-      {c.ok ? <CheckCircle2 size={18} className="text-[#10B981] shrink-0 mt-0.5" /> : <XCircle size={18} className="text-red-400 shrink-0 mt-0.5" />}
+    <li className="flex gap-3 py-2.5 border-b border-line last:border-0">
+      {c.ok ? <CheckCircle2 size={18} className="text-accent shrink-0 mt-0.5" /> : <XCircle size={18} className="text-red-500 shrink-0 mt-0.5" />}
       <div className="min-w-0">
-        <p className="text-sm font-semibold text-white">{c.label}</p>
-        <p className="text-xs font-mono text-zinc-400 break-all">{c.detail}</p>
+        <p className="text-sm font-semibold text-fg">{c.label}</p>
+        <p className="text-xs font-mono text-dim break-all">{c.detail}</p>
       </div>
     </li>
   );
@@ -95,16 +95,16 @@ export default function VerifyPage() {
   }, [runCheck]);
 
   return (
-    <div className="min-h-[calc(100dvh-5rem)] w-full bg-[#0a0a0c] text-white">
+    <div className="min-h-[calc(100dvh-5rem)] w-full bg-page text-fg">
       <div className="max-w-5xl mx-auto px-4 sm:px-8 py-8 sm:py-12 space-y-8">
         <header className="space-y-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#10B981]/10 border border-[#10B981]/20 flex items-center justify-center">
-              <ShieldCheck size={20} className="text-[#10B981]" />
+              <ShieldCheck size={20} className="text-accent" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Verify</h1>
           </div>
-          <p className="text-zinc-400 max-w-3xl">
+          <p className="text-dim max-w-3xl">
             Every price Signal files on NEAR was read by NEAR AI&apos;s vision model inside a TEE (Intel TDX + NVIDIA GPU).
             The model signs what it saw, and the NEAR contract checks that signature before accepting a single price.
             Receipt photos are never stored by Signal or put on-chain — only their hashes.
@@ -112,13 +112,13 @@ export default function VerifyPage() {
         </header>
 
         {/* Live attestation */}
-        <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
+        <section className="rounded-2xl border border-line bg-card p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-2">
-              <Cpu size={18} className="text-[#10B981]" />
+              <Cpu size={18} className="text-accent" />
               <h2 className="font-bold">Live attestation check</h2>
               {att && !checking && (
-                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${att.ok ? 'bg-[#10B981]/15 text-[#10B981]' : 'bg-red-500/15 text-red-400'}`}>
+                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${att.ok ? 'bg-[#10B981]/15 text-accent' : 'bg-red-500/15 text-red-500'}`}>
                   {att.ok ? 'Verified' : 'Not verified'}
                 </span>
               )}
@@ -126,17 +126,17 @@ export default function VerifyPage() {
             <button
               onClick={runCheck}
               disabled={checking}
-              className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg border border-white/10 hover:bg-white/5 disabled:opacity-50"
+              className="flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg border border-line hover:bg-card-hover disabled:opacity-50"
             >
               <RefreshCw size={14} className={checking ? 'animate-spin' : ''} />
               {checking ? 'Checking…' : 'Check again'}
             </button>
           </div>
-          {checking && !att && <p className="text-sm text-zinc-500">Fetching NEAR AI&apos;s attestation with a fresh nonce and verifying it…</p>}
-          {att?.error && <p className="text-sm text-red-400 font-mono break-all">{att.error}</p>}
+          {checking && !att && <p className="text-sm text-mute">Fetching NEAR AI&apos;s attestation with a fresh nonce and verifying it…</p>}
+          {att?.error && <p className="text-sm text-red-500 font-mono break-all">{att.error}</p>}
           {att?.attestations?.map((a, i) => (
             <div key={i}>
-              <p className="text-xs text-zinc-500 mb-1">
+              <p className="text-xs text-mute mb-1">
                 {att.model} · checked {att.checkedAt ? new Date(att.checkedAt).toLocaleString() : ''} · evidence sha256 {short(a.evidenceSha256)}
               </p>
               <ul>{a.checks.map((c) => <CheckRow key={c.label} c={c} />)}</ul>
@@ -145,21 +145,21 @@ export default function VerifyPage() {
         </section>
 
         {/* Contract rules */}
-        <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
+        <section className="rounded-2xl border border-line bg-card p-5 sm:p-6">
           <div className="flex items-center gap-2 mb-4">
-            <FileCheck2 size={18} className="text-[#10B981]" />
+            <FileCheck2 size={18} className="text-accent" />
             <h2 className="font-bold">What the contract checks on every filing</h2>
           </div>
           <ul className="space-y-2">
             {RULES.map((r) => (
-              <li key={r} className="flex gap-2 text-sm text-zinc-300">
-                <CheckCircle2 size={16} className="text-[#10B981] shrink-0 mt-0.5" />
+              <li key={r} className="flex gap-2 text-sm text-soft">
+                <CheckCircle2 size={16} className="text-accent shrink-0 mt-0.5" />
                 {r}
               </li>
             ))}
           </ul>
           {data?.prompts && (
-            <p className="mt-4 text-xs text-zinc-500 font-mono break-all">
+            <p className="mt-4 text-xs text-mute font-mono break-all">
               Registered prompt sha256: {data.prompts.join(', ')}
             </p>
           )}
@@ -167,12 +167,12 @@ export default function VerifyPage() {
 
         {/* NEAR decides, Solana pays */}
         {data?.solana && (
-          <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6 space-y-3">
+          <section className="rounded-2xl border border-line bg-card p-5 sm:p-6 space-y-3">
             <div className="flex items-center gap-2">
-              <Coins size={18} className="text-[#10B981]" />
+              <Coins size={18} className="text-accent" />
               <h2 className="font-bold">NEAR decides, Solana pays</h2>
             </div>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-dim">
               Rewards are paid from the Signal program&apos;s vault on Solana. The program only accepts filings signed by this
               contract&apos;s own Solana key, which NEAR&apos;s MPC network controls through Chain Signatures — so only prices
               verified and accepted on NEAR can be paid, and no bot or server key can file.
@@ -184,7 +184,7 @@ export default function VerifyPage() {
                 detail: `program attester ${data.solana.programAttester ?? 'unreadable'} · NEAR contract key ${data.solana.nearKey ?? 'not configured'}`,
               }} />
             </ul>
-            <a href={data.solana.programUrl} target="_blank" rel="noreferrer" className="text-xs text-zinc-400 hover:text-white inline-flex items-center gap-1 font-mono">
+            <a href={data.solana.programUrl} target="_blank" rel="noreferrer" className="text-xs text-dim hover:text-fg inline-flex items-center gap-1 font-mono">
               Signal program {short(data.solana.program, 8)} on Solana devnet <ExternalLink size={12} />
             </a>
           </section>
@@ -193,38 +193,38 @@ export default function VerifyPage() {
         {/* Reports */}
         <section className="space-y-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="font-bold flex items-center gap-2"><Lock size={18} className="text-[#10B981]" /> Recent reports on NEAR</h2>
+            <h2 className="font-bold flex items-center gap-2"><Lock size={18} className="text-accent" /> Recent reports on NEAR</h2>
             {data?.live && (
-              <a href={data.contractUrl} target="_blank" rel="noreferrer" className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 font-mono">
+              <a href={data.contractUrl} target="_blank" rel="noreferrer" className="text-xs text-dim hover:text-fg flex items-center gap-1 font-mono">
                 {data.contract} · {data.reportsCount} reports · {data.feedsCount} feeds <ExternalLink size={12} />
               </a>
             )}
           </div>
-          {!data && <p className="text-sm text-zinc-500">Reading the contract…</p>}
-          {data && !data.live && <p className="text-sm text-red-400">{data.error || 'NEAR is unreachable right now.'}</p>}
-          {data?.live && data.reports.length === 0 && <p className="text-sm text-zinc-500">No reports filed yet.</p>}
+          {!data && <p className="text-sm text-mute">Reading the contract…</p>}
+          {data && !data.live && <p className="text-sm text-red-500">{data.error || 'NEAR is unreachable right now.'}</p>}
+          {data?.live && data.reports.length === 0 && <p className="text-sm text-mute">No reports filed yet.</p>}
           {data?.reports.map((r) => (
-            <article key={r.id} className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 space-y-3">
+            <article key={r.id} className="rounded-2xl border border-line bg-card p-5 space-y-3">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="font-black">#{r.id}</span>
                 <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                  r.status === 'Verified' ? 'bg-[#10B981]/15 text-[#10B981]' : r.status === 'Fraud' ? 'bg-red-500/15 text-red-400' : 'bg-zinc-500/15 text-zinc-400'
+                  r.status === 'Verified' ? 'bg-[#10B981]/15 text-accent' : r.status === 'Fraud' ? 'bg-red-500/15 text-red-500' : 'bg-zinc-500/15 text-dim'
                 }`}>{r.status}</span>
-                <span className="text-xs text-zinc-400">{r.category} · {r.region}{r.currency ? ` · ${r.currency}` : ''}</span>
-                <span className="text-xs text-zinc-500 ml-auto">{new Date(r.submitted_at_secs * 1000).toLocaleString()}</span>
+                <span className="text-xs text-dim">{r.category} · {r.region}{r.currency ? ` · ${r.currency}` : ''}</span>
+                <span className="text-xs text-mute ml-auto">{new Date(r.submitted_at_secs * 1000).toLocaleString()}</span>
               </div>
-              {r.reason && <p className="text-sm text-zinc-400">“{r.reason}”</p>}
+              {r.reason && <p className="text-sm text-dim">“{r.reason}”</p>}
               {r.items.length > 0 && (
                 <ul className="text-sm space-y-1">
                   {r.items.map((it, i) => {
                     const o = outcomeLabel(it.outcome);
                     return (
                       <li key={`${it.feed}-${i}`} className="flex flex-wrap gap-x-3 font-mono text-xs">
-                        <span className="text-zinc-300 break-all">{it.feed}</span>
-                        <span className="text-white">{(it.price / 100).toFixed(2)} {r.currency}</span>
+                        <span className="text-soft break-all">{it.feed}</span>
+                        <span className="text-fg">{(it.price / 100).toFixed(2)} {r.currency}</span>
                         <span className={o.tone}>{o.text}</span>
                         {it.solana && (
-                          <a href={it.solana.url} target="_blank" rel="noreferrer" className="text-[#10B981] hover:underline inline-flex items-center gap-1">
+                          <a href={it.solana.url} target="_blank" rel="noreferrer" className="text-accent hover:underline inline-flex items-center gap-1">
                             → Solana: {it.solana.status}{it.solana.status === 'accepted' ? `, ${it.solana.rewardUsdc.toFixed(2)} USDC paid` : ''} <ExternalLink size={10} />
                           </a>
                         )}
@@ -233,27 +233,27 @@ export default function VerifyPage() {
                   })}
                 </ul>
               )}
-              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[11px] font-mono text-zinc-500 pt-2 border-t border-white/5">
-                <div className="break-all"><dt className="inline text-zinc-600">TEE signer </dt><dd className="inline text-[#10B981]">0x{short(r.signer, 8)}</dd></div>
-                <div className="break-all"><dt className="inline text-zinc-600">model </dt><dd className="inline">{r.model}</dd></div>
-                <div className="break-all"><dt className="inline text-zinc-600">request sha256 </dt><dd className="inline">{short(r.request_sha256)}</dd></div>
-                <div className="break-all"><dt className="inline text-zinc-600">response sha256 </dt><dd className="inline">{short(r.response_sha256)}</dd></div>
-                <div className="break-all"><dt className="inline text-zinc-600">photo sha256 </dt><dd className="inline">{short(r.image_sha256)} (photo not stored)</dd></div>
-                <div className="break-all"><dt className="inline text-zinc-600">completion </dt><dd className="inline">{r.completion_id}</dd></div>
+              <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-[11px] font-mono text-mute pt-2 border-t border-line">
+                <div className="break-all"><dt className="inline text-faint">TEE signer </dt><dd className="inline text-accent">0x{short(r.signer, 8)}</dd></div>
+                <div className="break-all"><dt className="inline text-faint">model </dt><dd className="inline">{r.model}</dd></div>
+                <div className="break-all"><dt className="inline text-faint">request sha256 </dt><dd className="inline">{short(r.request_sha256)}</dd></div>
+                <div className="break-all"><dt className="inline text-faint">response sha256 </dt><dd className="inline">{short(r.response_sha256)}</dd></div>
+                <div className="break-all"><dt className="inline text-faint">photo sha256 </dt><dd className="inline">{short(r.image_sha256)} (photo not stored)</dd></div>
+                <div className="break-all"><dt className="inline text-faint">completion </dt><dd className="inline">{r.completion_id}</dd></div>
               </dl>
             </article>
           ))}
         </section>
 
-        <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6 space-y-2 text-sm text-zinc-400">
-          <h2 className="font-bold text-white">Check it yourself</h2>
+        <section className="rounded-2xl border border-line bg-card p-5 sm:p-6 space-y-2 text-sm text-dim">
+          <h2 className="font-bold text-fg">Check it yourself</h2>
           <p>Read any report or feed straight from NEAR:</p>
-          <pre className="text-xs font-mono bg-black/40 rounded-lg p-3 overflow-x-auto">{`near view ${data?.contract || 'oracle.signal-southen.testnet'} get_report '{"id": 0}'
+          <pre className="text-xs font-mono bg-code rounded-lg p-3 overflow-x-auto">{`near view ${data?.contract || 'oracle.signal-southen.testnet'} get_report '{"id": 0}'
 near view ${data?.contract || 'oracle.signal-southen.testnet'} list_feeds '{}'`}</pre>
           <p>
             Re-verify the model key from NEAR AI&apos;s attestation with{' '}
-            <code className="font-mono text-zinc-300">signal-near/scripts/register-signer.mjs</code> in the{' '}
-            <a className="underline hover:text-white" href="https://github.com/southenempire/signal" target="_blank" rel="noreferrer">repository</a>.
+            <code className="font-mono text-soft">signal-near/scripts/register-signer.mjs</code> in the{' '}
+            <a className="underline hover:text-fg" href="https://github.com/southenempire/signal" target="_blank" rel="noreferrer">repository</a>.
           </p>
         </section>
       </div>

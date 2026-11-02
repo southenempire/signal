@@ -4,18 +4,18 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://signal-bot-chi.vercel.app'),
-  title: "Signal Bot | Human-Powered Oracle on Solana",
-  description: "Signal Bot is a DePIN oracle network on Solana. Report real-world prices via Telegram and earn USDC. Vision AI verified, no crypto experience needed.",
+  title: "Signal | Prices go public. You don't.",
+  description: "Snap a receipt in Telegram. NEAR AI reads it inside a secure enclave, NEAR verifies the signature on-chain, and Solana pays you in USDC. Only city, date and prices are published.",
   openGraph: {
-    title: "Signal Bot | Human-Powered Oracle on Solana",
-    description: "Earn USDC reporting real-world data directly from Telegram. No wallet setup required.",
+    title: "Signal | Prices go public. You don't.",
+    description: "Real-world prices, read by an attested AI, verified on NEAR, paid on Solana. No wallet setup required.",
     type: "website",
     siteName: "Signal Bot",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Signal Bot | Human-Powered Oracle on Solana",
-    description: "Report real-world prices via Telegram. Earn USDC on Solana. Vision AI verified.",
+    title: "Signal | Prices go public. You don't.",
+    description: "Real-world prices, read by an attested AI, verified on NEAR, paid on Solana.",
   },
 };
 
