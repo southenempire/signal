@@ -364,6 +364,21 @@ async function runNearAudit(buffer, imageHash, category, region) {
   }
 }
 
+// The duplicate check only sees photos already saved, and a report is saved after its audit, so
+// each photo hash is held while it's processed: the same photo sent twice at once (or from two
+// accounts) can't get through both checks. Holds expire on their own; a finished report is then
+// caught by the saved-photo check.
+const PHOTO_HOLD_MS = 5 * 60_000;
+const photosInFlight = new Map(); // sha256 → hold expiry
+
+function holdPhoto(hash) {
+  const now = Date.now();
+  for (const [h, until] of photosInFlight) if (until < now) photosInFlight.delete(h);
+  if (photosInFlight.has(hash)) return false;
+  photosInFlight.set(hash, now + PHOTO_HOLD_MS);
+  return true;
+}
+
 const CATEGORIES = ['FUEL', 'GROCERY', 'ELECTRICITY', 'RENT', 'GENERIC'];
 
 if (bot) {
@@ -404,6 +419,9 @@ if (bot) {
     await saveReportImage(ctx, selected, ctx.from.id, { keep: !NEAR_VISION });
   if (!imageHash) {
     return ctx.replyWithHTML(`❌ <b>Couldn't download your photo from Telegram.</b> Please send it again.`);
+  }
+  if (!holdPhoto(imageHash)) {
+    return ctx.replyWithHTML(`⏳ <b>This photo was just sent and is being checked.</b> If no result arrives, try again in a few minutes.`);
   }
 
   // Resending your own photo (e.g. after a missed reply) is not fraud: just say where it stands.
@@ -703,15 +721,21 @@ if (bot) {
   const privateKeyBase58 = bs58.encode(user.keypair.secretKey);
 
   await ctx.answerCbQuery();
-  await ctx.replyWithHTML(
+  const sent = await ctx.replyWithHTML(
     `⚠️ <b>SECURITY WARNING</b>\n` +
-    `Never share this key with anyone. Anyone with this key controls your funds.\n\n` +
+    `Never share this key with anyone. Anyone with this key controls your funds.\n` +
+    `⏱️ <b>Copy it now: this message deletes itself in 60 seconds.</b>\n\n` +
     `<b>Your Private Key:</b>\n<code>${privateKeyBase58}</code>\n\n` +
     `<i>New to crypto?</i> To use your USDC in the real world:\n` +
     `1. Download the Jupiter Mobile App or Phantom.\n` +
     `2. Select "Import Private Key" and paste the code above.\n` +
     `3. Use Solana Pay at checkout or swap your USDC for fiat!`
   );
+  // Don't leave the key sitting in the chat history (or on a lost phone).
+  setTimeout(() => {
+    ctx.telegram.deleteMessage(sent.chat.id, sent.message_id)
+      .catch(e => console.warn('[Export] could not delete key message:', e.message));
+  }, 60_000);
 });
 }
 
