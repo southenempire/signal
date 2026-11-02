@@ -40,6 +40,19 @@ enum StorageKey {
     TrustedHosts,
 }
 
+// Small flags kept in their own storage keys rather than the contract struct, so adding them needed
+// no state migration.
+const PAUSED_KEY: &[u8] = b"paused";
+const PENDING_OWNER_KEY: &[u8] = b"pending_owner";
+
+fn paused_flag() -> bool {
+    env::storage_has_key(PAUSED_KEY)
+}
+
+fn pending_owner_value() -> Option<AccountId> {
+    env::storage_read(PENDING_OWNER_KEY).and_then(|b| String::from_utf8(b).ok()?.parse().ok())
+}
+
 /// Hosts whose image URLs carry a sha256 the host computed itself. Kept outside the contract
 /// struct (a LookupSet holds no inline state and writes straight to storage), so adding it needed
 /// no state migration.
@@ -176,6 +189,7 @@ impl Contract {
     /// Attach enough NEAR to cover the storage this adds; the rest is refunded.
     #[payable]
     pub fn submit_verdict(&mut self, request: String, response: String, signature: String, reporter: Option<String>) -> Report {
+        require!(!paused_flag(), "filing is paused by the owner");
         let storage_before = env::storage_usage();
         let submitter = env::predecessor_account_id();
         let reporter = match reporter {
@@ -227,7 +241,7 @@ impl Contract {
         let mut seen_feeds = HashSet::new();
         if status == ReportStatus::Verified {
             for item in &verdict.items {
-                let feed_key = audit::feed_key(&category, &region, &item.canonical_item);
+                let feed_key = audit::feed_key(&category, &region, &item.canonical_item, verdict.currency.as_deref());
                 let first = seen_feeds.insert(feed_key.clone());
                 let outcome = match (to_minor_units(item.unit_price), verdict.currency.as_ref()) {
                     // One price per feed per photo, so a receipt can't stack a feed with repeats.
@@ -236,11 +250,7 @@ impl Contract {
                     (_, None) => Outcome::Rejected { reason: "no currency on the receipt".into() },
                     (Some(price), Some(currency)) => {
                         let mut feed = self.feeds.remove(&feed_key).unwrap_or_else(|| Feed::new(currency.clone()));
-                        let outcome = if &feed.currency != currency {
-                            Outcome::Rejected { reason: format!("feed is priced in {}", feed.currency) }
-                        } else {
-                            feed.offer(id, &reporter, price, bound, now, &self.params)
-                        };
+                        let outcome = feed.offer(id, &reporter, price, bound, now, &self.params);
                         // A rejected first price must not leave an empty feed behind.
                         if !feed.prices.is_empty() || !feed.held.is_empty() {
                             self.feeds.insert(feed_key.clone(), feed);
@@ -357,15 +367,45 @@ impl Contract {
         self.params = params;
     }
 
-    pub fn set_owner(&mut self, owner: AccountId) {
+    /// Stop (or resume) all filings at once, e.g. if a key leaks. Views keep working.
+    pub fn set_paused(&mut self, paused: bool) {
         self.only_owner();
-        self.owner = owner;
+        if paused {
+            env::storage_write(PAUSED_KEY, &[1]);
+        } else {
+            env::storage_remove(PAUSED_KEY);
+        }
+        event("paused_set", serde_json::json!({ "paused": paused }));
+    }
+
+    /// Step one of an ownership transfer. Nothing changes until `owner` calls `accept_owner`, so a
+    /// typo can't hand the contract to an account nobody controls.
+    pub fn propose_owner(&mut self, owner: AccountId) {
+        self.only_owner();
+        env::storage_write(PENDING_OWNER_KEY, owner.as_bytes());
+        event("owner_proposed", serde_json::json!({ "owner": owner }));
+    }
+
+    pub fn accept_owner(&mut self) {
+        let caller = env::predecessor_account_id();
+        require!(pending_owner_value().as_ref() == Some(&caller), "only the proposed owner can accept");
+        env::storage_remove(PENDING_OWNER_KEY);
+        event("owner_changed", serde_json::json!({ "from": self.owner, "to": caller }));
+        self.owner = caller;
     }
 
     // ── Views ───────────────────────────────────────────────────────────────
 
     pub fn get_owner(&self) -> AccountId {
         self.owner.clone()
+    }
+
+    pub fn get_pending_owner(&self) -> Option<AccountId> {
+        pending_owner_value()
+    }
+
+    pub fn is_paused(&self) -> bool {
+        paused_flag()
     }
 
     pub fn get_params(&self) -> Params {
