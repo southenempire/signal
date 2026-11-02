@@ -29,6 +29,8 @@ export async function GET() {
       totalReports: Number(data.totalReports) || 0,
       totalVolume: Number(data.totalVolume || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
       onChainReports: data.onChainReports ?? null,
+      reporters: Number(data.signalers) || 0,
+      rewardPoolUsdc: data.rewardPoolUsdc ?? null,
       live: true,
     });
   } catch {
