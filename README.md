@@ -34,6 +34,11 @@ but only for prices NEAR accepted: the NEAR contract is the Solana program's att
 Signatures, so no bot or server key can file. Receipt photos are never stored or put on-chain — only
 their SHA-256 hash.
 
+**Tracks.** `privacy` (main) and `security`. NEAR features used: Private AI on NEAR AI Cloud (TEE,
+Intel TDX + NVIDIA GPU, attestation checked with a fresh nonce), the TEE's signature verified on-chain
+in our own NEAR contract, Chain Signatures (the NEAR contract is the only key that can file on Solana),
+and per-reporter reputation with fraud flagging.
+
 | Part | Where |
 | --- | --- |
 | NEAR contract: on-chain TEE signature check, prompt hash check, replay/duplicate protection, price feeds with a peer quorum | [`signal-near/`](signal-near/) — deployed at `oracle.signal-southen.testnet` |
@@ -49,6 +54,10 @@ their SHA-256 hash.
 3. `near view oracle.signal-southen.testnet list_feeds '{}'` → read the feeds straight from NEAR.
 4. `cd signal-near && cargo test` → 46 tests pass, including real NEAR AI signatures, a one-byte forgery being rejected, the published answer holding no personal details, and feed-stuffing attempts being refused.
 5. Reproduce a filing yourself: see [`signal-near/README.md`](signal-near/README.md#try-it).
+
+No real data is needed: the tests use captured NEAR AI responses ([`signal-near/tests/fixtures`](signal-near/tests/fixtures)),
+and `file-audit.mjs` runs on a receipt from the public SROIE research dataset instead of your own
+(see [`signal-near/README.md`](signal-near/README.md#try-it)).
 
 **Built with:** near-sdk 5.30 (Rust) and cargo-near, near-api-js 7.4, NEAR AI Cloud (`Qwen/Qwen3.8-27B`) and
 `@nearai/inference-sdk` 0.2.1, Anchor 1.1.2 (Solana), serde_json, hex, k256 (tests). AI coding tools: Claude Code (Anthropic) wrote and tested much of the NEAR integration with the author; Devin reviewed the codebase for bugs.
