@@ -208,7 +208,14 @@ const escapeHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '
 let bot;
 if (BOT_TOKEN) {
   try {
-    bot = new Telegraf(BOT_TOKEN);
+    // A receipt goes through NEAR AI, NEAR and Solana, which can take longer than Telegraf's 90s default.
+    bot = new Telegraf(BOT_TOKEN, { handlerTimeout: 5 * 60_000 });
+    // Without this an error in any handler crashes the bot and Telegraf logs the whole update,
+    // which holds the user's Telegram id, name and username. Log only the error.
+    bot.catch((err, ctx) => {
+      console.error(`[Bot] ${ctx.updateType} handler failed:`, err.message);
+      ctx.reply('⚠️ Something went wrong on our side. Please try again in a few minutes.').catch(() => {});
+    });
   } catch (e) {
     console.error('⚠️ [Bot] Failed to initialize Telegraf instance:', e.message);
   }

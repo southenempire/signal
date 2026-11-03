@@ -14,6 +14,8 @@ export const NEARAI_MODEL = process.env.NEARAI_VISION_MODEL || 'Qwen/Qwen3.8-27B
 
 const sha256 = (b) => createHash('sha256').update(b).digest('hex');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// A stuck request fails the audit (the user is asked to retry) instead of hanging the bot.
+const COMPLETION_TIMEOUT_MS = 90_000;
 
 /** The exact request body the contract accepts: one user message, the prompt and one image URL. */
 export function buildAuditRequest({ imageUrl, imageSha256, category, region, model = NEARAI_MODEL }) {
@@ -57,7 +59,7 @@ export async function nearAiAudit({ imageUrl, imageSha256, category, region, api
 
   let response;
   for (let attempt = 1; ; attempt++) {
-    const res = await fetch(`${NEARAI_API}/chat/completions`, { method: 'POST', headers, body: request });
+    const res = await fetch(`${NEARAI_API}/chat/completions`, { method: 'POST', headers, body: request, signal: AbortSignal.timeout(COMPLETION_TIMEOUT_MS) });
     response = await res.text();
     if (res.ok) break;
     if ((res.status === 429 || res.status >= 500) && attempt < 4) {
@@ -78,7 +80,8 @@ export async function nearAiAudit({ imageUrl, imageSha256, category, region, api
     if (attempt) await sleep(1500);
     const res = await fetch(`${NEARAI_API}/signature/${parsed.id}?model=${encodeURIComponent(NEARAI_MODEL)}&signing_algo=ecdsa`, {
       headers: { Authorization: `Bearer ${apiKey}` },
-    });
+      signal: AbortSignal.timeout(15_000),
+    }).catch(() => ({ ok: false }));
     if (!res.ok) continue;
     const s = await res.json();
     if (s.signature && s.text === expected) signature = s;
