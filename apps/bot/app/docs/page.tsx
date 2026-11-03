@@ -1,92 +1,15 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Book, Terminal, Eye, ShieldCheck, Coins, Layers, Smartphone, CheckCircle2, ExternalLink, Database, Map, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import DataNetworkBackground from '@/components/DataNetworkBackground';
 
 const BOT_API = 'https://signal-production-d83e.up.railway.app';
 const PROGRAM_ID = 'HmCLsXYjktA3EaSmipee7qzDNTefJASUWaXeiafwmquS';
 const BOTCHAIN_ORACLE = '0x9119b3D7e7DcC540F08D62CeBC5bC2f83e8793f2';
 const REPO = 'https://github.com/southenempire/signal';
-
-/* ═══════════════════════════════════════════════════════
-   CINEMATIC DATA NETWORK BACKGROUND
-   ═══════════════════════════════════════════════════════ */
-function DataNetworkBackground() {
-  const ref = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = ref.current!;
-    const ctx = canvas.getContext('2d')!;
-    let raf: number;
-    let W = 0, H = 0;
-
-    const particles: any[] = [];
-    const COUNT = 60;
-
-    function resize() {
-      W = canvas.width = window.innerWidth;
-      H = canvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resize);
-    resize();
-
-    for (let i = 0; i < COUNT; i++) {
-      particles.push({
-        x: Math.random() * W,
-        y: Math.random() * H,
-        vx: (Math.random() - 0.5) * 0.15,
-        vy: (Math.random() - 0.5) * 0.15,
-        r: Math.random() * 1.5 + 0.5,
-      });
-    }
-
-    function draw() {
-      ctx.clearRect(0, 0, W, H);
-
-      // Draw Connections
-      ctx.strokeStyle = 'rgba(16, 185, 129, 0.08)';
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < 200) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.stroke();
-          }
-        }
-      }
-
-      // Draw Nodes
-      for (const p of particles) {
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0) p.x = W;
-        if (p.x > W) p.x = 0;
-        if (p.y < 0) p.y = H;
-        if (p.y > H) p.y = 0;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.2)';
-        ctx.fill();
-      }
-      raf = requestAnimationFrame(draw);
-    }
-    draw();
-    return () => {
-      window.removeEventListener('resize', resize);
-      cancelAnimationFrame(raf);
-    };
-  }, []);
-
-  return <canvas ref={ref} className="fixed inset-0 pointer-events-none z-0" />;
-}
 
 /* ═══════════════════════════════════════════════════════
    SMALL BUILDING BLOCKS
@@ -250,7 +173,7 @@ export default function DocsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-page text-dim relative overflow-hidden">
+    <div className="min-h-screen bg-page text-dim relative overflow-x-clip">
       <DataNetworkBackground />
 
       {/* Cinematic Overlays (clipped, or the 600px glow widens the page on phones) */}
@@ -262,7 +185,7 @@ export default function DocsPage() {
       <div className="max-w-8xl mx-auto flex relative z-10">
 
         {/* ── SIDEBAR NAVIGATION (desktop) ────────────────────────── */}
-        <aside className="hidden lg:block w-80 h-screen sticky top-0 border-r border-line bg-page p-10 overflow-y-auto z-50">
+        <aside className="hidden lg:block w-80 h-[calc(100dvh-5rem)] sticky top-20 self-start border-r border-line bg-page p-10 overflow-y-auto z-40">
           <Link href="/" className="mb-12 flex items-center gap-3 group">
              <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-line group-hover:border-[#10B981]/50 transition-all shadow-2xl">
                 <Image src="/logo.png" alt="Signal" fill className="object-cover transition-transform group-hover:scale-110" />
