@@ -34,10 +34,15 @@ but only for prices NEAR accepted: the NEAR contract is the Solana program's att
 Signatures, so no bot or server key can file. Receipt photos are never stored or put on-chain — only
 their SHA-256 hash.
 
-**Tracks.** `privacy` (main) and `security`. NEAR features used: Private AI on NEAR AI Cloud (TEE,
-Intel TDX + NVIDIA GPU, attestation checked with a fresh nonce), the TEE's signature verified on-chain
-in our own NEAR contract, Chain Signatures (the NEAR contract is the only key that can file on Solana),
-and per-reporter reputation with fraud flagging.
+**Track.** `privacy`. NEAR features used: Private AI on NEAR AI Cloud (TEE, Intel TDX + NVIDIA GPU,
+attestation checked with a fresh nonce), the TEE's signature verified on-chain in our own NEAR contract,
+Chain Signatures (the NEAR contract is the only key that can file on Solana), and per-reporter
+reputation with fraud flagging.
+
+**Other entry (Q-015).** The same author also submits **GhostAgent**, a separate project: a NEAR vault
+that lets an AI agent pay invoices only with a decision signed inside NEAR AI Cloud's TEE (tracks
+`security` and `agents`). Both use the same technique — a NEAR contract checking NEAR AI's TEE signature
+with `ecrecover`, and Chain Signatures — for different products, with separate repositories, contracts and deployments.
 
 | Part | Where |
 | --- | --- |
