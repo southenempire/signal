@@ -11,6 +11,9 @@ import { NEAR_CONTRACT, nearView } from '@/lib/near';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// Never cache the SDK's fetches. Next otherwise keeps NVIDIA's JWKS for a year, and NVIDIA signs with
+// new keys every few minutes, so the GPU check fails with key_not_found.
+export const fetchCache = 'force-no-store';
 
 const MODEL = process.env.NEARAI_VISION_MODEL || 'Qwen/Qwen3.8-27B';
 
