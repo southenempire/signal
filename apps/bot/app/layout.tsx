@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import ClientNavBar from "../components/ClientNavBar";
 import "./globals.css";
 
@@ -35,6 +36,7 @@ export default function RootLayout({
           <main className="flex-grow flex flex-col relative z-0">
             {children}
           </main>
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
