@@ -330,7 +330,7 @@ export default function Home() {
                   <div className={`text-[10px] sm:text-[11px] uppercase tracking-wider font-mono font-bold mt-1 ${
                     isLight ? "text-zinc-500" : "text-zinc-400"
                   }`}>
-                    Active Nodes
+                    Signalers
                   </div>
                 </div>
               </div>
