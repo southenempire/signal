@@ -102,6 +102,26 @@ and `file-audit.mjs` runs on a receipt from the public SROIE research dataset in
 └──────────────────────────────────────────────────────────────────┘
 ```
 
+### Trust model and known limits
+
+- **One root of trust: the NEAR contract owner.** The owner registers which NEAR AI signing key and
+  which prompt hash the contract accepts, so a malicious owner could register a fake key. Both are
+  public: `get_signer` and `get_prompts` on `oracle.signal-southen.testnet`, and `/verify` checks the
+  live key against NEAR AI's attestation with a fresh nonce. The owner can pause filing
+  (`set_paused`), and ownership moves only in two steps (`propose_owner`, `accept_owner`).
+- **Solana trusts NEAR.** The Solana program accepts filings only from the NEAR contract's Chain
+  Signatures key and settles them at once. Price bounds and peer checks run on NEAR before that
+  (`feed.offer`): a price far from a feed's median is held for peers or refused.
+- **The bot is custodial and is the only relayer.** It holds each user's Solana key (exportable at
+  any time) and registers their payout wallet on NEAR. A compromised bot could redirect rewards or
+  file as made-up users, but cannot forge NEAR AI's signature or reuse a photo. The bot keeps users,
+  reputation and wallet keys (AES-encrypted) in SQLite on its host; photos stay in memory only.
+- **Testnet keys.** The NEAR owner key, the bot's NEAR key and the Solana upgrade authority are
+  single keys today. Before mainnet they move to a multisig or hardware-backed signer, and users get
+  to bring their own wallet (wallet changes would then need that wallet's signature).
+- **Website analytics.** The site uses Vercel Web Analytics: page views only, no cookies, no
+  personal data. The bot sends nothing to it.
+
 ---
 
 ## Multi-Chain Deployments
