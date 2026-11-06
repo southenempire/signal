@@ -105,6 +105,7 @@ addColumn('reports', 'receipt_ts', 'TEXT');
 addColumn('reports', 'original_amount', 'REAL');
 addColumn('reports', 'original_currency', 'TEXT');
 addColumn('reports', 'decision_note', 'TEXT');
+addColumn('observations', 'chain_tx', 'TEXT'); // BOTChain mirror tx, null until mirrored
 addColumn('reports', 'payout_tx', 'TEXT');
 addColumn('reports', 'chain_tx', 'TEXT');
 addColumn('reports', 'near_tx', 'TEXT');
@@ -304,6 +305,20 @@ export function getPendingOnchainObservations(days = 7) {
     FROM observations o JOIN reports r ON r.id = o.report_id
     WHERE o.status = 'pending' AND o.onchain_report IS NOT NULL AND o.created_at >= datetime('now', ?)
   `).all(`-${days} days`);
+}
+
+/** Recent accepted observations that have not reached BOTChain yet (a failed mirror write). */
+export function getUnmirroredObservations(days = 7) {
+  return db.prepare(`
+    SELECT o.*, r.image_hash
+    FROM observations o JOIN reports r ON r.id = o.report_id
+    WHERE o.status = 'accepted' AND o.chain_tx IS NULL AND o.onchain_report IS NOT NULL
+      AND o.created_at >= datetime('now', ?)
+  `).all(`-${days} days`);
+}
+
+export function setObservationChainTx(observationId, tx) {
+  db.prepare('UPDATE observations SET chain_tx = ? WHERE id = ?').run(tx, observationId);
 }
 
 export function setObservationStatus(observationId, status) {

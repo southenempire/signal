@@ -16,8 +16,9 @@ import {
   getAcceptedFeedPrices, settleReport, setReportTx, getReputation, setReputation,
   addPoints, savePayout, saveSlashedSubmission, getYellowLink,
   getObservationByOnchainReport, setObservationStatus, finalizeReportIfDone, getPendingOnchainObservations,
+  getUnmirroredObservations, setObservationChainTx,
 } from './db.js';
-import { recordObservation, recordSlash } from './botchain.js';
+import { recordObservation, recordSlash, isOracleConfigured, mirroredKeys, mirrorKey } from './botchain.js';
 import * as oracle from './solana_oracle.js';
 
 const ageHours = (sqliteUtc) => (Date.now() - Date.parse(`${sqliteUtc.replace(' ', 'T')}Z`)) / 3_600_000;
@@ -187,7 +188,10 @@ async function crankPass(deps) {
         feedSamples: s.feedSamples,
         reputation: s.reputation ?? 50,
       });
-      if (mirror.success) setReportTx(obs.report_id, 'chain_tx', mirror.hash);
+      if (mirror.success) {
+        setReportTx(obs.report_id, 'chain_tx', mirror.hash);
+        setObservationChainTx(obs.id, mirror.hash);
+      }
 
       entry.lines.push(`✅ ${obs.item_name} — accepted, ${s.signature ? `<a href="${solscan(s.signature)}">` : ''}+$${s.rewardUsd.toFixed(2)} USDC paid by the program${s.signature ? '</a>' : ''}`);
     } else if (s.status === 'slashed') {
@@ -202,6 +206,8 @@ async function crankPass(deps) {
     touchedReports.set(obs.report_id, entry);
   }
 
+  await retryMirrors();
+
   for (const [reportId, entry] of touchedReports) {
     const final = finalizeReportIfDone(reportId);
     await deps.notify(entry.telegramId,
@@ -210,6 +216,38 @@ async function crankPass(deps) {
       (entry.reputation !== null ? `\n⭐ Reputation: ${entry.reputation}/100` : ''));
   }
   return settled.length;
+}
+
+/**
+ * Mirror to BOTChain the accepted prices whose mirror write failed (for example while the writer
+ * was out of gas). Prices BOTChain already has are only marked, never recorded twice.
+ */
+async function retryMirrors() {
+  const unmirrored = getUnmirroredObservations();
+  if (!unmirrored.length || !isOracleConfigured()) return;
+  const onChain = await mirroredKeys().catch((e) => console.error('[BOTChain] reading reports failed:', e.message));
+  if (!onChain) return;
+  for (const obs of unmirrored) {
+    if (onChain.has(mirrorKey(obs.feed_key, obs.image_hash))) {
+      setObservationChainTx(obs.id, 'on-chain');
+      continue;
+    }
+    const s = await oracle.settledReport(obs.onchain_report).catch(() => null);
+    if (!s) continue;
+    const mirror = await recordObservation({
+      feedKey: obs.feed_key,
+      priceUsd: obs.price_usd,
+      imageHash: obs.image_hash,
+      telegramId: obs.telegram_id,
+      wallet: getYellowLink(obs.telegram_id),
+      feedMedianUsd: s.feedMedianUsd ?? s.priceUsd,
+      feedSamples: s.feedSamples,
+      reputation: s.reputation ?? 50,
+    });
+    if (!mirror.success) break; // the same cause would fail the rest; try again next pass
+    setObservationChainTx(obs.id, mirror.hash);
+    setReportTx(obs.report_id, 'chain_tx', mirror.hash);
+  }
 }
 
 /**
