@@ -297,6 +297,15 @@ export function getObservationByOnchainReport(onchainReport) {
   `).get(onchainReport);
 }
 
+/** Recent observations filed on-chain that are still pending locally. */
+export function getPendingOnchainObservations(days = 7) {
+  return db.prepare(`
+    SELECT o.*, r.image_hash, r.reward AS report_reward
+    FROM observations o JOIN reports r ON r.id = o.report_id
+    WHERE o.status = 'pending' AND o.onchain_report IS NOT NULL AND o.created_at >= datetime('now', ?)
+  `).all(`-${days} days`);
+}
+
 export function setObservationStatus(observationId, status) {
   db.prepare('UPDATE observations SET status = ? WHERE id = ?').run(status, observationId);
 }
