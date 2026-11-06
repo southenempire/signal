@@ -56,7 +56,7 @@ export async function fileVerdict({ request, response, signature, telegramId }) 
 }
 
 /** The id a relayed Telegram user has on-chain: namespaced by this relayer account. */
-const relayedReporter = (telegramId) => `${ACCOUNT_ID}/${nearReporterId(telegramId)}`;
+export const relayedReporter = (telegramId) => `${ACCOUNT_ID}/${nearReporterId(telegramId)}`;
 
 /** Make sure the NEAR contract knows which Solana wallet this user's rewards and reputation go to. */
 export async function ensureSolanaWallet(telegramId, wallet) {

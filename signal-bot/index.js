@@ -36,13 +36,13 @@ import {
   getLeaderboard, getRecentReports, getNetworkStats, getFeedsSummary,
   getAcceptedFeedPrices, getUserTotalEarned, getDailyReportCount, isImageDuplicate,
   getFeedKeyForImageHash, getAllFeedKeys, setReputation, getImageOwner,
-  saveYellowLink, getYellowLink, setReportTx, saveNearLink, getNearLink, addObservation
+  saveYellowLink, getYellowLink, setReportTx, saveNearLink, getNearLink, addObservation, listTelegramIds
 } from './db.js';
 import { saveReportImage, shareImage, sharedImage, unshareImage } from './images.js';
 import { nearAiAudit } from './nearai.js';
 import {
   initNearOracle, isNearEnabled, fileVerdict, nearTxLink, listNearFeeds, nearStats,
-  ensureSolanaWallet, signSolanaReport, signSolanaFraud, getNearReport,
+  ensureSolanaWallet, signSolanaReport, signSolanaFraud, getNearReport, relayedReporter,
 } from './near_oracle.js';
 import bs58 from 'bs58';
 import fetch from 'node-fetch';
@@ -160,18 +160,24 @@ async function fileNearReportOnSolana(nearReport, telegramId, keypair) {
   const filed = [];
   for (const [index, item] of nearReport.items.entries()) {
     if (!item.outcome?.Accepted) continue;
-    if (await oracle.reportExists(item.feed, nearReport.image_sha256)) continue; // already on Solana
-    const accounts = oracle.filingAccounts(keypair.publicKey, item.feed, nearReport.image_sha256);
-    const tx = await signSolanaReport(nearReport.id, index, accounts, await oracle.recentBlockhash());
-    const signature = await oracle.sendNearSigned(tx, [keypair]);
-    filed.push({
-      feedKey: item.feed,
-      itemName: itemLabel(item.feed),
-      priceUsd: Number((await toUsd(item.price / 100, nearReport.currency)).toFixed(4)),
-      onchainReport: accounts.report,
-      rewardUsd: await oracle.reportRewardUsd(accounts.report),
-      signature,
-    });
+    // One item failing must not stop the others or lose the ones already filed.
+    try {
+      if (await oracle.reportExists(item.feed, nearReport.image_sha256)) continue; // already on Solana
+      const accounts = oracle.filingAccounts(keypair.publicKey, item.feed, nearReport.image_sha256);
+      const tx = await signSolanaReport(nearReport.id, index, accounts, await oracle.recentBlockhash());
+      const signature = await oracle.sendNearSigned(tx, [keypair]);
+      filed.push({
+        feedKey: item.feed,
+        itemName: itemLabel(item.feed),
+        priceUsd: Number((await toUsd(item.price / 100, nearReport.currency)).toFixed(4)),
+        onchainReport: accounts.report,
+        rewardUsd: await oracle.reportRewardUsd(accounts.report),
+        signature,
+      });
+    } catch (e) {
+      console.error(`[NEAR→Solana] report ${nearReport.id} item ${index} not filed:`, e.message);
+      if (/PoolExhausted|ReporterBanned/.test(e.message)) break;
+    }
   }
   return filed;
 }
@@ -192,6 +198,46 @@ async function fileNearPromotions(nearReport) {
       }
     } catch (e) {
       console.error(`[NEAR→Solana] filing promoted report ${id} failed:`, e.message);
+    }
+  }
+}
+
+/**
+ * Once at startup: file on Solana the prices NEAR accepted from this bot's users in the last two
+ * days that a failed relay left off Solana. Prices already on Solana are skipped, and the Solana
+ * program refuses the same photo and item twice, so running it again is harmless.
+ */
+async function fileMissedNearReports(sinceSecs = 2 * 86400) {
+  const owners = new Map(listTelegramIds().map((id) => [relayedReporter(id), id]));
+  const { reports: count } = await nearStats();
+  const cutoff = Date.now() / 1000 - sinceSecs;
+  for (let id = count - 1; id >= 0; id--) {
+    const report = await getNearReport(id);
+    if (!report) continue;
+    if (report.submitted_at_secs < cutoff) break;
+    const telegramId = owners.get(report.reporter);
+    if (!telegramId || report.status !== 'Verified') continue;
+    try {
+      const filed = await fileNearReportOnSolana(report, telegramId, getOrCreateUser(telegramId).keypair);
+      if (!filed.length) continue;
+      const link = getNearLink(id);
+      if (link?.report_id) {
+        for (const f of filed) addObservation(link.report_id, telegramId, f);
+      } else {
+        const reportId = savePendingReport({
+          telegramId, category: report.category, totalUsd: filed.reduce((s, f) => s + f.priceUsd, 0),
+          reward: filed.reduce((s, f) => s + f.rewardUsd, 0), imagePath: null, imageHash: report.image_sha256,
+          region: report.region, storeName: null, receiptTs: null, originalAmount: null,
+          originalCurrency: report.currency, observations: filed,
+        });
+        saveNearLink(id, telegramId, reportId, report.image_sha256);
+      }
+      console.log(`[NEAR→Solana] filed ${filed.length} missed price(s) from NEAR report ${id}`);
+      await settlementDeps.notify(telegramId,
+        `⛓️ <b>Filed on Solana</b>\nPrices NEAR accepted from your receipt that were not filed earlier:\n` +
+        filed.map((f) => `• ${escapeHtml(f.itemName)}`).join('\n'));
+    } catch (e) {
+      console.error(`[NEAR→Solana] missed report ${id}:`, e.message);
     }
   }
 }
@@ -1111,6 +1157,9 @@ async function main() {
       console.log('📱 Go send /start on Telegram!');
     });
     bot.launch();
+    if (NEAR_ATTESTS && oracle.isEnabled()) {
+      fileMissedNearReports().catch((e) => console.error('[NEAR→Solana] missed reports:', e.message));
+    }
   } catch (e) {
     console.error('❌ Bot Launch failed:', e.message);
     console.warn('📡 [API] Falling back to Express API stability mode...');
