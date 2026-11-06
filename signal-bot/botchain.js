@@ -20,6 +20,7 @@ export const ORACLE_ABI = [
   'function getFeedCount() view returns (uint256)',
   'function getReportCount() view returns (uint256)',
   'function getReputation(bytes32 reporterId) view returns (uint8)',
+  'function reports(uint256) view returns (bytes32 feedId, uint256 usdcPrice, uint256 timestamp, string imageHash, bytes32 reporterId, address wallet)',
 ];
 
 export const provider = new ethers.JsonRpcProvider(BOTCHAIN_RPC, 677, { staticNetwork: true });
@@ -70,6 +71,16 @@ export function recordObservation({ feedKey, priceUsd, imageHash, telegramId, wa
     feedKey, toCents(priceUsd), toHash(imageHash), reporterIdFor(telegramId),
     wallet || ethers.ZeroAddress, toCents(feedMedianUsd), BigInt(feedSamples), reputation,
   ));
+}
+
+/** The key mirroredKeys() uses for one price: its feed and photo. */
+export const mirrorKey = (feedKey, imageHash) => `${ethers.keccak256(ethers.toUtf8Bytes(feedKey))}:${toHash(imageHash)}`;
+
+/** Every (feed, photo) already recorded on BOTChain, so a retry never records a price twice. */
+export async function mirroredKeys() {
+  const count = Number(await reader.getReportCount());
+  const rows = await Promise.all(Array.from({ length: count }, (_, i) => reader.reports(i)));
+  return new Set(rows.map((r) => `${r.feedId}:${r.imageHash}`));
 }
 
 export function recordSlash({ telegramId, imageHash, reason, reputation }) {
