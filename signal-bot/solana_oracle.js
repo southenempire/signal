@@ -127,9 +127,27 @@ export async function sendNearSigned(txBase64, signers = []) {
   if (signers.length) tx.sign(signers);
   const connection = program.provider.connection;
   const signature = await connection.sendRawTransaction(tx.serialize());
-  const result = await connection.confirmTransaction(signature, 'confirmed');
-  if (result.value.err) throw new Error(`Solana rejected the filing: ${JSON.stringify(result.value.err)}`);
+  let err;
+  try {
+    err = (await connection.confirmTransaction(signature, 'confirmed')).value.err;
+  } catch (e) {
+    // On a slow devnet confirmTransaction gives up after 30 s although the transaction may still
+    // land. Keep checking its status until it does or its blockhash (about a minute) expires.
+    if (e.name !== 'TransactionExpiredTimeoutError') throw e;
+    err = await awaitStatus(connection, signature);
+  }
+  if (err) throw new Error(`Solana rejected the filing: ${JSON.stringify(err)}`);
   return signature;
+}
+
+/** Wait for a sent transaction's confirmed status; returns its error (null if it succeeded). */
+async function awaitStatus(connection, signature, timeoutMs = 90_000) {
+  for (const end = Date.now() + timeoutMs; Date.now() < end; ) {
+    const { value: [status] } = await connection.getSignatureStatuses([signature], { searchTransactionHistory: true });
+    if (status && (status.confirmationStatus === 'confirmed' || status.confirmationStatus === 'finalized')) return status.err;
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  throw new Error(`Solana filing ${signature} was not confirmed in time`);
 }
 
 /** Locked reward of a filed report, in USD. */

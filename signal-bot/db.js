@@ -260,6 +260,11 @@ export function savePendingReport(r) {
   return save();
 }
 
+/** Every user's Telegram id, to match NEAR's pseudonymous reporter ids back to users. */
+export function listTelegramIds() {
+  return db.prepare('SELECT telegram_id FROM users').all().map((r) => r.telegram_id);
+}
+
 export function saveNearLink(nearReport, telegramId, reportId, imageHash) {
   db.prepare('INSERT OR REPLACE INTO near_links (near_report, telegram_id, report_id, image_hash) VALUES (?, ?, ?, ?)')
     .run(nearReport, telegramId, reportId ?? null, imageHash);
