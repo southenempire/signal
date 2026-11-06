@@ -245,6 +245,30 @@ async function settle(reportKey, report) {
     .rpc();
 }
 
+/** A settled Report account in the shape crank() returns. */
+async function settledEntry(address, report, signature) {
+  const [rep, feed] = await Promise.all([getReporter(report.reporter), program.account.feed.fetch(report.feed)]);
+  return {
+    report: address.toBase58(),
+    reporter: report.reporter.toBase58(),
+    status: statusName(report.status),
+    rewardUsd: fromMicro(report.reward),
+    priceUsd: fromMicro(report.price),
+    feed: report.feed.toBase58(),
+    signature,
+    reputation: rep?.reputation ?? null,
+    feedMedianUsd: feedMedian(feed),
+    feedSamples: Number(feed.totalSamples.toString()),
+  };
+}
+
+/** A report that has already settled (by any crank), or null while it is still pending. */
+export async function settledReport(address) {
+  const key = new PublicKey(address);
+  const report = await program.account.report.fetch(key);
+  return statusName(report.status) === 'pending' ? null : settledEntry(key, report, null);
+}
+
 let cranking = false;
 
 /**
@@ -304,23 +328,7 @@ export async function crank() {
       const fresh = await program.account.report.fetch(p.publicKey);
       try {
         const signature = await settle(p.publicKey, fresh);
-        const after = await program.account.report.fetch(p.publicKey);
-        const [rep, feed] = await Promise.all([
-          getReporter(after.reporter),
-          program.account.feed.fetch(after.feed),
-        ]);
-        settled.push({
-          report: p.publicKey.toBase58(),
-          reporter: after.reporter.toBase58(),
-          status: statusName(after.status),
-          rewardUsd: fromMicro(after.reward),
-          priceUsd: fromMicro(after.price),
-          feed: after.feed.toBase58(),
-          signature,
-          reputation: rep?.reputation ?? null,
-          feedMedianUsd: feedMedian(feed),
-          feedSamples: Number(feed.totalSamples.toString()),
-        });
+        settled.push(await settledEntry(p.publicKey, await program.account.report.fetch(p.publicKey), signature));
       } catch (e) {
         const code = errorCode(e);
         if (code !== 'StillPending') console.warn(`[Oracle] settle ${p.publicKey.toBase58()} failed:`, code || e.message);

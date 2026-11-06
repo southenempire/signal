@@ -15,7 +15,7 @@ import {
   getPendingReports, getReportObservations, getFeedHistory, getPeerObservations,
   getAcceptedFeedPrices, settleReport, setReportTx, getReputation, setReputation,
   addPoints, savePayout, saveSlashedSubmission, getYellowLink,
-  getObservationByOnchainReport, setObservationStatus, finalizeReportIfDone,
+  getObservationByOnchainReport, setObservationStatus, finalizeReportIfDone, getPendingOnchainObservations,
 } from './db.js';
 import { recordObservation, recordSlash } from './botchain.js';
 import * as oracle from './solana_oracle.js';
@@ -135,8 +135,29 @@ const solscan = (sig) => `https://solscan.io/tx/${sig}?cluster=devnet`;
  * @param {{ notify: (telegramId: number, html: string) => Promise<void>,
  *           onAccepted?: (telegramId: number, rewardUsd: number) => void }} deps
  */
+let crankRunning = false;
+
+/** One settlement pass; overlapping calls (timer and a new receipt) are skipped, so no item is processed twice. */
 export async function crankChain(deps) {
+  if (crankRunning) return 0;
+  crankRunning = true;
+  try {
+    return await crankPass(deps);
+  } finally {
+    crankRunning = false;
+  }
+}
+
+async function crankPass(deps) {
   const settled = await oracle.crank();
+  // Filing a receipt's items takes minutes and the bot saves the receipt only afterwards, so a
+  // crank can settle an item before its local record exists and skip it. Catch those up here.
+  const seen = new Set(settled.map((s) => s.report));
+  for (const obs of getPendingOnchainObservations()) {
+    if (seen.has(obs.onchain_report)) continue;
+    const s = await oracle.settledReport(obs.onchain_report).catch(() => null);
+    if (s) settled.push(s);
+  }
   const touchedReports = new Map(); // local report id → { telegramId, lines: [] }
 
   for (const s of settled) {
@@ -168,7 +189,7 @@ export async function crankChain(deps) {
       });
       if (mirror.success) setReportTx(obs.report_id, 'chain_tx', mirror.hash);
 
-      entry.lines.push(`✅ ${obs.item_name} — accepted, <a href="${solscan(s.signature)}">+$${s.rewardUsd.toFixed(2)} USDC paid by the program</a>`);
+      entry.lines.push(`✅ ${obs.item_name} — accepted, ${s.signature ? `<a href="${solscan(s.signature)}">` : ''}+$${s.rewardUsd.toFixed(2)} USDC paid by the program${s.signature ? '</a>' : ''}`);
     } else if (s.status === 'slashed') {
       await recordSlash({
         telegramId: obs.telegram_id, imageHash: obs.image_hash,
