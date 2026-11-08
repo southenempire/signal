@@ -62,7 +62,7 @@ can sign for, and only when this contract asks.
 | Method | Who | |
 | --- | --- | --- |
 | `register_solana_wallet(wallet, reporter?)` | relayer / anyone | Where a reporter's rewards go on Solana (relayers register their users, namespaced) |
-| `sign_solana_report(report_id, item_index, accounts, recent_blockhash)` | anyone | For a price this contract accepted: build `submit_verified_report` byte by byte and have the MPC network sign it. Retries are harmless — Solana refuses a second filing of the same photo and item |
+| `sign_solana_report(report_id, item_index, accounts, recent_blockhash)` | anyone | For a price this contract accepted from a trusted host's photo: build `submit_verified_report` byte by byte and have the MPC network sign it. Photos from untrusted hosts are never paid. Retries are harmless — Solana refuses a second filing of the same photo and item |
 | `sign_solana_fraud(report_id, accounts, recent_blockhash)` | relayer / owner, once | For a fraud verdict: the Solana `flag_fake` penalty |
 | `set_solana_settings` | owner | MPC signer, path, and the derived key |
 

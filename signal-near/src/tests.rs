@@ -207,8 +207,13 @@ impl TestSigner {
     }
 
     fn audit_from(&mut self, host: &str, now: u64, verdict: Value) -> (String, String, String) {
+        let image = hex::encode(verify::sha256(format!("photo {}", self.n + 1).as_bytes()));
+        self.audit_image(host, &image, now, verdict)
+    }
+
+    /// An audit of a photo served from `host` under the claimed hash `image`.
+    fn audit_image(&mut self, host: &str, image: &str, now: u64, verdict: Value) -> (String, String, String) {
         self.n += 1;
-        let image = hex::encode(verify::sha256(format!("photo {}", self.n).as_bytes()));
         let request = serde_json::json!({
             "model": MODEL, "temperature": 0.1, "max_tokens": 3072,
             "chat_template_kwargs": { "enable_thinking": false },
@@ -478,6 +483,44 @@ fn held_prices_are_not_filed_on_solana() {
     let x = file(&mut c, &mut s, "tg:a", bread(6000.0));
     assert_eq!(x.items[0].outcome, Outcome::Held);
     let _ = c.sign_solana_report(x.id, 0, pdas(), SOL_WALLET.into());
+}
+
+#[test]
+#[should_panic(expected = "not paid on Solana")]
+fn untrusted_photos_are_never_paid_on_solana() {
+    // The farming path: once a feed is established, a photo re-hosted on your own server under a
+    // made-up hash adds a price inside the bounds. It may count as data, but it must not be paid,
+    // or one receipt could be filed again and again under new hashes.
+    let (mut c, mut s) = solana_ready();
+    for (who, price) in [("tg:a", 2000.0), ("tg:b", 2050.0), ("tg:c", 2020.0)] {
+        file(&mut c, &mut s, who, bread(price));
+    }
+    at(NOW, accounts(2), NearToken::from_yoctonear(0));
+    c.register_solana_wallet(SOL_WALLET.into(), None);
+    at(NOW, accounts(2), one_near());
+    let (req, res, sig) = s.audit_from("my-own-host.example", NOW, bread(2010.0));
+    let r = c.submit_verdict(req, res, sig, None);
+    assert!(matches!(r.items[0].outcome, Outcome::Accepted { .. }), "inside the bounds, so it is data");
+    let _ = c.sign_solana_report(r.id, 0, pdas(), SOL_WALLET.into());
+}
+
+#[test]
+fn untrusted_photos_cannot_claim_a_photo_hash() {
+    // Someone files a genuine photo's hash from their own server first; the real photo must still go through.
+    let (mut c, mut s) = with_test_signer();
+    for (who, price) in [("tg:a", 2000.0), ("tg:b", 2050.0), ("tg:c", 2020.0)] {
+        file(&mut c, &mut s, who, bread(price));
+    }
+    let genuine = hex::encode(verify::sha256(b"a genuine receipt"));
+    at(NOW, accounts(2), one_near());
+    let (req, res, sig) = s.audit_image("my-own-host.example", &genuine, NOW, bread(2010.0));
+    c.submit_verdict(req, res, sig, None);
+    assert_eq!(c.report_for_image(genuine.clone()), None, "an untrusted hash is not recorded");
+
+    at(NOW, accounts(5), one_near());
+    let (req, res, sig) = s.audit_image("bot.example", &genuine, NOW, bread(2010.0));
+    let r = c.submit_verdict(req, res, sig, Some("tg:owner".into()));
+    assert_eq!(c.report_for_image(genuine), Some(r.id));
 }
 
 #[test]
