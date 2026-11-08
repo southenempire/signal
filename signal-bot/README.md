@@ -51,8 +51,7 @@ BOTCHAIN_ORACLE_ADDRESS=0x...
 REPORTER_SALT=                     # hashes Telegram IDs into on-chain reporter ids
 ```
 
-Optional and off on the live bot: `SOLANA_CLUSTER=mainnet` enables the Jupiter jupUSD auto-stake, and
-`PAYOUT_RAIL=magicblock` switches the off-chain fallback payouts to MagicBlock.
+Optional and off on the live bot: `SOLANA_CLUSTER=mainnet` enables the Jupiter jupUSD auto-stake.
 
 ## Files
 

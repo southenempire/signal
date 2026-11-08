@@ -2,19 +2,11 @@
  * Solana payment rails for Signal Protocol.
  *
  *  - Standard SPL USDC transfer from the protocol reward pool.
- *  - MagicBlock Private Payments (PAYOUT_RAIL=magicblock): the Private Payments API
- *    builds an unsigned private SPL transfer routed through a Private Ephemeral
- *    Rollup; the protocol wallet signs it and sends it to the RPC the API names.
- *    The transaction is simulated first and only signed if its sole effect on the
- *    protocol wallet is paying out the reward (plus fees). Falls back to a standard
- *    transfer if the API or route is unavailable.
  *  - Jupiter auto-stake: a real USDC → jupUSD swap through the Jupiter Swap API,
  *    signed by the user's custodial wallet. Mainnet only (jupUSD has no devnet
  *    liquidity). An optional platform fee goes to the protocol treasury.
  */
-import {
-  PublicKey, Transaction, VersionedTransaction, Connection, SystemProgram,
-} from '@solana/web3.js';
+import { PublicKey, VersionedTransaction, Connection } from '@solana/web3.js';
 import {
   getOrCreateAssociatedTokenAccount, getAssociatedTokenAddressSync, transfer, getAccount,
   TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID,
@@ -22,12 +14,6 @@ import {
 import fetch from 'node-fetch';
 
 export const JUP_USD_MINT = 'JuprjznTrTSp2UFa3ZBUFgwdAmtZCq4MQCwysN55USD';
-
-const PAYOUT_RAIL = (process.env.PAYOUT_RAIL || 'standard').toLowerCase();
-const MAGICBLOCK_API_URL = process.env.MAGICBLOCK_API_URL || 'https://payments.magicblock.app';
-const MAGICBLOCK_EPHEMERAL_RPC = process.env.MAGICBLOCK_EPHEMERAL_RPC || 'https://devnet.magicblock.app';
-
-const MAX_FEE_LAMPORTS = 10_000_000; // 0.01 SOL: fees and rent a payout may cost the protocol wallet
 
 const JUPITER_API_KEY = process.env.JUPITER_API_KEY;
 const JUPITER_API_URL = process.env.JUPITER_API_URL || (JUPITER_API_KEY ? 'https://api.jup.ag' : 'https://lite-api.jup.ag');
@@ -39,7 +25,6 @@ let ctx = null;
 /** @param {{connection: Connection, protocolWallet: import('@solana/web3.js').Keypair, usdcMint: PublicKey, rpcUrl: string, isSafeMode: boolean}} c */
 export function initPayments(c) {
   ctx = c;
-  console.log(`[Payments] Payout rail: ${PAYOUT_RAIL}${PAYOUT_RAIL === 'magicblock' ? ` (${MAGICBLOCK_API_URL})` : ''}`);
 }
 
 export const isMainnet = () =>
@@ -84,126 +69,11 @@ async function payStandard(userPubkey, amount) {
   }
 }
 
-/**
- * Simulate an externally built transaction and throw unless its only effect on the protocol
- * wallet is: the USDC account drops by at most `maxUsdc` base units, every other token account
- * it owns is untouched, no authority or delegate changes, and SOL spent stays under MAX_FEE_LAMPORTS.
- */
-export async function assertOnlyPaysOut(connection, tx, maxUsdc) {
-  const wallet = ctx.protocolWallet.publicKey;
-  const owned = (await Promise.all([TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID].map(programId =>
-    connection.getTokenAccountsByOwner(wallet, { programId })))).flatMap(r => r.value);
-  const addresses = [wallet, ...owned.map(a => a.pubkey)];
-  const before = await connection.getMultipleAccountsInfo(addresses, 'confirmed');
-
-  const vtx = tx instanceof VersionedTransaction
-    ? tx
-    : new VersionedTransaction(tx.compileMessage());
-  const sim = await connection.simulateTransaction(vtx, {
-    sigVerify: false,
-    replaceRecentBlockhash: true,
-    accounts: { encoding: 'base64', addresses: addresses.map(a => a.toBase58()) },
-  });
-  if (sim.value.err) throw new Error(`MagicBlock transfer fails in simulation: ${JSON.stringify(sim.value.err)}`);
-
-  const after = sim.value.accounts;
-  const solBefore = before[0]?.lamports ?? 0;
-  const solAfter = after[0]?.lamports ?? 0;
-  if (!after[0] || after[0].owner !== SystemProgram.programId.toBase58()) {
-    throw new Error('MagicBlock transfer would reassign the protocol wallet');
-  }
-  if (solBefore - solAfter > MAX_FEE_LAMPORTS) {
-    throw new Error(`MagicBlock transfer would spend ${solBefore - solAfter} lamports of SOL`);
-  }
-
-  let usdcSpent = 0n;
-  for (let i = 1; i < addresses.length; i++) {
-    const pre = before[i]?.data;
-    const post = after[i] ? Buffer.from(after[i].data[0], 'base64') : null;
-    if (!pre || !post) throw new Error(`MagicBlock transfer would close ${addresses[i].toBase58()}`);
-    const preAmount = pre.readBigUInt64LE(64);
-    const postAmount = post.readBigUInt64LE(64);
-    // Everything except the balance (bytes 64..72) must be unchanged: owner, delegate, close authority, state.
-    const strip = b => Buffer.concat([b.subarray(0, 64), b.subarray(72)]);
-    if (!strip(pre).equals(strip(post))) {
-      throw new Error(`MagicBlock transfer would change ownership or delegation of ${addresses[i].toBase58()}`);
-    }
-    const spent = preAmount - postAmount;
-    if (pre.subarray(0, 32).equals(ctx.usdcMint.toBuffer())) {
-      usdcSpent += spent;
-    } else if (spent > 0n) {
-      throw new Error(`MagicBlock transfer would move tokens out of ${addresses[i].toBase58()}`);
-    }
-  }
-  if (usdcSpent > BigInt(maxUsdc)) {
-    throw new Error(`MagicBlock transfer would move ${usdcSpent} USDC units, expected ≤ ${maxUsdc}`);
-  }
-}
-
-async function payMagicBlock(userPubkey, amount) {
-  const res = await fetch(`${MAGICBLOCK_API_URL}/v1/spl/transfer`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: ctx.protocolWallet.publicKey.toBase58(),
-      to: userPubkey.toBase58(),
-      mint: ctx.usdcMint.toBase58(),
-      amount: Math.round(amount * 1_000_000),
-      cluster: isMainnet() ? 'mainnet' : 'devnet',
-      visibility: 'private',
-      fromBalance: 'base',
-      toBalance: 'base',
-      initIfMissing: true,
-      initAtasIfMissing: true,
-      memo: 'Signal Protocol reward',
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`MagicBlock API ${res.status}: ${data?.error || data?.message || JSON.stringify(data)}`);
-
-  const others = (data.requiredSigners || []).filter(s => s !== ctx.protocolWallet.publicKey.toBase58());
-  if (others.length) throw new Error(`MagicBlock transfer needs extra signers: ${others.join(', ')}`);
-
-  const raw = Buffer.from(data.transactionBase64, 'base64');
-  const target = data.sendTo === 'ephemeral'
-    ? new Connection(MAGICBLOCK_EPHEMERAL_RPC, 'confirmed')
-    : ctx.connection;
-  const legacy = data.version === 'legacy';
-  const tx = legacy ? Transaction.from(raw) : VersionedTransaction.deserialize(raw);
-
-  // The API built this transaction, so check what it does before the protocol wallet signs it.
-  await assertOnlyPaysOut(target, tx, Math.round(amount * 1_000_000));
-
-  let serialized;
-  if (legacy) {
-    tx.partialSign(ctx.protocolWallet);
-    serialized = tx.serialize();
-  } else {
-    tx.sign([ctx.protocolWallet]);
-    serialized = tx.serialize();
-  }
-
-  const sig = await target.sendRawTransaction(serialized, { skipPreflight: false });
-  await target.confirmTransaction(
-    { signature: sig, blockhash: data.recentBlockhash, lastValidBlockHeight: data.lastValidBlockHeight },
-    'confirmed',
-  );
-  return sig;
-}
-
-/** Pay a reward on the configured rail. Returns { signature, rail } or null. */
+/** Pay a reward from the protocol wallet. Returns { signature, rail } or null. */
 export async function payReward(userPubkey, amount) {
   if (ctx.isSafeMode) {
     console.warn('[Safe Mode] Payout blocked: no production identity.');
     return null;
-  }
-  if (PAYOUT_RAIL === 'magicblock') {
-    try {
-      const signature = await payMagicBlock(userPubkey, amount);
-      return { signature, rail: 'MagicBlock Private (PER)' };
-    } catch (e) {
-      console.warn('[Payments] MagicBlock payout failed, falling back to standard:', e.message);
-    }
   }
   const signature = await payStandard(userPubkey, amount);
   return signature ? { signature, rail: 'Solana SPL' } : null;
