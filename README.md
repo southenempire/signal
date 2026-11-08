@@ -9,7 +9,7 @@
 - **What:** a receipt photo becomes a verified price on NEAR, and the person who sent it is paid in USDC on Solana.
 - **Why it is private:** the photo is checked inside NEAR AI's TEE and never stored. Only its SHA-256 goes on-chain, and the published answer holds city, date, items and prices, never names, addresses or card numbers.
 - **Why you can trust it:** our NEAR contract checks NEAR AI's TEE signature itself (`ecrecover`) before filing a price, and only that contract's Chain Signatures key can pay on Solana.
-- **Live data (8 Nov 2026):** 12 reports from 10 reporters on NEAR (Lagos, Port Harcourt, Johor Bahru, Seri Kembangan), 37 prices paid on Solana. Early, and every one checkable.
+- **Live data:** on 8 Nov 2026, 12 reports from 10 reporters on NEAR (Lagos, Port Harcourt, Johor Bahru, Seri Kembangan) and 37 prices paid on Solana. Early, and every one checkable; [`/verify`](https://signal-bot-chi.vercel.app/verify) lists every report and its Solana payouts as they are now. Reports #0–2 came before reporter ids were namespaced by relayer: #0 was filed from the author's own NEAR account as a first test, and #1–2 show bare `tg:` ids instead of `bot.signal-southen.testnet/tg:`.
 - **Check it yourself:** [`/verify`](https://signal-bot-chi.vercel.app/verify) runs the TEE attestation live · `near view oracle.signal-southen.testnet list_feeds '{}'` · `cd signal-near && cargo test` (46 pass, including a one-byte forgery being rejected).
 - **Known limits:** one relayer, custodial wallets and testnet keys. See [Trust model and known limits](#trust-model-and-known-limits).
 
