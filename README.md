@@ -10,7 +10,7 @@
 - **Why it is private:** the photo is checked inside NEAR AI's TEE and never stored. Only its SHA-256 goes on-chain, and the published answer holds city, date, items and prices, never names, addresses or card numbers.
 - **Why you can trust it:** our NEAR contract checks NEAR AI's TEE signature itself (`ecrecover`) before filing a price, and only that contract's Chain Signatures key can pay on Solana.
 - **Live data:** on 8 Nov 2026, 12 reports from 10 reporters on NEAR (Lagos, Port Harcourt, Johor Bahru, Seri Kembangan) and 37 prices paid on Solana. Early, and every one checkable; [`/verify`](https://signal-bot-chi.vercel.app/verify) lists every report and its Solana payouts as they are now. Reports #0–2 came before reporter ids were namespaced by relayer: #0 was filed from the author's own NEAR account as a first test, and #1–2 show bare `tg:` ids instead of `bot.signal-southen.testnet/tg:`.
-- **Check it yourself:** [`/verify`](https://signal-bot-chi.vercel.app/verify) runs the TEE attestation live · `near view oracle.signal-southen.testnet list_feeds '{}'` · `cd signal-near && cargo test` (46 pass, including a one-byte forgery being rejected).
+- **Check it yourself:** [`/verify`](https://signal-bot-chi.vercel.app/verify) runs the TEE attestation live · `near view oracle.signal-southen.testnet list_feeds '{}'` · `cd signal-near && cargo test` (48 pass, including a one-byte forgery being rejected).
 - **Known limits:** one relayer, custodial wallets and testnet keys. See [Trust model and known limits](#trust-model-and-known-limits).
 
 ---
@@ -70,7 +70,7 @@ with `ecrecover`, and Chain Signatures — for different products, with separate
 1. Open [signal-bot-chi.vercel.app/verify](https://signal-bot-chi.vercel.app/verify) → see NEAR AI's attestation verified live with a fresh nonce, the key registered in the contract, and the latest reports filed on NEAR.
 2. Send a receipt photo to [@OfficialSignalOracleBot](https://t.me/OfficialSignalOracleBot) → the reply links the NEAR transaction that filed it and confirms the accepted prices are being paid on Solana; on `/verify` each accepted price shows "→ Solana: accepted, 0.20 USDC paid" with a link to its Solana account.
 3. `near view oracle.signal-southen.testnet list_feeds '{}'` → read the feeds straight from NEAR.
-4. `cd signal-near && cargo test` → 46 tests pass, including real NEAR AI signatures, a one-byte forgery being rejected, the published answer holding no personal details, and feed-stuffing attempts being refused.
+4. `cd signal-near && cargo test` → 48 tests pass, including real NEAR AI signatures, a one-byte forgery being rejected, the published answer holding no personal details, and feed-stuffing attempts being refused.
 5. Reproduce a filing yourself: see [`signal-near/README.md`](signal-near/README.md#try-it).
 
 No real data is needed: the tests use captured NEAR AI responses ([`signal-near/tests/fixtures`](signal-near/tests/fixtures)),
@@ -135,8 +135,11 @@ and `file-audit.mjs` runs on a receipt from the public SROIE research dataset in
 - **Fake reporters (sybils).** Defences today: NEAR AI flags edited, generated and screenshot photos
   as fraud on-chain; each photo pays once per item (by its hash, on NEAR and on Solana); a price far
   from the feed's median is held until other reporters confirm it; each user can send at most 10
-  reports a day. What is not solved: one person with many accounts and many genuine receipts. That needs
-  identity or stake per reporter, planned before mainnet.
+  reports a day. Photos served from a host the owner hasn't registered only have a claimed hash, so
+  they can add a price inside an established feed's bounds but are never paid on Solana and never
+  claim a photo hash. What is not solved: one person with many accounts and many genuine receipts,
+  and such unpaid prices still counting toward a feed's median (so they could drag it within the
+  bounds). Both need identity or stake per reporter, planned before mainnet.
 - **Photos cannot be re-checked later, by design.** NEAR AI fetches the photo from a short-lived link
   on the bot's server that is deleted after the check. Keeping receipts would mean storing people's
   purchases, so only the photo's SHA-256 is kept on-chain. The reporter can prove a photo with their
@@ -284,7 +287,7 @@ BOTCHAIN_PRIVATE_KEY=your_botchain_private_key
 ### Running Locally
 
 ```bash
-# 1. Run NEAR Contract Unit Tests (46 passing)
+# 1. Run NEAR Contract Unit Tests (48 passing)
 cd signal-near && cargo test
 
 # 2. Run the Next.js Frontend

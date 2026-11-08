@@ -11,7 +11,7 @@
 //! The photo's hash is only a claim in the image URL, so it is trusted only when the photo is served
 //! by a host the owner registered (the Signal bot hashes what it serves). Photos from other hosts
 //! are still filed, but can only add prices inside an established feed's bounds: they cannot start
-//! a feed, wait for peers, or vouch for anyone.
+//! a feed, wait for peers, vouch for anyone, claim a photo hash or be paid on Solana.
 //!
 //! Nobody — including the Signal bot — can put a price on-chain the model did not read.
 
@@ -42,6 +42,7 @@ enum StorageKey {
     TrustedHosts,
     SolanaWallets,
     SolanaFraudFiled,
+    UnboundReports,
 }
 
 /// Chain Signatures settings for filing on Solana (see `solana.rs`).
@@ -90,6 +91,12 @@ fn solana_wallets() -> LookupMap<String, String> {
 /// Fraud reports already sent for signing: a fake must be penalised on Solana once, not per retry.
 fn solana_fraud_filed() -> LookupSet<u64> {
     LookupSet::new(StorageKey::SolanaFraudFiled)
+}
+
+/// Verified reports whose photo came from an untrusted host. Their hash is only a claim, so the same
+/// photo could be re-filed under new hashes: they are never paid on Solana.
+fn unbound_reports() -> LookupSet<u64> {
+    LookupSet::new(StorageKey::UnboundReports)
 }
 
 fn solana_key(b58: &str) -> solana::Pubkey {
@@ -352,7 +359,13 @@ impl Contract {
             submitted_at_secs: now,
         };
         self.reports.push(report.clone());
-        self.seen_images.insert(req.image_sha256, id);
+        // Only a trusted host's hash is the real photo's, so only that hash can be claimed. Recording an
+        // untrusted one would let anyone block a genuine photo by filing its hash first.
+        if bound {
+            self.seen_images.insert(req.image_sha256, id);
+        } else if report.status == ReportStatus::Verified {
+            unbound_reports().insert(id);
+        }
         self.seen_responses.insert(response_sha256, id);
         self.held_reports_promoted(&report);
 
@@ -392,6 +405,7 @@ impl Contract {
         require!(report.status == ReportStatus::Verified, "only verified reports are filed on Solana");
         let item = report.items.get(item_index as usize).unwrap_or_else(|| env::panic_str("no such item"));
         require!(matches!(item.outcome, Outcome::Accepted { .. }), "only accepted prices are filed on Solana");
+        require!(!unbound_reports().contains(&report_id), "photos from untrusted hosts are not paid on Solana");
         let wallet = solana_wallets().get(&report.reporter).cloned().unwrap_or_else(|| env::panic_str("the reporter has no Solana wallet registered"));
         let image_hash: [u8; 32] = hex::decode(&report.image_sha256).ok().and_then(|b| b.try_into().ok()).unwrap_or_else(|| env::panic_str("bad photo hash"));
 
