@@ -29,9 +29,8 @@ The Solana program (`signal-program/`) is deployed separately with Anchor; see i
 | `REPORTER_SALT` | Hashes Telegram IDs into anonymous on-chain reporter IDs |
 | `BOTCHAIN_PRIVATE_KEY` | Owner key of the BOTChain mirror contract |
 | `BOTCHAIN_ORACLE_ADDRESS` | BOTChain mirror contract address |
-| `DEMO_MODE` | `false` in production |
 
-Optional: `GROQ_VISION_MODEL` (override the vision model), `SIGNAL_ATTESTER_KEYPAIR_JSON` (separate attester key), and the `PAYOUT_RAIL` / `MAGICBLOCK_*` / `JUPITER_*` settings described in `signal-bot/README.md`.
+Optional: `GROQ_VISION_MODEL` (override the vision model), `SIGNAL_ATTESTER_KEYPAIR_JSON` (separate attester key), and the `JUPITER_*` settings described in `signal-bot/README.md`.
 
 `signal-bot/scripts/push-railway-env.sh` copies values from `signal-bot/.env` into Railway without printing them.
 

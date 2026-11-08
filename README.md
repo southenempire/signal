@@ -125,7 +125,10 @@ and `file-audit.mjs` runs on a receipt from the public SROIE research dataset in
 - **Solana trusts NEAR.** The Solana program accepts filings only from the NEAR contract's Chain
   Signatures key and accepts them on the next settlement pass, without its own bounds or peer
   checks. Those run on NEAR before that (`feed.offer`): a price far from a feed's median is held for
-  peers or refused.
+  peers or refused. A feed with fewer than 3 prices has no median yet, so its first prices are
+  accepted on the model's reading alone. The Solana program's own peer and timeout rules, and the
+  bot's `consensus.js`, only apply to filings without NEAR's attestation, and the live attester never
+  files those.
 - **The bot is custodial and is the only relayer today.** It holds each user's Solana key (exportable
   at any time) and registers their payout wallet on NEAR. A compromised bot could redirect rewards or
   file as made-up users, but cannot forge NEAR AI's signature or reuse a photo. The bot keeps users,

@@ -531,34 +531,25 @@ if (bot) {
 
   let audit;
   let nearAudit = null;
-  if (process.env.DEMO_MODE === 'true') {
-    console.log('[Vision] 🎥 DEMO MODE: skipping AI, using a fixed sample receipt');
-    audit = {
-      verified: true, reason: 'Demo mode sample', documentType: 'receipt', category: selected,
-      currency: 'USD', total: 5.00, store: { name: 'Demo Store', city: 'Demo', country: 'XX' },
-      items: [{ name: 'Demo item', canonicalItem: 'demo_item', quantity: 1, unitPrice: 5.00 }],
-    };
-  } else {
-    try {
-      if (NEAR_VISION) {
-        // Private path only: if the TEE audit fails the photo is NOT sent to a non-confidential
-        // provider instead — the user is asked to try again.
-        if (!imageBuffer || !imageHash) throw new Error('photo download failed');
-        try {
-          nearAudit = await runNearAudit(imageBuffer, imageHash, selected, user.region);
-        } catch (e) {
-          console.error('[NEAR AI] audit failed:', e.message);
-          return ctx.replyWithHTML(`❌ <b>Private audit unavailable.</b> NEAR AI's secure enclave could not check your photo right now, and Signal never sends it anywhere else. Please try again in a few minutes.`);
-        }
-        audit = nearAudit.verdict;
-      } else {
-        audit = await runVisionAudit(imageBase64, selected, (ahead) =>
-          ctx.reply(`⏳ Busy right now — ${ahead} receipt${ahead === 1 ? '' : 's'} ahead of yours. Hang tight, it's queued.`).catch(() => {}));
+  try {
+    if (NEAR_VISION) {
+      // Private path only: if the TEE audit fails the photo is NOT sent to a non-confidential
+      // provider instead — the user is asked to try again.
+      if (!imageBuffer || !imageHash) throw new Error('photo download failed');
+      try {
+        nearAudit = await runNearAudit(imageBuffer, imageHash, selected, user.region);
+      } catch (e) {
+        console.error('[NEAR AI] audit failed:', e.message);
+        return ctx.replyWithHTML(`❌ <b>Private audit unavailable.</b> NEAR AI's secure enclave could not check your photo right now, and Signal never sends it anywhere else. Please try again in a few minutes.`);
       }
-    } catch (e) {
-      console.error('Final Verification Error:', e);
-      return ctx.replyWithHTML(`❌ <b>Verification Error:</b> The AI check could not complete. Please try again.`);
+      audit = nearAudit.verdict;
+    } else {
+      audit = await runVisionAudit(imageBase64, selected, (ahead) =>
+        ctx.reply(`⏳ Busy right now — ${ahead} receipt${ahead === 1 ? '' : 's'} ahead of yours. Hang tight, it's queued.`).catch(() => {}));
     }
+  } catch (e) {
+    console.error('Final Verification Error:', e);
+    return ctx.replyWithHTML(`❌ <b>Verification Error:</b> The AI check could not complete. Please try again.`);
   }
 
   // File the signed verdict on NEAR while we reply; every outcome (fakes too) goes on record.
