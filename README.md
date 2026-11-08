@@ -137,7 +137,8 @@ and `file-audit.mjs` runs on a receipt from the public SROIE research dataset in
   from the feed's median is held until other reporters confirm it; each user can send at most 10
   reports a day. Photos served from a host the owner hasn't registered only have a claimed hash, so
   they can add a price inside an established feed's bounds but are never paid on Solana and never
-  claim a photo hash. What is not solved: one person with many accounts and many genuine receipts,
+  claim a photo hash. Each such filing still costs its sender a NEAR AI call and NEAR storage, so
+  there is nothing to farm. What is not solved: one person with many accounts and many genuine receipts,
   and such unpaid prices still counting toward a feed's median (so they could drag it within the
   bounds). Both need identity or stake per reporter, planned before mainnet.
 - **Photos cannot be re-checked later, by design.** NEAR AI fetches the photo from a short-lived link
