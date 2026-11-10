@@ -304,10 +304,10 @@ if (bot) {
   bot.hears('📖 How It Works', async (ctx) => {
   await ctx.replyWithHTML(
     `<b>📖 How Signal Bot Works</b>\n\n` +
-    `<b>1. Capture</b> → Send a photo of a receipt, shelf tag or fuel pump\n` +
-    `<b>2. Parse</b> → Vision AI rejects screenshots and fakes, then reads every item, the store, the time and the total\n` +
-    `<b>3. Consensus</b> → Each price is checked against local price bounds and peer reports from other signalers. Your reward is locked meanwhile.\n` +
-    `<b>4. Settle</b> → The Signal program on Solana decides. Accepted: it pays your reward from its on-chain pool and adds the price to the feed (mirrored to BOTChain). Contradicted: reward forfeited and you are slashed.\n\n` +
+    `<b>1. Capture</b> → Send a photo of a printed receipt, shelf price tag, fuel pump or printed bill. Photos of screens (apps, SMS, websites) are refused: they are too easy to fake.\n` +
+    `<b>2. Check</b> → NEAR AI's model checks the photo inside a secure enclave (TEE), rejects fakes, and reads the items, prices, city and date. Never names, card numbers or the shop. The photo is not stored.\n` +
+    `<b>3. Decide</b> → The Signal contract on NEAR checks the model's signature and compares each price with other reporters' prices. A price far off is held until others confirm it.\n` +
+    `<b>4. Pay</b> → For each price NEAR accepts, the Solana program pays your USDC reward from its on-chain pool (mirrored to BOTChain).\n\n` +
     `<b>Reputation:</b> starts at ${RULES.REPUTATION_START}/100. +${RULES.REPUTATION_ACCEPT} per accepted report, ${RULES.REPUTATION_SLASH} per slash, ${RULES.REPUTATION_DUPLICATE} for duplicates. Higher reputation earns bigger rewards; below ${RULES.REPUTATION_BANNED_BELOW} you can't report.\n\n` +
     `<i>Consensus on Solana · Mirrored to BOTChain · Token: USDC</i>`,
     MAIN_MENU
@@ -336,16 +336,24 @@ if (bot) {
   pendingReport.set(ctx.from.id, ctx.match[0]);
   const labels = {
     FUEL: '⛽ Fuel / Gas',
-    GROCERY: '🛒 Grocery / Recipes',
+    GROCERY: '🛒 Grocery / Food',
     ELECTRICITY: '💡 Electricity',
     RENT: '🏠 Rent / Property',
     GENERIC: '📦 Global Data',
   };
+  // What a genuine photo looks like for each category. Screens can't be checked, so the model refuses them.
+  const what = {
+    FUEL: 'the pump display or the station\'s price board',
+    GROCERY: 'a printed receipt or shelf price tags',
+    ELECTRICITY: 'a printed electricity bill, or the printed token receipt from a vendor',
+    RENT: 'a printed rent receipt, or a "To let" sign that shows the price',
+    GENERIC: 'a printed receipt, a price tag or a price board',
+  };
   await ctx.answerCbQuery();
   await ctx.replyWithHTML(
     `📸 <b>${labels[ctx.match[0]]} Report</b>\n\n` +
-    `Send a clear photo with the price visible. Make sure lighting is good and the tag/display is readable.\n\n` +
-    `<i>Tip: Price tags, fuel pump screens, and receipts all work great.</i>`
+    `Send a clear photo of ${what[ctx.match[0]]}, with the price readable.\n\n` +
+    `<i>Screenshots of apps, SMS or websites are refused: they are too easy to fake.</i>`
   );
 });
 }
@@ -584,7 +592,10 @@ if (bot) {
       });
       return ctx.replyWithHTML(`✂️ <b>Slashed: suspected fake.</b>\n${escapeHtml(audit.reason)}\n⭐ Reputation: ${rep}/100\n${await nearNote()}`);
     }
-    return ctx.replyWithHTML(`❌ <b>Verification Rejection:</b> ${escapeHtml(audit?.reason || 'Invalid data format')}\nPlease submit a real physical data point.\n${await nearNote()}`);
+    return ctx.replyWithHTML(
+      `❌ <b>Not accepted:</b> ${escapeHtml(audit?.reason || 'the photo could not be read')}\n` +
+      `Send a photo of the printed receipt, price tag, fuel pump or printed bill itself. ` +
+      `Screenshots of apps, SMS or websites are refused because they are too easy to fake.\n${await nearNote()}`);
   }
 
   // Convert every priced item to USD at the live FX rate.
