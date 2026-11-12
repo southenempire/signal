@@ -47,7 +47,8 @@ their SHA-256 hash.
 trust. Chain Signatures exist for exactly this: the NEAR contract decides, and its key is the only
 one that can pay on Solana.
 
-**Track.** `privacy`. NEAR features used: Private AI on NEAR AI Cloud (TEE, Intel TDX + NVIDIA GPU,
+**Tracks.** `privacy` (the receipt is read inside a TEE and never stored) and `open` (an AI's signed
+verdict on NEAR releases money on another chain). NEAR features used: Private AI on NEAR AI Cloud (TEE, Intel TDX + NVIDIA GPU,
 attestation checked with a fresh nonce), the TEE's signature verified on-chain in our own NEAR contract,
 Chain Signatures (the NEAR contract is the only key that can file on Solana), and per-reporter
 reputation with fraud flagging.
